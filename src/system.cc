@@ -3,6 +3,7 @@
 #include <d3d11.h>
 #include <windowsx.h> // GET_X_LPARAM(), GET_Y_LPARAM()
 #include <assert.h>
+#include <float.h>
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>
@@ -26,8 +27,9 @@ namespace gfx {
 	ID3D11Device *device = nullptr;
 	ID3D11DeviceContext *context = nullptr;
 	ID3D11Debug *debugdev = nullptr;
+	ID3D11InfoQueue *infodev = nullptr;
 	IDXGISwapChain *swapchain = nullptr;
-	//ID3D11RenderTargetView *imgui_rtv = nullptr;
+	ID3D11DepthStencilState* depth_stencil_state = nullptr;
 	RenderTexture imgui_rtv;
 	RenderTexture main_rtv;
 
@@ -73,8 +75,7 @@ namespace gfx {
 		main_rtv.clear(math::lerp(col::coral, col::indigo, sinf(win::timeSinceStart())));
 
 		imgui_rtv.bind();
-		//context->OMSetRenderTargets(1, &imgui_rtv, nullptr);
-		//context->ClearRenderTargetView(imgui_rtv, clear_colour.data);
+		imgui_rtv.clear(col::black);
 
 		// Start the Dear ImGui frame
 		ImGui_ImplDX11_NewFrame();
@@ -87,6 +88,7 @@ namespace gfx {
 		ImGui::Render();
 		ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 		
+		gfx::context->OMSetRenderTargets(0, nullptr, nullptr);
 		swapchain->Present(g_options.vsync, 0);
 	}
 
@@ -113,7 +115,7 @@ namespace gfx {
 #endif
 		D3D_FEATURE_LEVEL featureLevel;
 		const D3D_FEATURE_LEVEL featureLevelArray[2] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_0, };
-		if (D3D11CreateDeviceAndSwapChain(
+		HRESULT hr = D3D11CreateDeviceAndSwapChain(
 			NULL,
 			D3D_DRIVER_TYPE_HARDWARE,
 			NULL,
@@ -126,14 +128,44 @@ namespace gfx {
 			&device,
 			&featureLevel,
 			&context
-		) != S_OK) {
+		);
+		if (FAILED(hr)) {
+			err("couldn't create device");
 			return false;
 		}
 
 #ifndef NDEBUG
-		HRESULT hr = device->QueryInterface(__uuidof(ID3D11Debug), (void **)&debugdev);
+		hr = device->QueryInterface(__uuidof(ID3D11Debug), (void **)&debugdev);
 		assert(SUCCEEDED(hr));
+		hr = device->QueryInterface(__uuidof(ID3D11InfoQueue), (void **)&infodev);
+		assert(SUCCEEDED(hr));
+
+		D3D11_MESSAGE_CATEGORY categories[] = {
+			D3D11_MESSAGE_CATEGORY_STATE_CREATION,
+		};
+		D3D11_INFO_QUEUE_FILTER filter;
+		str::memzero(filter);
+		filter.DenyList.NumCategories = ARRLEN(categories);
+		filter.DenyList.pCategoryList = categories;
+		infodev->PushStorageFilter(&filter);
 #endif
+
+		D3D11_DEPTH_STENCIL_DESC dd;
+		str::memzero(dd);
+		dd.DepthFunc = D3D11_COMPARISON_ALWAYS;
+		dd.DepthEnable = false;
+		dd.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+		dd.DepthFunc = D3D11_COMPARISON_ALWAYS;
+		dd.StencilEnable = false;
+		dd.FrontFace.StencilFailOp = dd.FrontFace.StencilDepthFailOp = dd.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+		dd.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+		dd.BackFace = dd.FrontFace;
+		hr = device->CreateDepthStencilState(&dd, &depth_stencil_state);
+		if (FAILED(hr)) {
+			err("couldn't create depth stencil state");
+			return false;
+		}
+		context->OMSetDepthStencilState(depth_stencil_state, 0);
 
 		createImGuiRTV();
 
@@ -141,11 +173,17 @@ namespace gfx {
 	}
 	
 	void cleanupDevice() {
+#ifndef NDEBUG
+		// we need this as it doesn't report memory leak otherwise
+		infodev->PushEmptyStorageFilter();
+#endif
 		cleanupImGuiRTV();
+		SAFE_RELEASE(depth_stencil_state);
 		SAFE_RELEASE(swapchain);
 		SAFE_RELEASE(context);
 		SAFE_RELEASE(device);
 #ifndef NDEBUG
+		SAFE_RELEASE(infodev);
 		debugdev->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL | D3D11_RLDO_IGNORE_INTERNAL);
 		SAFE_RELEASE(debugdev);
 #endif
@@ -159,6 +197,37 @@ namespace gfx {
 		imgui_rtv.cleanup();
 		//SAFE_RELEASE(imgui_rtv);
 	}
+
+#ifndef NDEBUG
+	void gfx::logD3D11messages() {
+		UINT64 message_count = infodev->GetNumStoredMessages();
+
+		D3D11_MESSAGE* msg = nullptr;
+		SIZE_T old_size = 0;
+	
+		for (UINT64 i = 0; i < message_count; ++i) {
+			SIZE_T msg_size = 0;
+			infodev->GetMessage(i, nullptr, &msg_size);
+			
+			if (msg_size > old_size) {
+				msg = (D3D11_MESSAGE*)realloc(msg, msg_size);
+			}
+			infodev->GetMessage(i, msg, &msg_size);
+			assert(msg);
+			
+			switch (msg->Severity) {
+			case D3D11_MESSAGE_SEVERITY_CORRUPTION: fatal("%.*s", msg->DescriptionByteLength, msg->pDescription); break;
+			case D3D11_MESSAGE_SEVERITY_ERROR:      err("%.*s", msg->DescriptionByteLength, msg->pDescription); break;
+			case D3D11_MESSAGE_SEVERITY_WARNING:    warn("%.*s", msg->DescriptionByteLength, msg->pDescription); break;
+			case D3D11_MESSAGE_SEVERITY_INFO:       info("%.*s", msg->DescriptionByteLength, msg->pDescription); break;
+			case D3D11_MESSAGE_SEVERITY_MESSAGE:    tall("%.*s", msg->DescriptionByteLength, msg->pDescription); break;
+			}
+		}
+
+		free(msg);
+		infodev->ClearStoredMessages();
+	}
+#endif
 } // namespace gfx
 
 namespace win {
@@ -186,7 +255,9 @@ namespace win {
 		}
 
 		dt = (float)stm_sec(stm_laptime(&laptime));
-		fps = (fps + 1.f / dt) / 2.f;
+		if (dt) {
+			fps = (fps + 1.f / dt) / 2.f;
+		}
 	}
 
 	void close() {

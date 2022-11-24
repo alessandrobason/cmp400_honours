@@ -4,9 +4,9 @@
 #include "matrix.h"
 #include "buffer.h"
 
-struct MatrixBuffer {
-	matrix world, view, proj;
-};
+//struct MatrixBuffer {
+//	matrix world, view, proj;
+//};
 
 struct Shader {
 	Shader() = default;
@@ -19,11 +19,12 @@ struct Shader {
 	bool create(const char *vertex_file, const char *pixel_file);
 	void cleanup();
 
-	bool update(const matrix &world, const matrix &view, const matrix &proj);
+	//bool update(const matrix &world, const matrix &view, const matrix &proj);
 	void bind();
+	void unbind();
 
 	ID3D11VertexShader *vert = nullptr;
 	ID3D11PixelShader *pixel = nullptr;
 	ID3D11InputLayout *layout = nullptr;
-	Buffer matbuf;
+	//Buffer matbuf;
 };

@@ -92,6 +92,7 @@ struct vec4T {
 	union {
 		T data[4];
 		struct { T x, y, z, w; };
+		struct { T x, y, w, h; };
 		struct { T r, g, b, a; };
 		struct { vec2T<T> pos, size; };
 		struct { vec3T<T> v; T w; };

@@ -21,7 +21,7 @@ void fpsWidget() {
 	ImGui::SetNextWindowBgAlpha(0.35f);
 
 	ImGui::Begin("FPS overlay", nullptr, window_flags);
-	ImGui::Text("FPS: %.0f", roundf(win::fps));
+	ImGui::Text("FPS: %.1f", win::fps);
 	ImGui::End();
 }
 

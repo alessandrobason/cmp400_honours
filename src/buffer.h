@@ -26,5 +26,15 @@ struct Buffer {
 	bool create(size_t type_size, Usage usage, bool can_write = true, bool can_read = false);
 	void cleanup();
 
+	template<typename T>
+	T* map(unsigned int subresource = 0) {
+		return (T*)map(subresource);
+	}
+
+	void* map(unsigned int subresource = 0);
+	void unmapVS(unsigned int subresource = 0, unsigned int slot = 0);
+	void unmapPS(unsigned int subresource = 0, unsigned int slot = 0);
+	void unmapGS(unsigned int subresource = 0, unsigned int slot = 0);
+
 	ID3D11Buffer *buffer = nullptr;
 };

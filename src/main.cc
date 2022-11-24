@@ -25,7 +25,7 @@ int main() {
 		};
 
 		Index indices[] = {
-			0, 1, 2,
+			0, 2, 1,
 		};
 
 		Mesh m;
@@ -34,28 +34,27 @@ int main() {
 		}
 
 		Shader sh;
-		if (sh.create("base_vs", "base_ps")) {
-			info("shader loaded");
+		if (!sh.create("base_vs", "base_ps")) {
+			exit(1);
 		}
+
+		//sh.update(matrix::identity, matrix::identity, matrix::identity);
 
 		while (win::isOpen()) {
 			win::poll();
 
 			gfx::begin(col::dark_grey);
-
-			gfx::main_rtv.bind();
-			sh.update(matrix::identity, matrix::identity, matrix::identity);
-			sh.bind();
-			m.render();
-
-			gfx::imgui_rtv.bind();
-
-			fpsWidget();
-			mainTargetWidget();
-
-			ImGui::ShowDemoWindow();
-
+				gfx::main_rtv.bind();
+					sh.bind();
+						m.render();
+					sh.unbind();
+				gfx::imgui_rtv.bind();
+					fpsWidget();
+					mainTargetWidget();
+					ImGui::ShowDemoWindow();
 			gfx::end();
+
+			gfx::logD3D11messages();
 		}
 	}
 

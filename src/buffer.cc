@@ -5,6 +5,7 @@
 #include "system.h"
 #include "str_utils.h"
 #include "macros.h"
+#include "tracelog.h"
 
 static D3D11_USAGE usage_to_d3d11[(size_t)Usage::Count] = {
     D3D11_USAGE_DEFAULT,
@@ -49,4 +50,29 @@ bool Buffer::create(size_t type_size, Usage usage, bool can_write, bool can_read
 
 void Buffer::cleanup() {
     SAFE_RELEASE(buffer);
+}
+
+void Buffer::unmapVS(unsigned int subresource, unsigned int slot) {
+    gfx::context->Unmap(buffer, subresource);
+    gfx::context->VSSetConstantBuffers(slot, 1, &buffer);
+}
+
+void Buffer::unmapPS(unsigned int subresource, unsigned int slot) {
+    gfx::context->Unmap(buffer, subresource);
+    gfx::context->PSSetConstantBuffers(slot, 1, &buffer);
+}
+
+void Buffer::unmapGS(unsigned int subresource, unsigned int slot) {
+    gfx::context->Unmap(buffer, subresource);
+    gfx::context->GSSetConstantBuffers(slot, 1, &buffer);
+}
+
+void* Buffer::map(unsigned int subresource) {
+    D3D11_MAPPED_SUBRESOURCE resource;
+    HRESULT hr = gfx::context->Map(buffer, subresource, D3D11_MAP_WRITE_DISCARD, 0, &resource);
+    if (FAILED(hr)) {
+        err("couldn't map buffer");
+        return nullptr;
+    }
+    return resource.pData;
 }

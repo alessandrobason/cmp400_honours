@@ -22,7 +22,7 @@ Shader &Shader::operator=(Shader &&s) {
 		vert = s.vert;
 		pixel = s.pixel;
 		layout = s.layout;
-		matbuf = std::move(s.matbuf);
+		//matbuf = std::move(s.matbuf);
 
 		s.vert = nullptr;
 		s.pixel = nullptr;
@@ -61,8 +61,8 @@ bool Shader::create(const char *vertex_file, const char *pixel_file) {
 	}
 
 	D3D11_INPUT_ELEMENT_DESC layout_desc[] = {
-		"POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, (UINT)offsetof(Vertex, position), D3D11_INPUT_PER_VERTEX_DATA, 0,
-		"COLOR",    0, DXGI_FORMAT_R8G8B8A8_UNORM,     0, (UINT)offsetof(Vertex, colour),   D3D11_INPUT_PER_VERTEX_DATA, 0,
+		"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, (UINT)offsetof(Vertex, position), D3D11_INPUT_PER_VERTEX_DATA, 0,
+		"COLOR",    0, DXGI_FORMAT_R32G32B32_FLOAT,  0, (UINT)offsetof(Vertex, colour),   D3D11_INPUT_PER_VERTEX_DATA, 0,
 	};
 
 	hr = gfx::device->CreateInputLayout(
@@ -75,10 +75,10 @@ bool Shader::create(const char *vertex_file, const char *pixel_file) {
 		return false;
 	}
 
-	if (!matbuf.create<MatrixBuffer>(Usage::Dynamic)) {
-		err("couldn't create the matrix buffer");
-		return false;
-	}
+	//if (!matbuf.create<MatrixBuffer>(Usage::Dynamic)) {
+	//	err("couldn't create the matrix buffer");
+	//	return false;
+	//}
 
 	return true;
 }
@@ -87,18 +87,33 @@ void Shader::cleanup() {
 	SAFE_RELEASE(vert);
 	SAFE_RELEASE(pixel);
 	SAFE_RELEASE(layout);
-	matbuf.cleanup();
+	//matbuf.cleanup();
 }
 
+/*
 bool Shader::update(const matrix &world, const matrix &view, const matrix &proj) {
-	UNUSED(world);
-	UNUSED(view);
-	UNUSED(proj);
-	return false;
+	MatrixBuffer *buf = matbuf.map<MatrixBuffer>();
+	if (!buf) {
+		err("could not map subresource matrix buffer");
+		return false;
+	}
+
+	buf->world = world;
+	buf->view = view;
+	buf->proj = proj;
+
+	matbuf.unmapVS();
+
+	return true;
 }
+*/
 
 void Shader::bind() {
 	gfx::context->IASetInputLayout(layout);
 	gfx::context->VSSetShader(vert, nullptr, 0);
 	gfx::context->PSSetShader(pixel, nullptr, 0);
+}
+
+void Shader::unbind() {
+
 }

@@ -27,6 +27,10 @@ namespace gfx {
 	void cleanupDevice();
 	void createImGuiRTV();
 	void cleanupImGuiRTV();
+
+#ifndef NDEBUG
+	void logD3D11messages();
+#endif
 } // namespace gfx
 
 namespace win {

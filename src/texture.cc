@@ -88,7 +88,9 @@ namespace gfx {
 			return false;
 		}
 
-		return false;
+		size = win::getSize();
+
+		return true;
 	}
 
 	bool RenderTexture::resize(int new_width, int new_height) {
@@ -103,6 +105,14 @@ namespace gfx {
 	}
 
 	void RenderTexture::bind(ID3D11DepthStencilView *dsv) {
+		D3D11_VIEWPORT vp;
+		str::memzero(vp);
+		vp.Width = (float)size.x;
+		vp.Height = (float)size.y;
+		vp.MinDepth = 0.0f;
+		vp.MaxDepth = 1.0f;
+		vp.TopLeftX = vp.TopLeftY = 0;
+		gfx::context->RSSetViewports(1, &vp);
 		gfx::context->OMSetRenderTargets(1, &view, dsv);
 	}
 

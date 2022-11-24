@@ -3,6 +3,7 @@ struct PixelInput {
 	float4 col : COLOR;
 };
 
-float4 main(PixelInput input) : SV_TARGET {
-	return input.col;
+float4 main(PixelInput input) : SV_TARGET{
+	//return abs(input.pos);
+	return float4(1, 0, 0, 1);
 }
