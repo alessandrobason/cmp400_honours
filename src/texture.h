@@ -19,6 +19,8 @@ namespace gfx {
 		void bind(ID3D11DepthStencilView *dsv = nullptr);
 		void clear(Colour colour, ID3D11DepthStencilView *dsv = nullptr);
 
+		bool takeScreenshot(const char *base_name = "screenshot");
+
 		vec2i size;
 		ID3D11Texture2D *texture = nullptr;
 		ID3D11RenderTargetView *view = nullptr;

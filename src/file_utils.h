@@ -15,6 +15,8 @@ namespace fs {
 		operator FILE*() { return fp; }
 	};
 
+	bool fileExists(const char *filename);
+
 	std::unique_ptr<uint8_t[]> readWhole(const char *filename, size_t &out_size);
 	std::vector<uint8_t> readBytes(const char *filename);
 	std::vector<uint8_t> readBytes(FILE *fp);

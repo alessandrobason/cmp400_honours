@@ -2,6 +2,7 @@
 
 #include <tchar.h>
 #include <memory>
+#include <stdarg.h>
 
 namespace str {
 	std::unique_ptr<wchar_t[]> ansiToWide(const char *cstr, size_t len = 0);
@@ -16,5 +17,8 @@ namespace str {
 	template<typename T>
 	void memcopy(T &dst, const T &src) { memcpy(&dst, &src, sizeof(T)); }
 
-	std::unique_ptr<char[]> format(const char *fmt, ...);
+	std::unique_ptr<char[]> formatStr(const char *fmt, ...);
+
+	char *format(char *src, size_t srclen, const char *fmt, ...);
+	char *formatv(char *src, size_t srclen, const char *fmt, va_list args);
 } // namespace str 

@@ -1,5 +1,7 @@
 #include "file_utils.h"
 
+#include <Windows.h>
+
 #include <assert.h>
 #include "tracelog.h"
 
@@ -24,6 +26,10 @@ static T readBuf(FILE *fp) {
 }
 
 namespace fs {
+	bool fileExists(const char *filename) {
+		return GetFileAttributesA(filename) != INVALID_FILE_ATTRIBUTES;
+	}
+
 	std::unique_ptr<uint8_t[]> readWhole(const char *filename, size_t &out_size) {
 		File fp(filename);
 		std::unique_ptr<uint8_t[]> out;

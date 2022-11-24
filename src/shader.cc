@@ -34,9 +34,9 @@ Shader &Shader::operator=(Shader &&s) {
 bool Shader::create(const char *vertex_file, const char *pixel_file) {
 	size_t vert_len, pixel_len;
 	std::unique_ptr<uint8_t[]> vert_buf
-		= fs::readWhole(str::format("shaders/bin/%s.cso", vertex_file).get(), vert_len);
+		= fs::readWhole(str::formatStr("shaders/bin/%s.cso", vertex_file).get(), vert_len);
 	std::unique_ptr<uint8_t[]> pixel_buf 
-		= fs::readWhole(str::format("shaders/bin/%s.cso", pixel_file).get(), pixel_len);
+		= fs::readWhole(str::formatStr("shaders/bin/%s.cso", pixel_file).get(), pixel_len);
 	
 	if (!vert_buf || !vert_len) {
 		err("couldn't read vertex shader file");

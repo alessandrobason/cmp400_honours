@@ -8,6 +8,7 @@
 #include "shader.h"
 #include "mesh.h"
 #include "macros.h"
+#include "timer.h"
 
 #include <imgui.h>
 
@@ -53,6 +54,19 @@ int main() {
 					mainTargetWidget();
 					ImGui::ShowDemoWindow();
 			gfx::end();
+
+#ifndef NDEBUG
+			// take a one screenshot every time we open the application, this way we can have
+			// a history of the development
+			static OnceClock screenshot_clock;
+			if (screenshot_clock.after(0.1f)) {
+				gfx::imgui_rtv.takeScreenshot("automatic_screen");
+			}
+#endif
+
+			if (ImGui::IsKeyPressed(ImGuiKey_P)) {
+				gfx::imgui_rtv.takeScreenshot();
+			}
 
 			gfx::logD3D11messages();
 		}

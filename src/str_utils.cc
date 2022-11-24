@@ -39,7 +39,7 @@ namespace str {
 		return result_len <= dst_len;
 	}
 
-	std::unique_ptr<char[]> format(const char *fmt, ...) {
+	std::unique_ptr<char[]> formatStr(const char *fmt, ...) {
 		std::unique_ptr<char[]> out;
 		va_list va, vtemp;
 		va_start(va, fmt);
@@ -58,5 +58,22 @@ namespace str {
 		va_end(va);
 
 		return out;
+	}
+
+	char *format(char *src, size_t srclen, const char *fmt, ...) {
+		va_list va;
+		va_start(va, fmt);
+		char* str = formatv(src, srclen, fmt, va);
+		va_end(va);
+		return str;
+	}
+
+	char *formatv(char *src, size_t srclen, const char *fmt, va_list args) {
+		int len = vsnprintf(src, srclen, fmt, args);
+		if (len >= srclen) {
+			len = srclen - 1;
+		}
+		src[len] = '\0';
+		return src;
 	}
 } // namespace str 

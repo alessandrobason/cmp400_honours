@@ -89,7 +89,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)libs\sokol;$(SolutionDir)libs\ImGui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)libs\sokol;$(SolutionDir)libs\ImGui;$(SolutionDir)libs\stb;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -107,7 +107,7 @@
       <ConformanceMode>true</ConformanceMode>
       <TreatWarningAsError>true</TreatWarningAsError>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)libs\sokol;$(SolutionDir)libs\ImGui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)libs\sokol;$(SolutionDir)libs\ImGui;$(SolutionDir)libs\stb;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -124,7 +124,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)libs\sokol;$(SolutionDir)libs\ImGui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)libs\sokol;$(SolutionDir)libs\ImGui;$(SolutionDir)libs\stb;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -142,7 +142,7 @@
       <ConformanceMode>true</ConformanceMode>
       <TreatWarningAsError>true</TreatWarningAsError>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)libs\sokol;$(SolutionDir)libs\ImGui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)libs\sokol;$(SolutionDir)libs\ImGui;$(SolutionDir)libs\stb;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -161,6 +161,7 @@
     <ClCompile Include="..\libs\ImGui\imgui_tables.cpp" />
     <ClCompile Include="..\libs\ImGui\imgui_widgets.cpp" />
     <ClCompile Include="..\libs\sokol\sokol.c" />
+    <ClCompile Include="..\libs\stb\stb.c" />
     <ClCompile Include="..\src\buffer.cc" />
     <ClCompile Include="..\src\file_utils.cc" />
     <ClCompile Include="..\src\ini.cc" />
@@ -173,6 +174,7 @@
     <ClCompile Include="..\src\main.cc" />
     <ClCompile Include="..\src\system.cc" />
     <ClCompile Include="..\src\texture.cc" />
+    <ClCompile Include="..\src\timer.cc" />
     <ClCompile Include="..\src\tracelog.c" />
     <ClCompile Include="..\src\widgets.cc" />
   </ItemGroup>
@@ -186,6 +188,7 @@
     <ClInclude Include="..\libs\ImGui\imstb_textedit.h" />
     <ClInclude Include="..\libs\ImGui\imstb_truetype.h" />
     <ClInclude Include="..\libs\sokol\sokol_time.h" />
+    <ClInclude Include="..\libs\stb\stb_image_write.h" />
     <ClInclude Include="..\src\buffer.h" />
     <ClInclude Include="..\src\colours.h" />
     <ClInclude Include="..\src\d3d11_fwd.h" />
@@ -202,6 +205,7 @@
     <ClInclude Include="..\src\str_utils.h" />
     <ClInclude Include="..\src\system.h" />
     <ClInclude Include="..\src\texture.h" />
+    <ClInclude Include="..\src\timer.h" />
     <ClInclude Include="..\src\tracelog.h" />
     <ClInclude Include="..\src\vec.h" />
     <ClInclude Include="..\src\widgets.h" />

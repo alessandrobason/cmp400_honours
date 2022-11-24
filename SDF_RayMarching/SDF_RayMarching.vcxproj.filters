@@ -22,6 +22,9 @@
     <Filter Include="sokol">
       <UniqueIdentifier>{add8c3b9-0d7d-49f4-8965-9128b99701e6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="stb">
+      <UniqueIdentifier>{a5352279-4cc9-4eba-b022-f063aeb18e90}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cc">
@@ -88,6 +91,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\buffer.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\stb\stb.c">
+      <Filter>stb</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\timer.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -174,6 +183,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\slice.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\stb\stb_image_write.h">
+      <Filter>stb</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\timer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

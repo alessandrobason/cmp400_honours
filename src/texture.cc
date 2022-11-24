@@ -1,8 +1,12 @@
 #include "texture.h"
 
+#include <string>
+
 #include <d3d11.h>
+#include <stb_image_write.h>
 
 #include "system.h"
+#include "file_utils.h"
 #include "str_utils.h"
 #include "tracelog.h"
 #include "macros.h"
@@ -121,5 +125,57 @@ namespace gfx {
 		if (dsv) {
 			gfx::context->ClearDepthStencilView(dsv, D3D11_CLEAR_DEPTH, 1.f, 0);
 		}
+	}
+
+	bool RenderTexture::takeScreenshot(const char* base_name) {
+		// create a temporary texture that we can read from
+		D3D11_TEXTURE2D_DESC td;
+		str::memzero(td);
+		texture->GetDesc(&td);
+		//td.Width = size.x;
+		//td.Height = size.y;
+		//td.MipLevels = 1;
+		//td.ArraySize = 1;
+		//td.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+		//td.SampleDesc.Count = 1;
+		td.Usage = D3D11_USAGE_STAGING;
+		td.BindFlags = 0;
+		td.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+
+		ID3D11Texture2D *temp = nullptr;
+		HRESULT hr = gfx::device->CreateTexture2D(&td, nullptr, &temp);
+		if (FAILED(hr)) {
+			err("couldn't create temporary texture2D");
+			return false;
+		}
+
+		// copy the texture to the temporary texture
+		gfx::context->CopyResource(temp, texture);
+
+		// map texture data
+		D3D11_MAPPED_SUBRESOURCE mapped;
+		hr = gfx::context->Map(temp, 0, D3D11_MAP_READ, 0, &mapped);
+		if (FAILED(hr)) {
+			err("couldn't map temporary texture2D");
+			return false;
+		}
+
+		// find a name that hasn't been used yet
+		char name[255];
+		str::memzero(name);
+		int count = 0;
+		while (fs::fileExists(str::format(name, sizeof(name), "screenshots/%s_%.3d.png", base_name, count))) {
+			count++;
+		}
+
+		bool success = stbi_write_png(name, size.x, size.y, 4, mapped.pData, mapped.RowPitch);
+
+		if (success) {
+			info("saved screenshot as %s", name);
+		}
+
+		gfx::context->Unmap(temp, 0);
+
+		return success;
 	}
 } // namespace gfx
