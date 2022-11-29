@@ -33,13 +33,10 @@
     <ClCompile Include="..\src\system.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\str_utils.cc">
+    <ClCompile Include="..\src\utils.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\ini.cc">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\file_utils.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\options.cc">
@@ -69,7 +66,7 @@
     <ClCompile Include="..\src\tracelog.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\keys.cc">
+    <ClCompile Include="..\src\input.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\libs\sokol\sokol.c">
@@ -99,6 +96,9 @@
     <ClCompile Include="..\src\timer.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\colours.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\ini.h">
@@ -107,13 +107,10 @@
     <ClInclude Include="..\src\options.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\str_utils.h">
+    <ClInclude Include="..\src\utils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\system.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\file_utils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\libs\ImGui\imconfig.h">
@@ -143,7 +140,7 @@
     <ClInclude Include="..\src\tracelog.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\keys.h">
+    <ClInclude Include="..\src\input.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\maths.h">

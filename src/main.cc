@@ -20,9 +20,9 @@ int main() {
 	// push stack so stuff auto-cleans itself
 	{
 		Vertex verts[] = {
-			{ { -1, -1, 0 }, col::red },
-			{ {  3, -1, 0 }, col::green },
-			{ { -1,  3, 0 }, col::blue },
+			{ { -1, -1, 0 }, Colour::red },
+			{ {  3, -1, 0 }, Colour::green },
+			{ { -1,  3, 0 }, Colour::blue },
 		};
 
 		Index indices[] = {
@@ -44,7 +44,7 @@ int main() {
 		while (win::isOpen()) {
 			win::poll();
 
-			gfx::begin(col::dark_grey);
+			gfx::begin(Colour::dark_grey);
 				gfx::main_rtv.bind();
 					sh.bind();
 						m.render();

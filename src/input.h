@@ -2,6 +2,8 @@
 
 #include <stddef.h>
 
+#include "vec.h"
+
 enum Mouse {
 	MOUSE_NONE,
 	MOUSE_LEFT,
@@ -128,5 +130,20 @@ enum Keys {
 	KEY__COUNT,
 };
 
+bool isKeyDown(Keys key);
+bool isKeyUp(Keys key);
+bool isKeyPressed(Keys key);
+bool isMouseDown(Mouse mouse);
+bool isMouseUp(Mouse mouse);
+vec2i getMousePos();
+vec2 getMousePosNorm();
+vec2i getMousePosRel();
+float getMouseWheel();
+
 Mouse win32ToMouse(uintptr_t virtual_key);
 Keys win32ToKeys(uintptr_t virtual_key);
+
+void setKeyState(Keys key, bool is_down);
+void setMousePosition(vec2i pos);
+void setMouseButtonState(Mouse button, bool is_down);
+void setMouseWheel(float value);

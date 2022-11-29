@@ -1,9 +1,58 @@
-#include "keys.h"
+#include "input.h"
+
+#include <stdint.h>
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
+#include "system.h"
+
 #define VK_NUMPAD_ENTER (VK_RETURN + KF_EXTENDED)
+
+static bool keys_state[KEY__COUNT] = { 0 };
+static bool prev_keys_state[KEY__COUNT] = { 0 };
+static uint32_t mouse_buttons_down = 0;
+static vec2i mouse_position;
+static vec2i mouse_relative;
+static float mouse_wheel = 0.f;
+
+bool isKeyDown(Keys key) {
+	return keys_state[key];
+}
+
+bool isKeyUp(Keys key) {
+	return !keys_state[key];
+}
+
+bool isKeyPressed(Keys key) {
+	bool pressed = !prev_keys_state[key] && keys_state[key];
+	prev_keys_state[key] = keys_state[key];
+	return pressed;
+}
+
+bool isMouseDown(Mouse mouse) {
+	return mouse_buttons_down & (1 << (uint32_t)mouse);
+}
+
+bool isMouseUp(Mouse mouse) {
+	return !isMouseDown(mouse);
+}
+
+vec2i getMousePos() {
+	return mouse_position;
+}
+
+vec2 getMousePosNorm() {
+	return (vec2)mouse_position / win::getSize();
+}
+
+vec2i getMousePosRel() {
+	return mouse_relative;
+}
+
+float getMouseWheel() {
+	return mouse_wheel;
+}
 
 Mouse win32ToMouse(uintptr_t virtual_key) {
 	switch (virtual_key) {
@@ -133,4 +182,27 @@ Keys win32ToKeys(uintptr_t virtual_key) {
 	}
 
 	return KEY_NONE;
+}
+
+void setKeyState(Keys key, bool is_down) {
+	prev_keys_state[key] = keys_state[key];
+	keys_state[key] = is_down;
+}
+
+void setMousePosition(vec2i pos) {
+	mouse_relative = pos - mouse_position;
+	mouse_position = pos;
+}
+
+void setMouseButtonState(Mouse button, bool is_down) {
+	if (is_down) {
+		mouse_buttons_down |= 1 << (uint32_t)button;
+	}
+	else {
+		mouse_buttons_down &= ~(1 << (uint32_t)button);
+	}
+}
+
+void setMouseWheel(float value) {
+	mouse_wheel = value;
 }

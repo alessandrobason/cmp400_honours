@@ -1,13 +1,13 @@
-#include "str_utils.h"
+#include "utils.h"
 
-#include <stdarg.h>
-#include <stdio.h>
+#include <assert.h>
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
 #include "tracelog.h"
 
+// == string utils ================================================
 namespace str {
 	std::unique_ptr<wchar_t[]> ansiToWide(const char *cstr, size_t len) {
 		if (len == 0) len = strlen(cstr);
@@ -53,8 +53,8 @@ namespace str {
 			return out;
 		}
 
-		out = std::make_unique<char[]>(len + 1);
-		len = vsnprintf(out.get(), len + 1, fmt, va);
+		out = std::make_unique<char[]>((size_t)len + 1);
+		len = vsnprintf(out.get(), (size_t)len + 1, fmt, va);
 		va_end(va);
 
 		return out;
@@ -71,9 +71,85 @@ namespace str {
 	char *formatv(char *src, size_t srclen, const char *fmt, va_list args) {
 		int len = vsnprintf(src, srclen, fmt, args);
 		if (len >= srclen) {
-			len = srclen - 1;
+			len = (int)srclen - 1;
 		}
 		src[len] = '\0';
 		return src;
 	}
 } // namespace str 
+
+// == file utils ==================================================
+
+namespace file {
+	bool exists(const char *filename) {
+		return GetFileAttributesA(filename) != INVALID_FILE_ATTRIBUTES;
+	}
+
+	size_t getSize(FILE *fp) {
+		if (!fp) {
+			err("invalid FILE handler passed to getSize");
+			return 0;
+		}
+		fseek(fp, 0, SEEK_END);
+		long len = ftell(fp);
+		fseek(fp, 0, SEEK_SET);
+		return (size_t)len;
+	}
+
+	MemoryBuf read(const char *filename) {
+		FILE *fp = fopen(filename, "rb");
+		if (!fp) {
+			err("couldn't open file: %s", filename);
+			return {};
+		}
+		return read(fp);
+	}
+
+	MemoryBuf read(FILE *fp) {
+		if (!fp) {
+			err("invalid FILE handler passed to read");
+			return {};
+		}
+
+		MemoryBuf out;
+
+		out.size = getSize(fp);
+		out.data = std::make_unique<uint8_t[]>(out.size);
+		size_t read = fread(out.data.get(), 1, out.size, fp);
+
+		assert(read == out.size);
+		if (read != out.size) {
+			out = {};
+		}
+
+		return out;
+	}
+
+	std::string readString(const char *filename) {
+		FILE *fp = fopen(filename, "rb");
+		if (!fp) {
+			err("couldn't open file: %s", filename);
+			return {};
+		}
+		return readString(fp);
+	}
+
+	std::string readString(FILE *fp) {
+		if (!fp) {
+			err("invalid FILE handler passed to readString");
+			return {};
+		}
+
+		std::string out;
+		out.resize(getSize(fp));
+		size_t read = fread(&out[0], 1, out.size(), fp);
+
+		assert(read == out.size());
+		if (read != out.size()) {
+			out.clear();
+		}
+
+		return out;
+	}
+
+} // namespace file 

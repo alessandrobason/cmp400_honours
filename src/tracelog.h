@@ -17,26 +17,26 @@ extern "C" {
 #include <stdbool.h>
 #include <stdarg.h>
 
-    enum {
-        LogAll, LogTrace, LogDebug, LogInfo, LogWarning, LogError, LogFatal
-    };
+enum {
+    LogAll, LogTrace, LogDebug, LogInfo, LogWarning, LogError, LogFatal
+};
 
-    typedef enum {
-        COL_RESET = 15,
-        COL_BLACK = 8,
-        COL_BLUE = 9,
-        COL_GREEN = 10,
-        COL_CYAN = 11,
-        COL_RED = 12,
-        COL_MAGENTA = 13,
-        COL_YELLOW = 14,
-        COL_WHITE = 15
-    } colour_e;
+typedef enum {
+    COL_RESET = 15,
+    COL_BLACK = 8,
+    COL_BLUE = 9,
+    COL_GREEN = 10,
+    COL_CYAN = 11,
+    COL_RED = 12,
+    COL_MAGENTA = 13,
+    COL_YELLOW = 14,
+    COL_WHITE = 15
+} colour_e;
 
-    void traceLog(int level, const char *fmt, ...);
-    void traceLogVaList(int level, const char *fmt, va_list args);
-    void traceUseNewline(bool use_newline);
-    void traceSetColour(colour_e colour);
+void traceLog(int level, const char *fmt, ...);
+void traceLogVaList(int level, const char *fmt, va_list args);
+void traceUseNewline(bool use_newline);
+void traceSetColour(colour_e colour);
 
 #ifdef TLOG_DISABLE
 #define tall(...)  

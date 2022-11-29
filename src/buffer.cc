@@ -3,7 +3,7 @@
 #include <d3d11.h>
 
 #include "system.h"
-#include "str_utils.h"
+#include "utils.h"
 #include "macros.h"
 #include "tracelog.h"
 
@@ -33,7 +33,7 @@ Buffer &Buffer::operator=(Buffer &&buf) {
 
 bool Buffer::create(size_t type_size, Usage usage, bool can_write, bool can_read) {
     D3D11_BUFFER_DESC bd;
-    str::memzero(bd);
+    mem::zero(bd);
     bd.Usage = usage_to_d3d11[(size_t)usage];
     bd.ByteWidth = (UINT)type_size;
     bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;

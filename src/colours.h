@@ -2,38 +2,39 @@
 
 #include "vec.h"
 
-using Colour = vec4;
+struct Colour : public vec4 {
+	using vec4::vec4;
+	Colour(const vec4 &vec) : vec4(vec) {}
 
-namespace col {
-	constexpr Colour black       = { 0, 0, 0, 1 };
-	constexpr Colour white       = { 1, 1, 1, 1 };
+	static const Colour black;
+	static const Colour white;
 
-	constexpr Colour red         = { 1, 0, 0, 1 };
-	constexpr Colour green       = { 0, 1, 0, 1 };
-	constexpr Colour blue        = { 0, 0, 1, 1 };
+	static const Colour red;
+	static const Colour green;
+	static const Colour blue;
 
-	constexpr Colour cyan        = { 0, 1, 1, 1 };
-	constexpr Colour magenta     = { 1, 0, 1, 1 };
-	constexpr Colour yellow      = { 1, 1, 0, 1 };
-	
-	constexpr Colour crimson     = { 0.86f, 0.08f, 0.24f, 1 };
-	constexpr Colour pink        = { 1.00f, 0.75f, 0.80f, 1 };
-	constexpr Colour coral       = { 1.00f, 0.50f, 0.31f, 1 };
-	constexpr Colour peach       = { 1.00f, 0.85f, 0.73f, 1 };
-	constexpr Colour violet      = { 0.93f, 0.51f, 0.93f, 1 };
-	constexpr Colour indigo      = { 0.29f, 0.00f, 0.51f, 1 };
-	constexpr Colour lime        = { 0.20f, 0.80f, 0.20f, 1 };
-	constexpr Colour olive       = { 0.50f, 0.50f, 0.00f, 1 };
-	constexpr Colour teal        = { 0.03f, 0.00f, 0.50f, 1 };
-	constexpr Colour sky         = { 0.53f, 0.81f, 0.98f, 1 };
-	constexpr Colour navy        = { 0.00f, 0.00f, 0.50f, 1 };
-	constexpr Colour brown       = { 0.74f, 0.56f, 0.56f, 1 };
-	constexpr Colour maroon      = { 0.50f, 0.00f, 0.00f, 1 };
-	constexpr Colour beige       = { 0.96f, 0.96f, 0.86f, 1 };
-	constexpr Colour rose        = { 1.00f, 0.89f, 0.88f, 1 };
-	constexpr Colour orange      = { 1.00f, 0.65f, 0.00f, 1 };
-	constexpr Colour purple      = { 0.50f, 0.00f, 0.50f, 1 };
-	constexpr Colour silver      = { 0.75f, 0.75f, 0.75f, 1 };
-	constexpr Colour dark_grey   = { 0.10f, 0.10f, 0.10f, 1 };
-	constexpr Colour turquoise   = { 0.25f, 0.88f, 0.82f, 1 };
-} // namespace col
+	static const Colour cyan;
+	static const Colour magenta;
+	static const Colour yellow;
+
+	static const Colour crimson;
+	static const Colour pink;
+	static const Colour coral;
+	static const Colour peach;
+	static const Colour violet;
+	static const Colour indigo;
+	static const Colour lime;
+	static const Colour olive;
+	static const Colour teal;
+	static const Colour sky;
+	static const Colour navy;
+	static const Colour brown;
+	static const Colour maroon;
+	static const Colour beige;
+	static const Colour rose;
+	static const Colour orange;
+	static const Colour purple;
+	static const Colour silver;
+	static const Colour dark_grey;
+	static const Colour turquoise;
+};

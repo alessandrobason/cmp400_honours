@@ -4,8 +4,7 @@
 
 #include "system.h"
 #include "tracelog.h"
-#include "file_utils.h"
-#include "str_utils.h"
+#include "utils.h"
 #include "macros.h"
 #include "mesh.h"
 
@@ -32,29 +31,26 @@ Shader &Shader::operator=(Shader &&s) {
 }
 
 bool Shader::create(const char *vertex_file, const char *pixel_file) {
-	size_t vert_len, pixel_len;
-	std::unique_ptr<uint8_t[]> vert_buf
-		= fs::readWhole(str::formatStr("shaders/bin/%s.cso", vertex_file).get(), vert_len);
-	std::unique_ptr<uint8_t[]> pixel_buf 
-		= fs::readWhole(str::formatStr("shaders/bin/%s.cso", pixel_file).get(), pixel_len);
+	file::MemoryBuf vert_buf  = file::read(str::formatStr("shaders/bin/%s.cso", vertex_file).get());
+	file::MemoryBuf pixel_buf = file::read(str::formatStr("shaders/bin/%s.cso", pixel_file).get());
 	
-	if (!vert_buf || !vert_len) {
+	if (!vert_buf.data) {
 		err("couldn't read vertex shader file");
 		return false;
 	}
 
-	if (!pixel_buf || !pixel_len) {
+	if (!pixel_buf.data) {
 		err("couldn't read pixel shader file");
 		return false;
 	}
 
-	HRESULT hr = gfx::device->CreateVertexShader(vert_buf.get(), vert_len, nullptr, &vert);
+	HRESULT hr = gfx::device->CreateVertexShader(vert_buf.data.get(), vert_buf.size, nullptr, &vert);
 	if (FAILED(hr)) {
 		err("couldn't create vertex shader");
 		return false;
 	}
 
-	hr = gfx::device->CreatePixelShader(pixel_buf.get(), pixel_len, nullptr, &pixel);
+	hr = gfx::device->CreatePixelShader(pixel_buf.data.get(), pixel_buf.size, nullptr, &pixel);
 	if (FAILED(hr)) {
 		err("couldn't create pixel shader");
 		return false;
@@ -67,7 +63,7 @@ bool Shader::create(const char *vertex_file, const char *pixel_file) {
 
 	hr = gfx::device->CreateInputLayout(
 		layout_desc,    ARRLEN(layout_desc), 
-		vert_buf.get(), vert_len, 
+		vert_buf.data.get(), vert_buf.size, 
 		&layout
 	);
 	if (FAILED(hr)) {
@@ -115,5 +111,5 @@ void Shader::bind() {
 }
 
 void Shader::unbind() {
-
+	// todo, maybe remove?
 }

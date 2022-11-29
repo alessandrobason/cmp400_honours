@@ -90,6 +90,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalIncludeDirectories>$(SolutionDir)libs\sokol;$(SolutionDir)libs\ImGui;$(SolutionDir)libs\stb;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>26439</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -108,6 +109,7 @@
       <TreatWarningAsError>true</TreatWarningAsError>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalIncludeDirectories>$(SolutionDir)libs\sokol;$(SolutionDir)libs\ImGui;$(SolutionDir)libs\stb;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>26439</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -125,6 +127,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalIncludeDirectories>$(SolutionDir)libs\sokol;$(SolutionDir)libs\ImGui;$(SolutionDir)libs\stb;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>26439</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -143,6 +146,7 @@
       <TreatWarningAsError>true</TreatWarningAsError>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalIncludeDirectories>$(SolutionDir)libs\sokol;$(SolutionDir)libs\ImGui;$(SolutionDir)libs\stb;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>26439</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -163,14 +167,14 @@
     <ClCompile Include="..\libs\sokol\sokol.c" />
     <ClCompile Include="..\libs\stb\stb.c" />
     <ClCompile Include="..\src\buffer.cc" />
-    <ClCompile Include="..\src\file_utils.cc" />
+    <ClCompile Include="..\src\colours.cc" />
     <ClCompile Include="..\src\ini.cc" />
-    <ClCompile Include="..\src\keys.cc" />
+    <ClCompile Include="..\src\input.cc" />
     <ClCompile Include="..\src\matrix.cc" />
     <ClCompile Include="..\src\mesh.cc" />
     <ClCompile Include="..\src\options.cc" />
     <ClCompile Include="..\src\shader.cc" />
-    <ClCompile Include="..\src\str_utils.cc" />
+    <ClCompile Include="..\src\utils.cc" />
     <ClCompile Include="..\src\main.cc" />
     <ClCompile Include="..\src\system.cc" />
     <ClCompile Include="..\src\texture.cc" />
@@ -192,9 +196,8 @@
     <ClInclude Include="..\src\buffer.h" />
     <ClInclude Include="..\src\colours.h" />
     <ClInclude Include="..\src\d3d11_fwd.h" />
-    <ClInclude Include="..\src\file_utils.h" />
     <ClInclude Include="..\src\ini.h" />
-    <ClInclude Include="..\src\keys.h" />
+    <ClInclude Include="..\src\input.h" />
     <ClInclude Include="..\src\macros.h" />
     <ClInclude Include="..\src\maths.h" />
     <ClInclude Include="..\src\matrix.h" />
@@ -202,7 +205,7 @@
     <ClInclude Include="..\src\options.h" />
     <ClInclude Include="..\src\shader.h" />
     <ClInclude Include="..\src\slice.h" />
-    <ClInclude Include="..\src\str_utils.h" />
+    <ClInclude Include="..\src\utils.h" />
     <ClInclude Include="..\src\system.h" />
     <ClInclude Include="..\src\texture.h" />
     <ClInclude Include="..\src\timer.h" />

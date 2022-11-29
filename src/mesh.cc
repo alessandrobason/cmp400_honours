@@ -3,7 +3,7 @@
 #include <d3d11.h>
 
 #include "system.h"
-#include "str_utils.h"
+#include "utils.h"
 #include "tracelog.h"
 #include "macros.h"
 
@@ -17,8 +17,8 @@ Mesh::~Mesh() {
 
 Mesh &Mesh::operator=(Mesh &&m) {
     if (this != &m) {
-        str::memcopy(*this, m);
-        str::memzero(m);
+        mem::copy(*this, m);
+        mem::zero(m);
     }
 
     return *this;
@@ -29,13 +29,13 @@ bool Mesh::create(Slice<Vertex> vertices, Slice<Index> indices) {
     index_count = (int)indices.len;
     
     D3D11_BUFFER_DESC vd;
-    str::memzero(vd);
+    mem::zero(vd);
     vd.Usage = D3D11_USAGE_DEFAULT;
     vd.ByteWidth = (UINT)vertices.byteSize();
     vd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
     
     D3D11_SUBRESOURCE_DATA vs;
-    str::memzero(vs);
+    mem::zero(vs);
     vs.pSysMem = vertices.data;
 
     HRESULT hr = gfx::device->CreateBuffer(&vd, &vs, &vert_buf);
@@ -45,13 +45,13 @@ bool Mesh::create(Slice<Vertex> vertices, Slice<Index> indices) {
     }
 
     D3D11_BUFFER_DESC id;
-    str::memzero(id);
+    mem::zero(id);
     id.Usage = D3D11_USAGE_DEFAULT;
     id.ByteWidth = (UINT)indices.byteSize();
     id.BindFlags = D3D11_BIND_INDEX_BUFFER;
 
     D3D11_SUBRESOURCE_DATA is;
-    str::memzero(is);
+    mem::zero(is);
     is.pSysMem = indices.data;
 
     hr = gfx::device->CreateBuffer(&id, &is, &ind_buf);

@@ -6,8 +6,7 @@
 #include <stb_image_write.h>
 
 #include "system.h"
-#include "file_utils.h"
-#include "str_utils.h"
+#include "utils.h"
 #include "tracelog.h"
 #include "macros.h"
 
@@ -22,8 +21,8 @@ namespace gfx {
 
 	RenderTexture &RenderTexture::operator=(RenderTexture &&rt) {
 		if (this != &rt) {
-			str::memcopy(*this, rt);
-			str::memzero(rt);
+			mem::copy(*this, rt);
+			mem::zero(rt);
 		}
 
 		return *this;
@@ -35,7 +34,7 @@ namespace gfx {
 		size = { width, height };
 		
 		D3D11_TEXTURE2D_DESC td;
-		str::memzero(td);
+		mem::zero(td);
 		td.Width = width;
 		td.Height = height;
 		td.MipLevels = 1;
@@ -52,7 +51,7 @@ namespace gfx {
 		}
 
 		D3D11_RENDER_TARGET_VIEW_DESC vd;
-		str::memzero(vd);
+		mem::zero(vd);
 		vd.Format = td.Format;
 		vd.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
 
@@ -63,7 +62,7 @@ namespace gfx {
 		}
 
 		D3D11_SHADER_RESOURCE_VIEW_DESC sd;
-		str::memzero(sd);
+		mem::zero(sd);
 		sd.Format = td.Format;
 		sd.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 		sd.Texture2D.MipLevels = 1;
@@ -110,7 +109,7 @@ namespace gfx {
 
 	void RenderTexture::bind(ID3D11DepthStencilView *dsv) {
 		D3D11_VIEWPORT vp;
-		str::memzero(vp);
+		mem::zero(vp);
 		vp.Width = (float)size.x;
 		vp.Height = (float)size.y;
 		vp.MinDepth = 0.0f;
@@ -130,14 +129,8 @@ namespace gfx {
 	bool RenderTexture::takeScreenshot(const char* base_name) {
 		// create a temporary texture that we can read from
 		D3D11_TEXTURE2D_DESC td;
-		str::memzero(td);
+		mem::zero(td);
 		texture->GetDesc(&td);
-		//td.Width = size.x;
-		//td.Height = size.y;
-		//td.MipLevels = 1;
-		//td.ArraySize = 1;
-		//td.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-		//td.SampleDesc.Count = 1;
 		td.Usage = D3D11_USAGE_STAGING;
 		td.BindFlags = 0;
 		td.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
@@ -162,9 +155,16 @@ namespace gfx {
 
 		// find a name that hasn't been used yet
 		char name[255];
-		str::memzero(name);
+		mem::zero(name);
 		int count = 0;
-		while (fs::fileExists(str::format(name, sizeof(name), "screenshots/%s_%.3d.png", base_name, count))) {
+		while (
+			file::exists(
+				str::format(
+					name, sizeof(name), 
+					"screenshots/%s_%.3d.png", base_name, count
+				)
+			)
+		) {
 			count++;
 		}
 

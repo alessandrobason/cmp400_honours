@@ -9,9 +9,11 @@
 
 struct Vertex {
 	vec3 position;
+	// todo, remove colour, we don't need this
 	Colour colour;
 };
 
+// we're doing everything in shaders, this is not that important
 using Index = uint16_t;
 
 struct Mesh {
@@ -26,7 +28,7 @@ struct Mesh {
 	void cleanup();
 
 	void render();
-
+	
 	int vertex_count = 0;
 	int index_count = 0;
 	ID3D11Buffer *vert_buf = nullptr;

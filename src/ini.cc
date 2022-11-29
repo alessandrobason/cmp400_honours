@@ -1,6 +1,6 @@
 #include "ini.h"
 
-#include "file_utils.h"
+#include "utils.h"
 
 struct StrStream {
 	const char *start;
@@ -175,7 +175,7 @@ namespace ini {
 	}
 
 	void Doc::parse(const char *filename) {
-		text = fs::readString(filename);
+		text = file::readString(filename);
 		if (text.empty()) return;
 
 		tables.clear();

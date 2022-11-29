@@ -13,10 +13,10 @@
 #include <sokol_time.h>
 
 #include "tracelog.h"
-#include "str_utils.h"
+#include "utils.h"
 #include "options.h"
 #include "maths.h"
-#include "keys.h"
+#include "input.h"
 #include "macros.h"
 
 static LRESULT wndProc(HWND, UINT, WPARAM, LPARAM);
@@ -72,10 +72,10 @@ namespace gfx {
 		UNUSED(clear_colour);
 
 		main_rtv.bind();
-		main_rtv.clear(math::lerp(col::coral, col::indigo, sinf(win::timeSinceStart())));
+		main_rtv.clear(clear_colour);
 
 		imgui_rtv.bind();
-		imgui_rtv.clear(col::black);
+		imgui_rtv.clear(Colour::black);
 
 		// Start the Dear ImGui frame
 		ImGui_ImplDX11_NewFrame();
@@ -94,7 +94,7 @@ namespace gfx {
 
 	bool createDevice() {
 		DXGI_SWAP_CHAIN_DESC sd;
-		str::memzero(sd);
+		mem::zero(sd);
 		sd.BufferCount = 2;
 		sd.BufferDesc.Width = 0;
 		sd.BufferDesc.Height = 0;
@@ -144,14 +144,14 @@ namespace gfx {
 			D3D11_MESSAGE_CATEGORY_STATE_CREATION,
 		};
 		D3D11_INFO_QUEUE_FILTER filter;
-		str::memzero(filter);
+		mem::zero(filter);
 		filter.DenyList.NumCategories = ARRLEN(categories);
 		filter.DenyList.pCategoryList = categories;
 		infodev->PushStorageFilter(&filter);
 #endif
 
 		D3D11_DEPTH_STENCIL_DESC dd;
-		str::memzero(dd);
+		mem::zero(dd);
 		dd.DepthFunc = D3D11_COMPARISON_ALWAYS;
 		dd.DepthEnable = false;
 		dd.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
@@ -195,7 +195,6 @@ namespace gfx {
 
 	void cleanupImGuiRTV() {
 		imgui_rtv.cleanup();
-		//SAFE_RELEASE(imgui_rtv);
 	}
 
 #ifndef NDEBUG
@@ -210,7 +209,11 @@ namespace gfx {
 			infodev->GetMessage(i, nullptr, &msg_size);
 			
 			if (msg_size > old_size) {
-				msg = (D3D11_MESSAGE*)realloc(msg, msg_size);
+				D3D11_MESSAGE *new_msg = (D3D11_MESSAGE *)realloc(msg, msg_size);
+				if (!new_msg) {
+					fatal("couldn't reallocate message");
+				}
+				msg = new_msg;
 			}
 			infodev->GetMessage(i, msg, &msg_size);
 			assert(msg);
@@ -328,54 +331,7 @@ namespace win {
 	}
 } // namespace sys
 
-static bool keys_state[KEY__COUNT] = {0};
-static bool prev_keys_state[KEY__COUNT] = {0};
-static uint32_t mouse_buttons_down = 0;
-static vec2i mouse_position;
-static vec2i mouse_relative;
-static float mouse_wheel = 0.f;
-
-bool isKeyDown(Keys key) {
-	return keys_state[key];
-}
-
-bool isKeyUp(Keys key) {
-	return !keys_state[key];
-}
-
-bool isKeyPressed(Keys key) {
-	bool pressed = !prev_keys_state[key] && keys_state[key];
-	prev_keys_state[key] = keys_state[key];
-	return pressed;
-}
-
-bool isMouseDown(Mouse mouse) {
-	return mouse_buttons_down & (1 << (uint32_t)mouse);
-}
-
-bool isMouseUp(Mouse mouse) {
-	return !isMouseDown(mouse);
-}
-
-vec2i getMousePos() {
-	return mouse_position;
-}
-
-vec2 getMousePosNorm() {
-	return (vec2)mouse_position / (vec2)win::size;
-}
-
-vec2i getMousePosRel() {
-	return mouse_relative;
-}
-
-float getMouseWheel() {
-	return mouse_wheel;
-}
-
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-
-#include "tracelog.h"
 
 LRESULT wndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 	if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam))
@@ -416,18 +372,14 @@ LRESULT wndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 		if ((wparam == VK_RETURN) && (HIWORD(lparam) & KF_EXTENDED))
 			vk = VK_RETURN + KF_EXTENDED;
 		
-		Keys key = win32ToKeys(vk);
-		prev_keys_state[key] = keys_state[key];
-		keys_state[key] = is_key_down;
+		setKeyState(win32ToKeys(vk), is_key_down);
 
 		return 0;
 	}
 
 	case WM_MOUSEMOVE:
 	{
-		vec2i old_pos = mouse_position;
-		mouse_position = { GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam) };
-		mouse_relative = mouse_position - old_pos;
+		setMousePosition({ GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam) });
 		return 0;
 	}
 
@@ -435,20 +387,18 @@ LRESULT wndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 	case WM_RBUTTONDOWN: case WM_RBUTTONDBLCLK:
 	case WM_MBUTTONDOWN: case WM_MBUTTONDBLCLK:
 	{
-		Mouse btn = win32ToMouse(msg);
-		mouse_buttons_down |= 1 << (uint32_t)btn;
+		setMouseButtonState(win32ToMouse(msg), true);
 		return 0;
 	}
 	case WM_LBUTTONUP:
 	case WM_RBUTTONUP:
 	case WM_MBUTTONUP:
 	{
-		Mouse btn = win32ToMouse(msg);
-		mouse_buttons_down &= ~(1 << (uint32_t)btn);
+		setMouseButtonState(win32ToMouse(msg), false);
 		return 0;
 	}
 	case WM_MOUSEWHEEL:
-		mouse_wheel = (float)GET_WHEEL_DELTA_WPARAM(wparam) / (float)WHEEL_DELTA;
+		setMouseWheel((float)GET_WHEEL_DELTA_WPARAM(wparam) / (float)WHEEL_DELTA);
 		return 0;
 	}
 

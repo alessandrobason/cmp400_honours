@@ -3,7 +3,6 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
-#include "keys.h"
 #include "vec.h"
 #include "colours.h"
 #include "d3d11_fwd.h"
@@ -13,7 +12,6 @@ namespace gfx {
 	extern ID3D11Device *device;
 	extern ID3D11DeviceContext *context;
 	extern IDXGISwapChain *swapchain;
-	//extern ID3D11RenderTargetView *imgui_rtv;
 	extern RenderTexture imgui_rtv;
 	extern RenderTexture main_rtv;
 
@@ -49,13 +47,3 @@ namespace win {
 
 	vec2i getSize();
 } //namespace win
-
-bool isKeyDown(Keys key);
-bool isKeyUp(Keys key);
-bool isKeyPressed(Keys key);
-bool isMouseDown(Mouse mouse);
-bool isMouseUp(Mouse mouse);
-vec2i getMousePos();
-vec2 getMousePosNorm();
-vec2i getMousePosRel();
-float getMouseWheel();
