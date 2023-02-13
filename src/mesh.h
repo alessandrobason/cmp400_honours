@@ -9,9 +9,11 @@
 
 struct Vertex {
 	vec3 position;
-	// todo, remove colour, we don't need this
-	Colour colour;
+	vec2 uv;
 };
+
+// check that the Vertex struct does not have any padding
+static_assert(sizeof(Vertex) == (sizeof(float) * 3 + sizeof(float) * 2));
 
 // we're doing everything in shaders, this is not that important
 using Index = uint16_t;

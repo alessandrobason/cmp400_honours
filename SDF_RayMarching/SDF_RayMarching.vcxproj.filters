@@ -99,6 +99,9 @@
     <ClCompile Include="..\src\colours.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\shape_builder.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\ini.h">
@@ -188,6 +191,9 @@
     <ClInclude Include="..\src\timer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\shape_builder.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="..\libs\ImGui\LICENSE.txt">
@@ -199,6 +205,9 @@
       <Filter>Resource Files</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\base_ps.hlsl">
+      <Filter>Resource Files</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\test_comp.hlsl">
       <Filter>Resource Files</Filter>
     </FxCompile>
   </ItemGroup>

@@ -159,10 +159,7 @@ namespace gfx {
 		int count = 0;
 		while (
 			file::exists(
-				str::format(
-					name, sizeof(name), 
-					"screenshots/%s_%.3d.png", base_name, count
-				)
+				str::format("screenshots/%s_%.3d.png", base_name, count)
 			)
 		) {
 			count++;
@@ -177,5 +174,54 @@ namespace gfx {
 		gfx::context->Unmap(temp, 0);
 
 		return success;
+	}
+
+
+	Texture3D::Texture3D(Texture3D &&rt) {
+		*this = std::move(rt);
+	}
+
+	Texture3D::~Texture3D() {
+		cleanup();
+	}
+
+	Texture3D &Texture3D::operator=(Texture3D &&rt) {
+		if (this != &rt) {
+			mem::copy(*this, rt);
+			mem::zero(rt);
+		}
+
+		return *this;
+	}
+
+	bool Texture3D::create(int width, int height, int depth) {
+		D3D11_TEXTURE3D_DESC desc;
+		mem::zero(desc);
+		desc.Width  = (UINT)width;
+		desc.Height = (UINT)height;
+		desc.Depth  = (UINT)depth;
+		desc.MipLevels = 1;
+		desc.Format = DXGI_FORMAT_R8_SINT;
+		desc.Usage = D3D11_USAGE_DEFAULT;
+		desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS;
+		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+		HRESULT hr = device->CreateTexture3D(&desc, nullptr, &texture);
+		if (FAILED(hr)) {
+			err("couldn't create 3D texture");
+			return false;
+		}
+
+		D3D11_UNORDERED_ACCESS_VIEW_DESC uav_desc;
+		mem::zero(uav_desc);
+		uav_desc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE3D;
+		uav_desc.Format = desc.Format;
+		uav_desc.Texture3D.WSize = desc.Depth;
+
+		return true;
+	}
+
+	void Texture3D::cleanup() {
+		SAFE_RELEASE(texture);
 	}
 } // namespace gfx

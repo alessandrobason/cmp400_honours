@@ -52,7 +52,8 @@ namespace gfx {
 		ImGui_ImplWin32_Init(win::hwnd);
 		ImGui_ImplDX11_Init(device, context);
 
-		bool rtv_success = main_rtv.create(1920, 1080);
+		//bool rtv_success = main_rtv.create(1920, 1080);
+		bool rtv_success = main_rtv.create(1000, 1000);
 		if (!rtv_success) {
 			fatal("couldn't create main RTV");
 		}
@@ -71,10 +72,10 @@ namespace gfx {
 	void begin(Colour clear_colour) {
 		UNUSED(clear_colour);
 
-		main_rtv.bind();
+		//main_rtv.bind();
 		main_rtv.clear(clear_colour);
 
-		imgui_rtv.bind();
+		//imgui_rtv.bind();
 		imgui_rtv.clear(Colour::black);
 
 		// Start the Dear ImGui frame
@@ -140,14 +141,14 @@ namespace gfx {
 		hr = device->QueryInterface(__uuidof(ID3D11InfoQueue), (void **)&infodev);
 		assert(SUCCEEDED(hr));
 
-		D3D11_MESSAGE_CATEGORY categories[] = {
-			D3D11_MESSAGE_CATEGORY_STATE_CREATION,
-		};
-		D3D11_INFO_QUEUE_FILTER filter;
-		mem::zero(filter);
-		filter.DenyList.NumCategories = ARRLEN(categories);
-		filter.DenyList.pCategoryList = categories;
-		infodev->PushStorageFilter(&filter);
+		// D3D11_MESSAGE_CATEGORY categories[] = {
+		// 	D3D11_MESSAGE_CATEGORY_STATE_CREATION,
+		// };
+		// D3D11_INFO_QUEUE_FILTER filter;
+		// mem::zero(filter);
+		// filter.DenyList.NumCategories = ARRLEN(categories);
+		// filter.DenyList.pCategoryList = categories;
+		// infodev->PushStorageFilter(&filter);
 #endif
 
 		D3D11_DEPTH_STENCIL_DESC dd;
@@ -244,6 +245,7 @@ namespace win {
 	static vec2i size;
 
 	bool isOpen() {
+		poll();
 		return is_open;
 	}
 

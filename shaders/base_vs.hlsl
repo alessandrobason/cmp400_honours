@@ -1,16 +1,16 @@
 struct VertexInput {
 	float4 pos : POSITION;
-	float4 col : COLOR;
+	float2 uv : TEXCOORDS0;
 };
 
 struct PixelInput {
 	float4 pos : SV_POSITION;
-	float4 col : COLOR;
+	float2 uv : TEXCOORDS0;
 };
 
 PixelInput main(VertexInput input) {
 	PixelInput output;
 	output.pos = input.pos;
-	output.col = input.col;
+	output.uv  = input.uv;
 	return output;
 }

@@ -4,12 +4,15 @@
 #include <limits.h>
 #include <assert.h>
 
+#include <initializer_list>
+
 template<typename T>
 struct Slice {
 	Slice() = default;
 	Slice(const T *data, size_t len) : data(data), len(len) {}
 	template<size_t size>
 	Slice(const T (&data)[size]) : data(data), len(size) {}
+	Slice(std::initializer_list<T> list) : data(list.begin()), len(list.size()) {}
 
 	bool empty() const {
 		return len == 0;

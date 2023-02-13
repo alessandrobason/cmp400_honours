@@ -26,35 +26,45 @@ void fpsWidget() {
 }
 
 void mainTargetWidget() {
+	mainTargetWidget(gfx::main_rtv.size, gfx::main_rtv.resource);
+}
+
+void mainTargetWidget(vec2 size, ID3D11ShaderResourceView *srv) {
 	ImGui::Begin("Game");
 
-	vec2 img_size = gfx::main_rtv.size;
+	//vec2 img_size = gfx::main_rtv.size;
+	//vec2 img_size = { 512, 512 };
 	vec2 win_size = ImGui::GetWindowContentRegionMax();
 	vec2 win_padding = ImGui::GetWindowContentRegionMin();
 
 	win_size -= win_padding;
 
 #if RESIZE_RENDER_TARGET
-	vec2 size_diff = img_size - win_size;
+	vec2 size_diff = size - win_size;
 	if (fabsf(size_diff.x) > 0.1f || fabsf(size_diff.y) > 0.1f) {
 		info("resize");
 		main_rtv.resize((int)win_size.x, (int)win_size.y);
 	}
 #endif
 
-	float dx = win_size.x / img_size.x;
-	float dy = win_size.y / img_size.y;
+	float dx = win_size.x / size.x;
+	float dy = win_size.y / size.y;
 
 	if (dx > dy) {
-		img_size.x *= dy;
-		img_size.y = win_size.y;
+		size.x *= dy;
+		size.y = win_size.y;
 	}
 	else {
-		img_size.x = win_size.x;
-		img_size.y *= dx;
+		size.x = win_size.x;
+		size.y *= dx;
 	}
 
-	ImGui::SetCursorPos((win_size - img_size) * 0.5f + win_padding);
-	ImGui::Image((ImTextureID)gfx::main_rtv.resource, img_size);
+	ImGui::SetCursorPos((win_size - size) * 0.5f + win_padding);
+	ImGui::Image((ImTextureID)srv, size);
 	ImGui::End();
+}
+
+bool imInputUint3(const char *label, unsigned int v[3], int flags) {
+	static unsigned int step = 1;
+	return ImGui::InputScalarN(label, ImGuiDataType_U32, v, 3, &step, nullptr, "%u", flags);
 }

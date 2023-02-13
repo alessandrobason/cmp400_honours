@@ -36,7 +36,11 @@ namespace str {
 	bool wideToAnsi(const wchar_t *wstr, size_t src_len, char *buf, size_t dst_len) {
 		if (src_len == 0) src_len = wcslen(wstr);
 		int result_len = WideCharToMultiByte(CP_UTF8, 0, wstr, (int)src_len, buf, (int)dst_len, NULL, NULL);
-		return result_len <= dst_len;
+		if (result_len <= dst_len) {
+			buf[result_len] = '\0';
+			return true;
+		}
+		return false;
 	}
 
 	std::unique_ptr<char[]> formatStr(const char *fmt, ...) {
@@ -60,15 +64,27 @@ namespace str {
 		return out;
 	}
 
-	char *format(char *src, size_t srclen, const char *fmt, ...) {
+	const char *format(const char *fmt, ...) {
+		static char static_buf[16][1024];
+		static int cur_buf = 0;
+		mem::zero(static_buf[cur_buf]);
 		va_list va;
 		va_start(va, fmt);
-		char* str = formatv(src, srclen, fmt, va);
+		char *str = formatBufv(static_buf[cur_buf], sizeof(static_buf[cur_buf]), fmt, va);
+		va_end(va);
+		if ((++cur_buf) >= sizeof(static_buf)) cur_buf = 0;
+		return str;
+	}
+
+	char *formatBuf(char *src, size_t srclen, const char *fmt, ...) {
+		va_list va;
+		va_start(va, fmt);
+		char* str = formatBufv(src, srclen, fmt, va);
 		va_end(va);
 		return str;
 	}
 
-	char *formatv(char *src, size_t srclen, const char *fmt, va_list args) {
+	char *formatBufv(char *src, size_t srclen, const char *fmt, va_list args) {
 		int len = vsnprintf(src, srclen, fmt, args);
 		if (len >= srclen) {
 			len = (int)srclen - 1;

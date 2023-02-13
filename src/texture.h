@@ -26,4 +26,19 @@ namespace gfx {
 		ID3D11RenderTargetView *view = nullptr;
 		ID3D11ShaderResourceView *resource = nullptr;
 	};
+
+	struct Texture3D {
+		Texture3D() = default;
+		Texture3D(const Texture3D &rt) = delete;
+		Texture3D(Texture3D &&rt);
+		~Texture3D();
+		Texture3D &operator=(Texture3D &&rt);
+
+		bool create(int width, int height, int depth);
+		void cleanup();
+
+		vec3i size;
+		ID3D11Texture3D *texture = nullptr;
+		ID3D11UnorderedAccessView *uav = nullptr;
+	};
 } // namespace gfx 
