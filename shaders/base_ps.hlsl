@@ -8,6 +8,13 @@ cbuffer ShaderData : register(b0) {
 	float3 __unused0;
 };
 
+#define WIDTH  64
+#define HEIGHT 64
+#define DEPTH  32
+#define PRECISION 1
+
+Texture3D<float> vol_tex : register(t0);
+
 // == shape functions ================================
 
 float distFromSphere(float3 pos, float3 centre, float radius) {
@@ -31,11 +38,17 @@ float sminCubic(float a, float b, float k) {
 // == scene functions ================================
 
 float map(float3 pos) {
+	// pos /= 10.0;
+	// pos *= float3(WIDTH, HEIGHT, DEPTH);
+	// int3 coords = pos;
+	// return vol_tex[coords];
+
 	float displacement = sin(5 * pos.x) * sin(5 * pos.y) * sin(5 * pos.z) * sin(time * 3) * 0.4;
 	float sphere_0 = distFromSphere(pos, float3(-1, 0, 0), 1.5);
 	float sphere_1 = distFromSphere(pos, float3(1, 0, 0), 1.5);
 
-	return sminCubic(sphere_0, sphere_1, max(sin(time * 3) + 1 * 0.5, 0.1));
+	// return sminCubic(sphere_0, sphere_1, max(sin(time * 3) + 1 * 0.5, 0.1));
+	return sminCubic(sphere_0, sphere_1, 0.5);
 	// return sphere_0 + displacement;
 }
 
@@ -55,7 +68,7 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 	float distance_traveled = 0.0;
 	const int NUMBER_OF_STEPS = 10;
 	const float MIN_HIT_DISTANCE = 0.001;
-	const float MAX_TRACE_DISTANCE = 1000.0;
+	const float MAX_TRACE_DISTANCE = 10.0;
 
 	for (int i = 0; i < NUMBER_OF_STEPS; ++i) {
 		float3 current_pos = ray_origin + ray_dir * distance_traveled;
@@ -91,7 +104,7 @@ float4 main(PixelInput input) : SV_TARGET {
 	// convert to range (-1, 1)
 	float2 uv = input.uv * 2.0 - 1.0;
 
-	float3 camera_pos = float3(0, 0, -5);
+	float3 camera_pos = float3(0, 0, -5 + sin(time * 2));
 	float3 ray_origin = camera_pos;
 	float3 ray_dir    = float3(uv, 1);
 

@@ -67,7 +67,7 @@ int main() {
 	win::create("hello world", 800, 600);
 
 	gfx::Texture3D texture3d;
-	if (!texture3d.create(1024, 1024, 512)) {
+	if (!texture3d.create(64, 64, 32)) {
 		gfxErrorExit();
 	}
 
@@ -75,11 +75,44 @@ int main() {
 	if (!sh.init("base_vs", "base_ps", "brush_grid")) {
 		gfxErrorExit();
 	}
+	sh.shader.createShaderBuffer();
+
+	Vertex verts[] = {
+		{ vec3(-1, -1, 0), vec2(0, 0) },
+		{ vec3(3, -1, 0), vec2(2, 0) },
+		{ vec3(-1,  3, 0), vec2(0, 2) },
+	};
+
+	Index indices[] = {
+		0, 2, 1,
+	};
+
+	Mesh m;
+	if (!m.create(verts, indices)) {
+		gfxErrorExit();
+	}
+
+	
+	gfx::context->CSSetShader(sh.shader.compute_sh, nullptr, 0);
+		gfx::context->CSSetUnorderedAccessViews(0, 1, &texture3d.uav, nullptr);
+		gfx::context->Dispatch(1, 1, 1);
+	
+		ID3D11UnorderedAccessView *uav_nullptr[1] = { nullptr };
+		gfx::context->CSSetUnorderedAccessViews(0, 1, uav_nullptr, nullptr);
+	gfx::context->CSSetShader(nullptr, nullptr, 0);
 
 	while (win::isOpen()) {
 		sh.poll();
 
+		sh.shader.update(win::timeSinceStart());
+
 		gfx::begin(Colour::dark_grey);
+		
+		gfx::main_rtv.bind();
+			sh.shader.bind();
+				m.render();
+			sh.shader.unbind();
+		
 		gfx::imgui_rtv.bind();
 		fpsWidget();
 		mainTargetWidget();

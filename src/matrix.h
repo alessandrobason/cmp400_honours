@@ -80,6 +80,7 @@ union matrix {
 	matrix &operator/=(const matrix &m) { MAT_OP(/=); return *this; }
 
 #undef MAT_OP
+
 #define MAT_OP(op) \
 	m00 op v, m01 op v, m02 op v, m03 op v, \
 	m10 op v, m11 op v, m12 op v, m13 op v, \

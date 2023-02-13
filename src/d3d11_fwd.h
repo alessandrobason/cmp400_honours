@@ -14,6 +14,7 @@ struct ID3D11VertexShader;
 struct ID3D11PixelShader;
 struct ID3D11ComputeShader;
 struct ID3D11InputLayout;
+struct ID3D11UnorderedAccessView;
 
 // win32 forward stuff
 
@@ -38,3 +39,4 @@ typedef struct {
 
 	win32_handle_t hEvent;
 } win32_overlapped_t;
+

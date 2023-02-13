@@ -4,6 +4,8 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include <sokol_time.h>
+
 #ifdef _WIN32 
 #pragma warning(disable:4996) // _CRT_SECURE_NO_WARNINGS.
 #include <Windows.h>
@@ -87,20 +89,28 @@ void traceLogVaList(int level, const char *fmt, va_list args) {
 
     const char *beg;
     switch (level) {
-    case LogTrace:   beg = BOLD WHITE  "[TRACE]: "   RESET; break;
-    case LogDebug:   beg = BOLD BLUE   "[DEBUG]: "   RESET; break;
-    case LogInfo:    beg = BOLD GREEN  "[INFO]: "    RESET; break;
-    case LogWarning: beg = BOLD YELLOW "[WARNING]: " RESET; break;
-    case LogError:   beg = BOLD RED    "[ERROR]: "   RESET; break;
-    case LogFatal:   beg = BOLD RED    "[FATAL]: "   RESET; break;
+    case LogTrace:   beg = BOLD WHITE  "[TRACE]"   RESET; break;
+    case LogDebug:   beg = BOLD BLUE   "[DEBUG]"   RESET; break;
+    case LogInfo:    beg = BOLD GREEN  "[INFO]"    RESET; break;
+    case LogWarning: beg = BOLD YELLOW "[WARNING]" RESET; break;
+    case LogError:   beg = BOLD RED    "[ERROR]"   RESET; break;
+    case LogFatal:   beg = BOLD RED    "[FATAL]"   RESET; break;
     default:         beg = "";                              break;
     }
+
+    double time_millis = stm_ms(stm_now());
+    double time_seconds = time_millis / 1000.0;
+    int minutes = (int)(time_seconds / 60.0);
+    int seconds = (int)(time_seconds) % 60;
+    int millis = (int)(time_millis) % 1000;
 
     size_t offset = 0;
 
 #ifndef TLOG_WIN32_NO_VS
     offset = strlen(beg);
     strncpy(buffer, beg, sizeof(buffer));
+    int timelen = vsnprintf(buffer + offset, sizeof(buffer) - offset, "(%02d:%02d:%04d): ", minutes, seconds, millis);
+    if (timelen > 0) offset += timelen;
 #endif
 
     vsnprintf(buffer + offset, sizeof(buffer) - offset, fmt, args);
@@ -112,6 +122,8 @@ void traceLogVaList(int level, const char *fmt, va_list args) {
     SetConsoleOutputCP(CP_UTF8);
     setLevelColour(level);
     printf("%s", beg);
+    traceSetColour(COL_YELLOW);
+    printf("(%02d:%02d:%04d): ", minutes, seconds, millis);
     // set back to white
     setLevelColour(LogTrace);
     printf("%s", buffer);

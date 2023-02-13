@@ -40,5 +40,6 @@ namespace gfx {
 		vec3i size;
 		ID3D11Texture3D *texture = nullptr;
 		ID3D11UnorderedAccessView *uav = nullptr;
+		ID3D11ShaderResourceView* srv = nullptr;
 	};
 } // namespace gfx 

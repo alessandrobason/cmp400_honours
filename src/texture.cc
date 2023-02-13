@@ -201,9 +201,10 @@ namespace gfx {
 		desc.Height = (UINT)height;
 		desc.Depth  = (UINT)depth;
 		desc.MipLevels = 1;
-		desc.Format = DXGI_FORMAT_R8_SINT;
+		//desc.Format = DXGI_FORMAT_R8_SINT;
+		desc.Format = DXGI_FORMAT_R32_FLOAT;
 		desc.Usage = D3D11_USAGE_DEFAULT;
-		desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS;
+		desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
 		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
 		HRESULT hr = device->CreateTexture3D(&desc, nullptr, &texture);
@@ -212,11 +213,28 @@ namespace gfx {
 			return false;
 		}
 
+		D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc;
+		mem::zero(srv_desc);
+		srv_desc.Format = desc.Format;
+		srv_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE3D;
+		srv_desc.Texture2D.MostDetailedMip = 0;
+		srv_desc.Texture2D.MipLevels = 1;
+		hr = gfx::device->CreateShaderResourceView(texture, &srv_desc, &srv);
+		if (FAILED(hr)) {
+			err("couldn't create srv");
+			return false;
+		}
+
 		D3D11_UNORDERED_ACCESS_VIEW_DESC uav_desc;
 		mem::zero(uav_desc);
 		uav_desc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE3D;
 		uav_desc.Format = desc.Format;
 		uav_desc.Texture3D.WSize = desc.Depth;
+		hr = gfx::device->CreateUnorderedAccessView(texture, &uav_desc, &uav);
+		if (FAILED(hr)) {
+			err("couldn't create uav");
+			return false;
+		}
 
 		return true;
 	}
