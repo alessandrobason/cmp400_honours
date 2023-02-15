@@ -159,7 +159,7 @@ namespace gfx {
 		int count = 0;
 		while (
 			file::exists(
-				str::format("screenshots/%s_%.3d.png", base_name, count)
+				str::formatBuf(name, sizeof(name), "screenshots/%s_%.3d.png", base_name, count)
 			)
 		) {
 			count++;

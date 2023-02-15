@@ -85,6 +85,13 @@ struct vec3T {
 	T mag() const { return (T)sqrt(mag2()); }
 	void norm() { T m = mag(); if (m) *this /= m; }
 	vec3T normalise() const { vec3T o = *this; o.norm(); return o; }
+	static vec3T cross(const vec3T &a, const vec3T &b) {
+		return vec3T(
+			a.y * b.z - b.y * a.z,
+			a.z * b.x - b.z * a.x,
+			a.x * b.y - b.x * a.y
+		);
+	}
 };
 
 template<typename T>
@@ -131,6 +138,16 @@ struct vec4T {
 	void norm() { T m = mag(); if (m) *this /= m; }
 	vec4T normalise() const { vec4T o = *this; o.norm(); return o; }
 };
+
+template<typename T>
+T norm(const T &val) {
+	return val.normalise();
+}
+
+template<typename T>
+vec3T<T> cross(const vec3T<T> &a, const vec3T<T> &b) {
+	return vec3T<T>::cross(a, b);
+}
 
 using vec2 = vec2T<float>;
 using vec3 = vec3T<float>;

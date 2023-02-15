@@ -33,7 +33,7 @@ void main(uint3 id : SV_DispatchThreadID) {
                 coords /= float3(WIDTH, HEIGHT, DEPTH);
                 coords = coords * 2.0 - 1.0;
                 coords *= 10.0;
-                float value = sdf_sphere(coords, float3(0, 0, 0), 1.0);
+                float value = sdf_sphere(coords, float3(0, 0, 0), 5.0);
                 // value *= PRECISION;
                 tex[tex_coord] = value;
             }

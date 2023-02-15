@@ -27,7 +27,7 @@ Shader &Shader::operator=(Shader &&s) {
 		std::swap(pixel_sh, s.pixel_sh);
 		std::swap(compute_sh, s.compute_sh);
 		std::swap(layout, s.layout);
-		std::swap(shader_data_buf, s.shader_data_buf);
+		std::swap(buffers, s.buffers);
 	}
 	return *this;
 }
@@ -121,14 +121,6 @@ bool Shader::loadCompute(const void *data, size_t len) {
 	return true;
 }
 
-bool Shader::createShaderBuffer() {
-	if (!shader_data_buf.create<ShaderDataBuffer>(Usage::Dynamic)) {
-		err("couldn't create the shader data buffer");
-		return false;
-	}
-	return true;
-}
-
 bool Shader::load(const char *vertex, const char *fragment, const char *compute) {
 	bool success = true;
 	if (vertex)   success &= loadVertex(vertex);
@@ -137,82 +129,58 @@ bool Shader::load(const char *vertex, const char *fragment, const char *compute)
 	return success;
 }
 
-#if 0
-bool Shader::create(const char *vertex_file, const char *pixel_file) {
-	file::MemoryBuf vert_buf  = file::read(str::formatStr("shaders/bin/%s.cso", vertex_file).get());
-	file::MemoryBuf pixel_buf = file::read(str::formatStr("shaders/bin/%s.cso", pixel_file).get());
-	
-	if (!vert_buf.data) {
-		err("couldn't read vertex shader file");
-		return false;
+int Shader::addBuffer(size_t type_size, Usage usage, bool can_write, bool can_read) {
+	Buffer newbuf;
+	if (!newbuf.create(type_size, usage, can_write, can_read)) {
+		err("couldn't create new buffer!");
+		return -1;
 	}
-
-	if (!pixel_buf.data) {
-		err("couldn't read pixel shader file");
-		return false;
-	}
-
-	HRESULT hr = gfx::device->CreateVertexShader(vert_buf.data.get(), vert_buf.size, nullptr, &vert);
-	if (FAILED(hr)) {
-		err("couldn't create vertex shader");
-		return false;
-	}
-
-	hr = gfx::device->CreatePixelShader(pixel_buf.data.get(), pixel_buf.size, nullptr, &pixel);
-	if (FAILED(hr)) {
-		err("couldn't create pixel shader");
-		return false;
-	}
-
-	D3D11_INPUT_ELEMENT_DESC layout_desc[] = {
-		"POSITION",  0, DXGI_FORMAT_R32G32B32_FLOAT,    0, (UINT)offsetof(Vertex, position), D3D11_INPUT_PER_VERTEX_DATA, 0,
-		"TEXCOORDS", 0, DXGI_FORMAT_R32G32_FLOAT,       0, (UINT)offsetof(Vertex, uv),       D3D11_INPUT_PER_VERTEX_DATA, 0,
-	};
-
-	hr = gfx::device->CreateInputLayout(
-		layout_desc,    ARRLEN(layout_desc), 
-		vert_buf.data.get(), vert_buf.size, 
-		&layout
-	);
-	if (FAILED(hr)) {
-		err("couldn't create input layout");
-		return false;
-	}
-
-	if (!shader_data_buf.create<ShaderDataBuffer>(Usage::Dynamic)) {
-		err("couldn't create the shader data buffer");
-		return false;
-	}
-	
-	return true;
+	int index = (int)buffers.size();
+	buffers.emplace_back(std::move(newbuf));
+	return index;
 }
 
-bool Shader::create(const char *compute_file) {
-	file::MemoryBuf comp_buf = file::read(str::formatStr("shaders/bin/%s.cso", compute_file).get());
-
-	if (!comp_buf.data) {
-		err("couldn't read compute shader file");
-		return false;
+Buffer *Shader::getBuffer(int index) {
+	if (index < 0 || index >= (int)buffers.size()) {
+		return nullptr;
 	}
+	return &buffers[index];
+}
 
-	HRESULT hr = gfx::device->CreateComputeShader(comp_buf.data.get(), comp_buf.size, nullptr, &compute);
+bool Shader::addSampler() {
+	D3D11_SAMPLER_DESC desc;
+	mem::zero(desc);
+	desc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+	desc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+	desc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+	desc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+	float border[4] = { 100000, 100000, 100000, 100000 };
+	mem::copy(desc.BorderColor, border);
+	desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+
+	HRESULT hr = gfx::device->CreateSamplerState(&desc, &sampler);
 	if (FAILED(hr)) {
-		err("couldn't create compute shader");
+		err("couldn't create sampler state");
 		return false;
 	}
 
 	return true;
 }
-#endif
+
+void Shader::setSRV(Slice<ID3D11ShaderResourceView *> textures) {
+	gfx::context->PSSetShaderResources(0, (UINT)textures.len, textures.data);
+}
 
 void Shader::cleanup() {
 	SAFE_RELEASE(vert_sh);
 	SAFE_RELEASE(pixel_sh);
 	SAFE_RELEASE(compute_sh);
 	SAFE_RELEASE(layout);
-	shader_data_buf.cleanup();
+	for (Buffer &buf : buffers) buf.cleanup();
+	buffers.clear();
 }
 
+#if 0
 bool Shader::update(float time) {
 	if (pixel_sh) {
 		ShaderDataBuffer *buf = shader_data_buf.map<ShaderDataBuffer>();
@@ -232,12 +200,14 @@ bool Shader::update(float time) {
 
 	return true;
 }
+#endif
 
 void Shader::bind() {
 	gfx::context->IASetInputLayout(layout);
 	gfx::context->VSSetShader(vert_sh, nullptr, 0);
 	gfx::context->PSSetShader(pixel_sh, nullptr, 0);
 	gfx::context->CSSetShader(compute_sh, nullptr, 0);
+	gfx::context->PSSetSamplers(0, 1, &sampler);
 }
 
 void Shader::unbind() {
@@ -356,6 +326,8 @@ void DynamicShader::poll() {
 		return;
 	}
 
+	is_dirty = false;
+
 	tryUpdate();
 
 	DWORD wait_status = WaitForMultipleObjects(1, &overlapped.hEvent, FALSE, 0);
@@ -439,6 +411,7 @@ void DynamicShader::tryUpdate() {
 				case ShaderType::Fragment: shader.loadFragment(blob->GetBufferPointer(), blob->GetBufferSize()); break;
 				case ShaderType::Compute:  shader.loadCompute(blob->GetBufferPointer(), blob->GetBufferSize());  break;
 				}
+				is_dirty = true;
 			}
 			file = changed_files.erase(file);
 		}

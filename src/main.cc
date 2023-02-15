@@ -48,6 +48,7 @@ constexpr vec2u tex_size = { 1920, 1080 };
 ID3D11Texture2D *gfx_tex = nullptr;
 ID3D11ShaderResourceView *gfx_tex_srv = nullptr;
 ID3D11UnorderedAccessView *gfx_tex_uav = nullptr;
+bool is_dirty = true;
 
 //ShapeBuilder builder;
 
@@ -57,6 +58,30 @@ HRESULT createBufferSRV(ID3D11Device *dev, ID3D11Buffer *buf, ID3D11ShaderResour
 HRESULT createBufferUAV(ID3D11Device *dev, ID3D11Buffer *buf, ID3D11UnorderedAccessView **out);
 ID3D11Buffer *createAndCopyBuf(ID3D11Device *dev, ID3D11DeviceContext *ctx, ID3D11Buffer *buf);
 //void runComputeShader(ID3D11DeviceContext *ctx, ID3D11ComputeShader *shader, Slice<ID3D11ShaderResourceView *> views, ID3D11Buffer *cbcs, void *cs_data, DWORD num_data_bytes, ID3D11UnorderedAccessView *unordered_access_view, vec3u threads);
+
+struct PSShaderData {
+	vec3 cam_up;
+	float time;
+	vec3 cam_fwd;
+	float img_width;
+	vec3 cam_right;
+	float img_height;
+	vec3 cam_pos;
+	float unused__2;
+};
+
+struct Camera {
+	vec3 pos   = vec3(0, 0, -7);
+	vec3 fwd   = vec3(0, 0, 1);
+	vec3 right = vec3(1, 0, 0);
+	vec3 up    = vec3(0, 1, 0);
+	void update(const vec3 &newpos, const vec3 &newdir) {
+		pos = newpos;
+		fwd = newdir;
+		right = norm(cross(fwd, up));
+		// up = cross(right, fwd);
+	}
+};
 
 void gfxErrorExit() {
 	gfx::logD3D11messages();
@@ -75,7 +100,24 @@ int main() {
 	if (!sh.init("base_vs", "base_ps", "brush_grid")) {
 		gfxErrorExit();
 	}
-	sh.shader.createShaderBuffer();
+	if (!sh.shader.addSampler()) {
+		gfxErrorExit();
+	}
+	int buf_ind = sh.shader.addBuffer<PSShaderData>(Usage::Dynamic);
+	Camera cam;
+
+	if (Buffer *buf = sh.shader.getBuffer(buf_ind)) {
+		if (PSShaderData *data = buf->map<PSShaderData>()) {
+			data->cam_pos = cam.pos;
+			data->cam_fwd = cam.fwd;
+			data->cam_right = cam.right;
+			data->cam_up = cam.up;
+			data->img_height = (float)tex_size.x;
+			data->img_width = (float)tex_size.y;
+			data->time = win::timeSinceStart();
+			buf->unmapPS();
+		}
+	}
 
 	Vertex verts[] = {
 		{ vec3(-1, -1, 0), vec2(0, 0) },
@@ -92,7 +134,6 @@ int main() {
 		gfxErrorExit();
 	}
 
-	
 	gfx::context->CSSetShader(sh.shader.compute_sh, nullptr, 0);
 		gfx::context->CSSetUnorderedAccessViews(0, 1, &texture3d.uav, nullptr);
 		gfx::context->Dispatch(1, 1, 1);
@@ -101,17 +142,39 @@ int main() {
 		gfx::context->CSSetUnorderedAccessViews(0, 1, uav_nullptr, nullptr);
 	gfx::context->CSSetShader(nullptr, nullptr, 0);
 
+	sh.shader.setSRV({ texture3d.srv });
+
 	while (win::isOpen()) {
 		sh.poll();
 
-		sh.shader.update(win::timeSinceStart());
+#if 0
+		if (Buffer *buf = sh.shader.getBuffer(buf_ind)) {
+			if (PSShaderData *data = buf->map<PSShaderData>()) {
+				data->cam_pos    = cam.pos;
+				data->cam_fwd    = cam.fwd;
+				data->cam_right  = cam.right;
+				data->cam_up     = cam.up;
+				data->img_height = (float)tex_size.x;
+				data->img_width  = (float)tex_size.y;
+				data->time       = win::timeSinceStart();
+				buf->unmapPS();
+				is_dirty = true;
+			}
+		}
+#endif
+
+		is_dirty |= sh.hasUpdated();
 
 		gfx::begin(Colour::dark_grey);
 		
-		gfx::main_rtv.bind();
+		if (is_dirty) {
+			info("rendering again");
+			gfx::main_rtv.clear(Colour::dark_grey);
+			gfx::main_rtv.bind();
 			sh.shader.bind();
 				m.render();
 			sh.shader.unbind();
+		}
 		
 		gfx::imgui_rtv.bind();
 		fpsWidget();
@@ -125,6 +188,8 @@ int main() {
 		}
 
 		gfx::logD3D11messages();
+
+		is_dirty = false;
 	}
 
 	win::cleanup();
@@ -468,17 +533,17 @@ HRESULT createBufferUAV(ID3D11Device *dev, ID3D11Buffer *buf, ID3D11UnorderedAcc
 	desc.Buffer.FirstElement = 0;
 
 	if (bufdesc.MiscFlags & D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS) {
-		// raw bufer
+		// raw buffer
 
 		desc.Format = DXGI_FORMAT_R32_TYPELESS; // Format must be DXGI_FORMAT_R32_TYPELESS, when creating Raw Unordered Access View
 		desc.Buffer.Flags = D3D11_BUFFER_UAV_FLAG_RAW;
 		desc.Buffer.NumElements = bufdesc.ByteWidth / 4;
 	}
 	else if(bufdesc.MiscFlags & D3D11_RESOURCE_MISC_BUFFER_STRUCTURED) {
-			// structured buffer
+		// structured buffer
 
-			desc.Format = DXGI_FORMAT_UNKNOWN;      // Format must be must be DXGI_FORMAT_UNKNOWN, when creating a View of a Structured Buffer
-			desc.Buffer.NumElements = bufdesc.ByteWidth / bufdesc.StructureByteStride;
+		desc.Format = DXGI_FORMAT_UNKNOWN;      // Format must be must be DXGI_FORMAT_UNKNOWN, when creating a View of a Structured Buffer
+		desc.Buffer.NumElements = bufdesc.ByteWidth / bufdesc.StructureByteStride;
 	}
 	else {
 		return E_INVALIDARG;

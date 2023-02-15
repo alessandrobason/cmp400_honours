@@ -15,6 +15,8 @@ struct ID3D11PixelShader;
 struct ID3D11ComputeShader;
 struct ID3D11InputLayout;
 struct ID3D11UnorderedAccessView;
+struct ID3D11RasterizerState;
+struct ID3D11SamplerState;
 
 // win32 forward stuff
 

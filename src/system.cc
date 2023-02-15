@@ -73,7 +73,7 @@ namespace gfx {
 		UNUSED(clear_colour);
 
 		//main_rtv.bind();
-		main_rtv.clear(clear_colour);
+		//main_rtv.clear(clear_colour);
 
 		//imgui_rtv.bind();
 		imgui_rtv.clear(Colour::black);

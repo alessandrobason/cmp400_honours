@@ -9,14 +9,10 @@
 #include "matrix.h"
 #include "buffer.h"
 #include "timer.h"
+#include "slice.h"
 
 enum class ShaderType {
 	None, Vertex, Fragment, Compute
-};
-
-struct ShaderDataBuffer {
-	float time;
-	vec3 __unused0;
 };
 
 struct Shader {
@@ -33,17 +29,19 @@ struct Shader {
 	bool loadFragment(const void *data, size_t len);
 	bool loadCompute(const char *filename);
 	bool loadCompute(const void *data, size_t len);
-	bool createShaderBuffer();
 	bool load(const char *vertex, const char *fragment, const char *compute);
 
-#if 0
-	bool create(const char *vertex_file, const char *pixel_file);
-	bool create(const char *compute_file);
-#endif
+	int addBuffer(size_t type_size, Usage usage = Usage::Default, bool can_write = true, bool can_read = false);
+	template<typename T>
+	int addBuffer(Usage usage = Usage::Default, bool can_write = true, bool can_read = false) { return addBuffer(sizeof(T), usage, can_write, can_read); }
+	Buffer *getBuffer(int index);
+
+	bool addSampler();
+	void setSRV(Slice<ID3D11ShaderResourceView*> textures);
 
 	void cleanup();
 
-	bool update(float time);
+	//bool update(float time);
 	void bind();
 	void unbind();
 
@@ -51,7 +49,8 @@ struct Shader {
 	ID3D11PixelShader *pixel_sh = nullptr;
 	ID3D11ComputeShader *compute_sh = nullptr;
 	ID3D11InputLayout *layout = nullptr;
-	Buffer shader_data_buf;
+	std::vector<Buffer> buffers;
+	ID3D11SamplerState *sampler = nullptr;
 };
 
 struct DynamicShader {
@@ -66,6 +65,7 @@ struct DynamicShader {
 	void cleanup();
 
 	void poll();
+	bool hasUpdated() const { return is_dirty; }
 
 	Shader shader;
 
@@ -92,4 +92,5 @@ private:
 	win32_overlapped_t overlapped;
 	uint8_t change_buf[1024];
 	win32_handle_t handle = nullptr;
+	bool is_dirty = true;
 };
