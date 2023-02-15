@@ -180,7 +180,7 @@
     <ClCompile Include="..\src\system.cc" />
     <ClCompile Include="..\src\texture.cc" />
     <ClCompile Include="..\src\timer.cc" />
-    <ClCompile Include="..\src\tracelog.c" />
+    <ClCompile Include="..\src\tracelog.cc" />
     <ClCompile Include="..\src\widgets.cc" />
   </ItemGroup>
   <ItemGroup>

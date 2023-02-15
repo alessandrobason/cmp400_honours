@@ -80,13 +80,21 @@ namespace str {
 	}
 
 	const char *format(const char *fmt, ...) {
+		va_list va;
+		va_start(va, fmt);
+		const char *str = formatV(fmt, va);
+		va_end(va);
+		return str;
+	}
+
+	const char *formatV(const char *fmt, va_list args) {
 		static char static_buf[16][1024];
 		static int cur_buf = 0;
 		mem::zero(static_buf[cur_buf]);
-		va_list va;
-		va_start(va, fmt);
-		char *str = formatBufv(static_buf[cur_buf], sizeof(static_buf[cur_buf]), fmt, va);
-		va_end(va);
+		va_list vtemp;
+		va_copy(vtemp, args);
+		char *str = formatBufv(static_buf[cur_buf], sizeof(static_buf[cur_buf]), fmt, vtemp);
+		va_end(vtemp);
 		if ((++cur_buf) >= sizeof(static_buf)) cur_buf = 0;
 		return str;
 	}

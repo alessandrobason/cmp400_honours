@@ -222,7 +222,7 @@ namespace gfx {
 			case D3D11_MESSAGE_SEVERITY_ERROR:      err("%.*s", msg->DescriptionByteLength, msg->pDescription); break;
 			case D3D11_MESSAGE_SEVERITY_WARNING:    warn("%.*s", msg->DescriptionByteLength, msg->pDescription); break;
 			case D3D11_MESSAGE_SEVERITY_INFO:       info("%.*s", msg->DescriptionByteLength, msg->pDescription); break;
-			case D3D11_MESSAGE_SEVERITY_MESSAGE:    tall("%.*s", msg->DescriptionByteLength, msg->pDescription); break;
+			case D3D11_MESSAGE_SEVERITY_MESSAGE:    info("%.*s", msg->DescriptionByteLength, msg->pDescription); break;
 			}
 		}
 

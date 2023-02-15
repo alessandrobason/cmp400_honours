@@ -63,7 +63,7 @@
     <ClCompile Include="..\libs\ImGui\backends\imgui_impl_win32.cpp">
       <Filter>ImGui\backends</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\tracelog.c">
+    <ClCompile Include="..\src\tracelog.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\input.cc">

@@ -91,6 +91,26 @@ void gfxErrorExit() {
 int main() {
 	win::create("hello world", 800, 600);
 
+	debug("debug");
+	info("info");
+	warn("warn");
+	err("err");
+
+	debug("err");
+	info("debug");
+	warn("info");
+	err("warn");
+
+	debug("warn");
+	info("err");
+	warn("debug");
+	err("info");
+
+	debug("info");
+	info("warn");
+	warn("err");
+	err("debug");
+
 	gfx::Texture3D texture3d;
 	if (!texture3d.create(64 * 3, 64 * 3, 32 * 3)) {
 		gfxErrorExit();
@@ -181,10 +201,10 @@ int main() {
 		}
 		
 		gfx::imgui_rtv.bind();
-		fpsWidget();
-		mainTargetWidget();
-		//mainTargetWidget(tex_size, gfx_tex_srv);
-		ImGui::ShowDemoWindow();
+			fpsWidget();
+			mainTargetWidget();
+			ImGui::ShowDemoWindow();
+			drawLogger();
 		gfx::end();
 
 		if (ImGui::IsKeyPressed(ImGuiKey_P)) {

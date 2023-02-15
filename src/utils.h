@@ -48,6 +48,7 @@ namespace str {
 
 	// returns a formatted string, can generate maximum 16 strings at a time before reusing buffers
 	const char *format(const char *fmt, ...);
+	const char *formatV(const char *fmt, va_list args);
 	char *formatBuf(char *src, size_t srclen, const char *fmt, ...);
 	char *formatBufv(char *src, size_t srclen, const char *fmt, va_list args);
 } // namespace str 
