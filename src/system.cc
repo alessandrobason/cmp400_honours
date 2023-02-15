@@ -21,8 +21,6 @@
 
 static LRESULT wndProc(HWND, UINT, WPARAM, LPARAM);
 
-Options g_options;
-
 namespace gfx {
 	ID3D11Device *device = nullptr;
 	ID3D11DeviceContext *context = nullptr;
@@ -90,7 +88,7 @@ namespace gfx {
 		ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 		
 		gfx::context->OMSetRenderTargets(0, nullptr, nullptr);
-		swapchain->Present(g_options.vsync, 0);
+		swapchain->Present(Options::get().vsync, 0);
 	}
 
 	bool createDevice() {
@@ -263,6 +261,8 @@ namespace win {
 		if (dt) {
 			fps = (fps + 1.f / dt) / 2.f;
 		}
+
+		Options::get().update();
 	}
 
 	void close() {
@@ -282,16 +282,7 @@ namespace win {
 		wc.lpszClassName = windows_class_name;
 		RegisterClassEx(&wc);
 
-#if UNICODE
-		constexpr int max_len = 255;
-		wchar_t window_name[max_len] = { 0 };
-		bool converted = str::ansiToWide(name, strlen(name), window_name, max_len);
-		if (!converted) {
-			fatal("couldn't convert window name (%s) to wchar", window_name);
-		}
-#else
-		const char *window_name = name;
-#endif
+		str::tstr window_name = name;
 
 		hwnd = CreateWindow(
 			windows_class_name,
@@ -309,7 +300,7 @@ namespace win {
 		ShowWindow(hwnd, SW_SHOWDEFAULT);
 		UpdateWindow(hwnd);
 
-		g_options.load();
+		Options::get().load();
 
 		stm_setup();
 		laptime = stm_now();
@@ -322,6 +313,8 @@ namespace win {
 		UnregisterClass(windows_class_name, hinstance);
 		hwnd = nullptr;
 		hinstance = nullptr;
+
+		Options::get().cleanup();
 	}
 
 	float timeSinceStart() {

@@ -43,6 +43,9 @@ struct Slice {
 		return true;
 	}
 
+	const T *begin() const { return data; }
+	const T *end() const { return data + len; }
+
 	const T *data = nullptr;
 	size_t len = 0;
 };

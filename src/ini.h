@@ -13,6 +13,7 @@ namespace ini {
 		Value(std::string_view key, std::string_view value) : key(key), value(value) {}
 
 		bool isValid() const { return !key.empty(); }
+		operator bool() const { return isValid(); }
 
 		unsigned int asUint() const;
 		int asInt() const;
@@ -21,6 +22,12 @@ namespace ini {
 		std::string asStr() const;
 		size_t toStr(char *buf, size_t buflen) const;
 		std::vector<std::string_view> asVec(char delim = ' ') const;
+
+		void trySet(int &value) const;
+		void trySet(double &value) const;
+		void trySet(bool &value) const;
+		void trySet(std::string &value) const;
+		void trySet(std::vector<std::string_view> &value) const;
 	};
 
 	struct Table {
@@ -31,7 +38,7 @@ namespace ini {
 		Table(std::string_view name) : name(name) {}
 
 		bool isValid() const { return !name.empty(); }
-		const Value *get(const char *key) const;
+		const Value get(const char *key) const;
 		const Value &operator[](const char *key) const;
 	};
 		

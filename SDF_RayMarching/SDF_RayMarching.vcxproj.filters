@@ -201,13 +201,7 @@
     </Text>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="..\shaders\base_vs.hlsl">
-      <Filter>Resource Files</Filter>
-    </FxCompile>
     <FxCompile Include="..\shaders\base_ps.hlsl">
-      <Filter>Resource Files</Filter>
-    </FxCompile>
-    <FxCompile Include="..\shaders\test_comp.hlsl">
       <Filter>Resource Files</Filter>
     </FxCompile>
   </ItemGroup>

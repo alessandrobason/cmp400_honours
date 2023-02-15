@@ -16,11 +16,6 @@ cbuffer ShaderData : register(b0) {
 	// float unused__3;   ///////-PADDING-///////
 };
 
-#define WIDTH  64
-#define HEIGHT 64
-#define DEPTH  32
-#define PRECISION 1
-
 #define SIZE 10.0
 #define HSIZE (SIZE/2.0)
 
@@ -49,21 +44,24 @@ float sminCubic(float a, float b, float k) {
 
 // == scene functions ================================
 
-float map(float3 pos) {
+float4 map(float3 pos) {
 	// pos /= 10.0;
 	// pos *= float3(WIDTH, HEIGHT, DEPTH);
 	// int3 coords = pos;
 	// return vol_tex[coords];
-	float3 coords = ((pos / HSIZE) + 1.0) / 2.0;
+#if 1
+	// float3 coords = ((pos / HSIZE) + 1.0) / 2.0;
+	float3 coords = ((pos / SIZE) + 1.0) / 2.0;
 
-	float value = vol_tex.Sample(sampler0, coords);
+	float value = vol_tex.SampleLevel(sampler0, coords, 0);
 
-	return value;
+	return float4(coords, value);
+#endif
 
 #if 0
 	float displacement = sin(5 * pos.x) * sin(5 * pos.y) * sin(5 * pos.z) * sin(time * 3) * 0.4;
-	float sphere_0 = distFromSphere(pos, float3(-1, 0, 0), 1.5);
-	float sphere_1 = distFromSphere(pos, float3(1, 0, 0), 1.5);
+	float sphere_0 = distFromSphere(pos, float3(-1, 0, 0), 2.3);
+	float sphere_1 = distFromSphere(pos, float3(1, 0, 0), 2.3);
 
 	// return sminCubic(sphere_0, sphere_1, max(sin(time * 3) + 1 * 0.5, 0.1));
 	return sminCubic(sphere_0, sphere_1, 0.5);
@@ -72,31 +70,36 @@ float map(float3 pos) {
 }
 
 float3 calcNormal(float3 pos) {
-	const float3 small_step = float3(0.001, 0, 0);
+#if 1
+	const float3 small_step = float3(3, 0, 0);
 
 	float3 gradient = float3(
-		map(pos + small_step.xyy) - map(pos - small_step.xyy),
-		map(pos + small_step.yxy) - map(pos - small_step.yxy),
-		map(pos + small_step.yyx) - map(pos - small_step.yyx)
+		map(pos + small_step.xyy).w - map(pos - small_step.xyy).w,
+		map(pos + small_step.yxy).w - map(pos - small_step.yxy).w,
+		map(pos + small_step.yyx).w - map(pos - small_step.yyx).w
 	);
 
 	return normalize(gradient);
+#else
+	return 0;
+#endif
 }
 
 float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 	float distance_traveled = 0.0;
-	const int NUMBER_OF_STEPS = 10;
+	const int NUMBER_OF_STEPS = 200;
 	const float MIN_HIT_DISTANCE = 0.001;
-	const float MAX_TRACE_DISTANCE = HSIZE;
+	const float MAX_TRACE_DISTANCE = 100;
 
 	for (int i = 0; i < NUMBER_OF_STEPS; ++i) {
 		float3 current_pos = ray_origin + ray_dir * distance_traveled;
 
-		float closest = map(current_pos);
-	
+		float4 result = map(current_pos);
+		float closest = result.w;
+		// float closest = map(current_pos);
+#if 1
 		// hit
 		if (closest < MIN_HIT_DISTANCE) {
-			// return float3(1, 0.5, 0.2);
 			float3 normal = calcNormal(current_pos);
 
 			const float3 light_pos = float3(2, -5, 3);
@@ -109,12 +112,22 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 			return saturate(diffuse);
 		}
 
+		// clamp to box size
+		if (
+			current_pos.x > SIZE || current_pos.y > SIZE || current_pos.z > SIZE ||
+			current_pos.x < -SIZE || current_pos.y < -SIZE || current_pos.z < -SIZE
+		) {
+			// return float3(1, 0, 0);
+			break;
+		} 
 		// miss
 		if (distance_traveled > MAX_TRACE_DISTANCE) {
+			// return result.rgb;
 			break;
 		}
 
 		distance_traveled += closest;
+#endif
 	}
 	
 	return 0.07;
@@ -134,17 +147,25 @@ float4 main(PixelInput input) : SV_TARGET {
 	// float2 res = float2(img_width, img_height);
 	// float2 uv = (input.uv * 2.0 - res) / res.y;
 
+#if 0
 	float3x3 camera_mat = float3x3(cam_right, cam_up, cam_fwd);
 
 	float focal_length = 2.5;
 
-	float3 ray_dir = mul(camera_mat, normalize(float3(uv, focal_length)));
-	
-	// float3 camera_pos = float3(0, 0, -5 + sin(time * 2));
-	// float3 ray_origin = camera_pos;
-	// float3 ray_dir    = float3(uv, 1);
+	float3 ray_dir = normalize(mul(camera_mat, normalize(float3(uv, focal_length))));
 
 	float3 colour = rayMarch(cam_pos, ray_dir);
+
+#else
+	float sint = sin(time) / 2. + .5;
+
+	float3 camera_pos = float3(0, 0, -10 + sint);
+	float3 ray_origin = camera_pos;
+	float3 ray_dir    = float3(uv, 1);
+
+	float3 colour = rayMarch(camera_pos, ray_dir);
+
+#endif
 
 	return float4(colour, 1.0);
 }

@@ -10,9 +10,13 @@
 #include "buffer.h"
 #include "timer.h"
 #include "slice.h"
+#include "utils.h"
 
-enum class ShaderType {
-	None, Vertex, Fragment, Compute
+enum class ShaderType : uint8_t {
+	None      = 0, 
+	Vertex    = 1 << 0, 
+	Fragment  = 1 << 1, 
+	Compute   = 1 << 2,
 };
 
 struct Shader {
@@ -37,13 +41,15 @@ struct Shader {
 	Buffer *getBuffer(int index);
 
 	bool addSampler();
-	void setSRV(Slice<ID3D11ShaderResourceView*> textures);
+	void setSRV(ShaderType type, Slice<ID3D11ShaderResourceView*> textures);
 
 	void cleanup();
 
 	//bool update(float time);
 	void bind();
 	void unbind();
+
+	void dispatch(const vec3u &threads, Slice<ID3D11ShaderResourceView *> srvs = {}, Slice<ID3D11UnorderedAccessView *> uavs = {});
 
 	ID3D11VertexShader *vert_sh = nullptr;
 	ID3D11PixelShader *pixel_sh = nullptr;
@@ -65,32 +71,25 @@ struct DynamicShader {
 	void cleanup();
 
 	void poll();
-	bool hasUpdated() const { return is_dirty; }
+	bool hasUpdated() const { return updated != ShaderType::None; }
+	ShaderType getChanged() const { return updated; }
 
 	Shader shader;
 
 private:
-	struct WatchedFile {
-		WatchedFile() = default;
-		WatchedFile(const std::string &name, ShaderType type) : name(name), type(type) {}
-		std::string name;
-		ShaderType type;
-	};
-
-	struct ChangedData {
-		ChangedData(size_t i) : index(i) {}
-		OnceClock clock;
-		size_t index;
-	};
-
 	bool addFileWatch(const char *name, ShaderType type);
-	void addChanged(size_t index);
-	void tryUpdate();
 
-	std::vector<WatchedFile> watched_files;
-	std::vector<ChangedData> changed_files;
-	win32_overlapped_t overlapped;
-	uint8_t change_buf[1024];
-	win32_handle_t handle = nullptr;
-	bool is_dirty = true;
+	file::Watcher watcher = "shaders/";
+	ShaderType updated = ShaderType::None;
 };
+
+// == ENUM CLASS OPERATORS ===============================================
+
+inline ShaderType &operator|=(ShaderType &self, ShaderType b) {
+	self = ShaderType((uint8_t)self | (uint8_t)b);
+	return self;
+}
+
+inline uint8_t operator&(ShaderType a, ShaderType b) {
+	return (uint8_t)a & (uint8_t)b;
+}

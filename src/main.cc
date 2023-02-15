@@ -92,7 +92,7 @@ int main() {
 	win::create("hello world", 800, 600);
 
 	gfx::Texture3D texture3d;
-	if (!texture3d.create(64, 64, 32)) {
+	if (!texture3d.create(64 * 3, 64 * 3, 32 * 3)) {
 		gfxErrorExit();
 	}
 
@@ -134,20 +134,13 @@ int main() {
 		gfxErrorExit();
 	}
 
-	gfx::context->CSSetShader(sh.shader.compute_sh, nullptr, 0);
-		gfx::context->CSSetUnorderedAccessViews(0, 1, &texture3d.uav, nullptr);
-		gfx::context->Dispatch(1, 1, 1);
-	
-		ID3D11UnorderedAccessView *uav_nullptr[1] = { nullptr };
-		gfx::context->CSSetUnorderedAccessViews(0, 1, uav_nullptr, nullptr);
-	gfx::context->CSSetShader(nullptr, nullptr, 0);
-
-	sh.shader.setSRV({ texture3d.srv });
+	sh.shader.dispatch({ 1, 1, 1 }, {}, { texture3d.uav });
+	sh.shader.setSRV(ShaderType::Fragment, { texture3d.srv });
 
 	while (win::isOpen()) {
 		sh.poll();
 
-#if 0
+#if 1
 		if (Buffer *buf = sh.shader.getBuffer(buf_ind)) {
 			if (PSShaderData *data = buf->map<PSShaderData>()) {
 				data->cam_pos    = cam.pos;
@@ -165,10 +158,21 @@ int main() {
 
 		is_dirty |= sh.hasUpdated();
 
+		if (sh.hasUpdated()) {
+			is_dirty = true;
+			if (sh.getChanged() & ShaderType::Compute) {
+				sh.shader.setSRV(ShaderType::Fragment, { nullptr });
+				sh.shader.dispatch({ 1, 1, 1 }, {}, { texture3d.uav });
+				sh.shader.setSRV(ShaderType::Fragment, { texture3d.srv });
+			}
+		}
+
 		gfx::begin(Colour::dark_grey);
-		
-		if (is_dirty) {
-			info("rendering again");
+
+		if (is_dirty || !Options::get().lazy_render) {
+			if (Options::get().lazy_render) {
+				info("rendering again");
+			}
 			gfx::main_rtv.clear(Colour::dark_grey);
 			gfx::main_rtv.bind();
 			sh.shader.bind();

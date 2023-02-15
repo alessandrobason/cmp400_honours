@@ -89,13 +89,44 @@ namespace ini {
 		return out;
 	}
 
-	const Value *Table::get(const char *key) const {
+	void Value::trySet(int &val) const {
+		if (isValid()) {
+			val = asInt();
+		}
+	}
+
+	void Value::trySet(double &val) const {
+		if (isValid()) {
+			val = asNum();
+		}
+	}
+
+	void Value::trySet(bool &val) const {
+		if (isValid()) {
+			val = asBool();
+		}
+	}
+
+	void Value::trySet(std::string &val) const {
+		if (isValid()) {
+			val = asStr();
+		}
+	}
+
+	void Value::trySet(std::vector<std::string_view> &val) const {
+		if (isValid()) {
+			val = asVec();
+		}
+	}
+
+
+	const Value Table::get(const char *key) const {
 		for (const Value &v : values) {
 			if (v.key == key) {
-				return &v;
+				return v;
 			}
 		}
-		return nullptr;
+		return {};
 	}
 
 	const Value &Table::operator[](const char *key) const {

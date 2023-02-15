@@ -1,8 +1,8 @@
 RWTexture3D<float> tex : register(u0);
 
-#define WIDTH  64
-#define HEIGHT 64
-#define DEPTH  32
+#define WIDTH  (64 * 3)
+#define HEIGHT (64 * 3)
+#define DEPTH  (32 * 3)
 #define PRECISION 1
 
 float sdf_sphere(float3 position, float3 centre, float radius) 

@@ -167,8 +167,10 @@ bool Shader::addSampler() {
 	return true;
 }
 
-void Shader::setSRV(Slice<ID3D11ShaderResourceView *> textures) {
-	gfx::context->PSSetShaderResources(0, (UINT)textures.len, textures.data);
+void Shader::setSRV(ShaderType type, Slice<ID3D11ShaderResourceView *> textures) {
+	if (type & ShaderType::Vertex)   gfx::context->VSSetShaderResources(0, (UINT)textures.len, textures.data);
+	if (type & ShaderType::Fragment) gfx::context->PSSetShaderResources(0, (UINT)textures.len, textures.data);
+	if (type & ShaderType::Compute)  gfx::context->CSSetShaderResources(0, (UINT)textures.len, textures.data);
 }
 
 void Shader::cleanup() {
@@ -214,6 +216,30 @@ void Shader::unbind() {
 	// todo, maybe remove?
 }
 
+void Shader::dispatch(const vec3u &threads, Slice<ID3D11ShaderResourceView *> srvs, Slice<ID3D11UnorderedAccessView *> uavs) {
+	if (!compute_sh) return;
+
+	gfx::context->CSSetShader(compute_sh, nullptr, 0);
+		if (!srvs.empty()) gfx::context->CSSetShaderResources(0, (UINT)srvs.len, srvs.data);
+		if (!uavs.empty()) gfx::context->CSSetUnorderedAccessViews(0, (UINT)uavs.len, uavs.data, nullptr);
+
+		gfx::context->Dispatch(threads.x, threads.y, threads.z);
+		
+		// set the resources back to NULL
+		// actually horrible, terrible, probably very inefficent; but realistically i'm only
+		// going to use 1/2 resources.
+		ID3D11ShaderResourceView *null_srv[] = { nullptr };
+		ID3D11UnorderedAccessView *null_uav[] = { nullptr };
+		for (size_t i = 0; i < srvs.len; ++i) {
+			gfx::context->CSSetShaderResources((UINT)i, 1, null_srv);
+		}
+		for (size_t i = 0; i < uavs.len; ++i) {
+			gfx::context->CSSetUnorderedAccessViews((UINT)i, 1, null_uav, nullptr);
+		}
+
+	gfx::context->CSSetShader(nullptr, nullptr, 0);
+}
+
 DynamicShader::DynamicShader(DynamicShader &&s) {
 	*this = std::move(s);
 }
@@ -225,50 +251,13 @@ DynamicShader::~DynamicShader() {
 DynamicShader &DynamicShader::operator=(DynamicShader &&s) {
 	if (this != &s) {
 		std::swap(shader, s.shader);
-		std::swap(watched_files, s.watched_files);
-		std::swap(changed_files, s.changed_files);
-		std::swap(handle, s.handle);
+		std::swap(watcher, s.watcher);
 	}
 	return *this;
 }
 
 bool DynamicShader::init(const char *vertex, const char *fragment, const char *compute) {
 	if (!vertex && !fragment && !compute) return false;
-
-	HANDLE dir_handle = CreateFile(
-		TEXT("shaders/"),
-		FILE_LIST_DIRECTORY,
-		FILE_SHARE_READ | FILE_SHARE_WRITE,
-		NULL,
-		OPEN_EXISTING,
-		FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
-		NULL
-	);
-
-	if (dir_handle == INVALID_HANDLE_VALUE) {
-		err("couldn't open shader directory handle");
-		return false;
-	}
-
-	overlapped.hEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-
-	BOOL success = ReadDirectoryChangesW(
-		dir_handle,
-		change_buf, sizeof(change_buf),
-		FALSE, // watch subtree
-		FILE_NOTIFY_CHANGE_LAST_WRITE,
-		nullptr, // bytes returned
-		(OVERLAPPED *)&overlapped,
-		nullptr // completion routine
-	);
-
-	if (!success) {
-		err("couldn't start watching shader directory");
-		return false;
-	}
-
-	handle = dir_handle;
-	info("handle: %p", handle);
 
 	bool compiled = true;
 
@@ -282,7 +271,8 @@ bool DynamicShader::init(const char *vertex, const char *fragment, const char *c
 
 bool DynamicShader::addFileWatch(const char *name, ShaderType type) {
 	const char *filename = str::format("%s.hlsl", name);
-	watched_files.emplace_back(filename, type);
+	watcher.watchFile(filename, (void *)type);
+#ifdef NDEBUG
 	if (file::exists(str::format("shaders/bin/%s.cso", name))) {
 		bool success = false;
 		switch (type) {
@@ -308,116 +298,51 @@ bool DynamicShader::addFileWatch(const char *name, ShaderType type) {
 		}
 	}
 	else {
-		return false;
+		return true;
 	}
+#else
+	if (dxptr<ID3DBlob> blob = compileShader(filename, type)) {
+		bool success = false;
+		switch (type) {
+		case ShaderType::Vertex:   success = shader.loadVertex(blob->GetBufferPointer(), blob->GetBufferSize()); break;
+		case ShaderType::Fragment: success = shader.loadFragment(blob->GetBufferPointer(), blob->GetBufferSize()); break;
+		case ShaderType::Compute:  success = shader.loadCompute(blob->GetBufferPointer(), blob->GetBufferSize()); break;
+		}
+		if (!success) {
+			err("couldn't load shader %s from file", name);
+			return false;
+		}
+	}
+	else {
+		return true;
+	}
+#endif
 
 	return true;
 }
 
 void DynamicShader::cleanup() {
 	shader.cleanup();
-	if (handle) {
-		CloseHandle((HANDLE)handle);
-	}
 }
 
 void DynamicShader::poll() {
-	if (!handle || handle == INVALID_HANDLE_VALUE) {
-		return;
-	}
+	updated = ShaderType::None;
+	watcher.update();
 
-	is_dirty = false;
-
-	tryUpdate();
-
-	DWORD wait_status = WaitForMultipleObjects(1, &overlapped.hEvent, FALSE, 0);
-
-	if (wait_status == WAIT_TIMEOUT) {
-		return;
-	}
-	else if (wait_status != WAIT_OBJECT_0) {
-		warn("unhandles wait_status value: %u", wait_status);
-		return;
-	}
-
-	DWORD bytes_transferred;
-	GetOverlappedResult((HANDLE)handle, (OVERLAPPED *)&overlapped, &bytes_transferred, FALSE);
-
-	FILE_NOTIFY_INFORMATION *event = (FILE_NOTIFY_INFORMATION *)change_buf;
-
-	while (true) {
-		switch (event->Action) {
-			case FILE_ACTION_MODIFIED:
-			{
-				char namebuf[1024];
-				if (!str::wideToAnsi(event->FileName, event->FileNameLength / sizeof(WCHAR), namebuf, sizeof(namebuf))) {
-					err("name too long: %S -- %u", event->FileName, event->FileNameLength);
-					break;
-				}
-
-				for (size_t i = 0; i < watched_files.size(); ++i) {
-					if (watched_files[i].name == namebuf) {
-						addChanged(i);
-						break;
-					}
-				}
-
-				break;
+	auto file = watcher.getChangedFiles();
+	while (file) {
+		ShaderType type = (ShaderType)((uintptr_t)file->custom_data);
+		if (dxptr<ID3DBlob> blob = compileShader(file->name.get(), type)) {
+			info("re-compiled shader %s successfully", file->name.get());
+			switch (type) {
+			case ShaderType::Vertex:   shader.loadVertex(blob->GetBufferPointer(), blob->GetBufferSize());   break;
+			case ShaderType::Fragment: shader.loadFragment(blob->GetBufferPointer(), blob->GetBufferSize()); break;
+			case ShaderType::Compute:  shader.loadCompute(blob->GetBufferPointer(), blob->GetBufferSize());  break;
 			}
+			updated |= type;
 		}
 
-		if (event->NextEntryOffset) {
-			*((uint8_t **)&event) += event->NextEntryOffset;
-		}
-		else {
-			break;
-		}
-	}
-
-	BOOL success = ReadDirectoryChangesW(
-		(HANDLE)handle, 
-		change_buf, sizeof(change_buf), 
-		FALSE,
-		FILE_NOTIFY_CHANGE_LAST_WRITE,
-		nullptr, 
-		(OVERLAPPED *)&overlapped,
-		nullptr
-	);
-	if (!success) {
-		err("call to ReadDirectoryChangesW failed");
-		return;
-	}
-}
-
-void DynamicShader::addChanged(size_t index) {
-	for (const auto &file : changed_files) {
-		if (file.index == index) {
-			// no need to re-add it to the list
-			return;
-		}
-	}
-
-	changed_files.emplace_back(index);
-}
-
-void DynamicShader::tryUpdate() {
-	for (auto file = changed_files.begin(); file != changed_files.end(); ) {
-		if (file->clock.after(0.1f)) {
-			WatchedFile &watch = watched_files[file->index];
-			if (dxptr<ID3DBlob> blob = compileShader(watch.name.c_str(), watch.type)) {
-				info("re-compiled shader %s successfully", watch.name.c_str());
-				switch (watch.type) {
-				case ShaderType::Vertex:   shader.loadVertex(blob->GetBufferPointer(), blob->GetBufferSize());   break;
-				case ShaderType::Fragment: shader.loadFragment(blob->GetBufferPointer(), blob->GetBufferSize()); break;
-				case ShaderType::Compute:  shader.loadCompute(blob->GetBufferPointer(), blob->GetBufferSize());  break;
-				}
-				is_dirty = true;
-			}
-			file = changed_files.erase(file);
-		}
-		else {
-			++file;
-		}
+		file = watcher.getChangedFiles(file);
 	}
 }
 
@@ -437,6 +362,11 @@ static ID3DBlob *compileShader(const char *filename, ShaderType type) {
 	ID3DBlob *blob = nullptr;
 	dxptr<ID3DBlob> err_blob = nullptr;
 
+	UINT flags = 0;
+#ifdef _DEBUG
+	flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#endif
+
 	HRESULT hr = D3DCompile(
 		filedata.data.get(),
 		filedata.size,
@@ -445,7 +375,7 @@ static ID3DBlob *compileShader(const char *filename, ShaderType type) {
 		nullptr, 
 		"main", 
 		str::format("%s_5_0", type_str), 
-		0, 
+		flags,
 		0, 
 		&blob, 
 		(ID3DBlob **)&err_blob
@@ -457,8 +387,8 @@ static ID3DBlob *compileShader(const char *filename, ShaderType type) {
 			err((const char *)err_blob->GetBufferPointer());
 		}
 		SAFE_RELEASE(blob);
-		return nullptr;
 	}
 
+	SAFE_RELEASE(err_blob);
 	return blob;
 }
