@@ -24,8 +24,7 @@ Buffer::~Buffer() {
 
 Buffer &Buffer::operator=(Buffer &&buf) {
     if (this != &buf) {
-        buffer = buf.buffer;
-        buf.buffer = nullptr;
+        std::swap(buffer, buf.buffer);
     }
 
     return *this;
@@ -49,7 +48,7 @@ bool Buffer::create(size_t type_size, Usage usage, bool can_write, bool can_read
 }
 
 void Buffer::cleanup() {
-    SAFE_RELEASE(buffer);
+    buffer.destroy();
 }
 
 void Buffer::unmapVS(unsigned int subresource, unsigned int slot) {

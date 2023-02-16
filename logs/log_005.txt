@@ -1,0 +1,15 @@
+[INFO] (00:18:0641): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:33:0193): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:37:0430): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:41:0952): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:43:0487): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:50:0172): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:51:0926): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:53:0577): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:54:0828): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:59:0430): re-compiled shader base_ps.hlsl successfully
+[INFO] (01:02:0322): re-compiled shader base_ps.hlsl successfully
+[INFO] (01:06:0550): re-compiled shader base_ps.hlsl successfully
+[INFO] (01:13:0931): re-compiled shader base_ps.hlsl successfully
+[INFO] (01:17:0204): re-compiled shader base_ps.hlsl successfully
+[INFO] (01:21:0312): re-compiled shader base_ps.hlsl successfully

@@ -102,9 +102,9 @@ namespace gfx {
 	}
 
 	void RenderTexture::cleanup() {
-		SAFE_RELEASE(texture);
-		SAFE_RELEASE(view);
-		SAFE_RELEASE(resource);
+		texture.destroy();
+		view.destroy();
+		resource.destroy();
 	}
 
 	void RenderTexture::bind(ID3D11DepthStencilView *dsv) {
@@ -240,6 +240,8 @@ namespace gfx {
 	}
 
 	void Texture3D::cleanup() {
-		SAFE_RELEASE(texture);
+		texture.destroy();
+		uav.destroy();
+		srv.destroy();
 	}
 } // namespace gfx

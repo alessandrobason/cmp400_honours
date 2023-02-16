@@ -9,9 +9,9 @@
 #include "texture.h"
 
 namespace gfx {
-	extern ID3D11Device *device;
-	extern ID3D11DeviceContext *context;
-	extern IDXGISwapChain *swapchain;
+	extern dxptr<ID3D11Device> device;
+	extern dxptr<ID3D11DeviceContext> context;
+	extern dxptr<IDXGISwapChain> swapchain;
 	extern RenderTexture imgui_rtv;
 	extern RenderTexture main_rtv;
 

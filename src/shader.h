@@ -51,12 +51,12 @@ struct Shader {
 
 	void dispatch(const vec3u &threads, Slice<ID3D11ShaderResourceView *> srvs = {}, Slice<ID3D11UnorderedAccessView *> uavs = {});
 
-	ID3D11VertexShader *vert_sh = nullptr;
-	ID3D11PixelShader *pixel_sh = nullptr;
-	ID3D11ComputeShader *compute_sh = nullptr;
-	ID3D11InputLayout *layout = nullptr;
+	dxptr<ID3D11VertexShader> vert_sh = nullptr;
+	dxptr<ID3D11PixelShader> pixel_sh = nullptr;
+	dxptr<ID3D11ComputeShader> compute_sh = nullptr;
+	dxptr<ID3D11InputLayout> layout = nullptr;
 	std::vector<Buffer> buffers;
-	ID3D11SamplerState *sampler = nullptr;
+	dxptr<ID3D11SamplerState> sampler = nullptr;
 };
 
 struct DynamicShader {

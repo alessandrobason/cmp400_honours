@@ -64,8 +64,8 @@ bool Mesh::create(Slice<Vertex> vertices, Slice<Index> indices) {
 }
 
 void Mesh::cleanup() {
-    SAFE_RELEASE(vert_buf);
-    SAFE_RELEASE(ind_buf);
+    vert_buf.destroy();
+    ind_buf.destroy();
 }
 
 void Mesh::render() {

@@ -22,12 +22,12 @@
 static LRESULT wndProc(HWND, UINT, WPARAM, LPARAM);
 
 namespace gfx {
-	ID3D11Device *device = nullptr;
-	ID3D11DeviceContext *context = nullptr;
-	ID3D11Debug *debugdev = nullptr;
-	ID3D11InfoQueue *infodev = nullptr;
-	IDXGISwapChain *swapchain = nullptr;
-	ID3D11DepthStencilState* depth_stencil_state = nullptr;
+	dxptr<ID3D11Device> device = nullptr;
+	dxptr<ID3D11DeviceContext> context = nullptr;
+	dxptr<ID3D11Debug> debugdev = nullptr;
+	dxptr<ID3D11InfoQueue> infodev = nullptr;
+	dxptr<IDXGISwapChain> swapchain = nullptr;
+	dxptr<ID3D11DepthStencilState> depth_stencil_state = nullptr;
 	RenderTexture imgui_rtv;
 	RenderTexture main_rtv;
 
@@ -173,18 +173,18 @@ namespace gfx {
 	
 	void cleanupDevice() {
 #ifndef NDEBUG
-		// we need this as it doesn't report memory leak otherwise
+		// we need this as it doesn't report memory leaks otherwise
 		infodev->PushEmptyStorageFilter();
 #endif
 		cleanupImGuiRTV();
-		SAFE_RELEASE(depth_stencil_state);
-		SAFE_RELEASE(swapchain);
-		SAFE_RELEASE(context);
-		SAFE_RELEASE(device);
+		depth_stencil_state.destroy();
+		swapchain.destroy();
+		context.destroy();
+		device.destroy();
 #ifndef NDEBUG
-		SAFE_RELEASE(infodev);
+		infodev.destroy();
 		debugdev->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL | D3D11_RLDO_IGNORE_INTERNAL);
-		SAFE_RELEASE(debugdev);
+		debugdev.destroy();
 #endif
 	}
 

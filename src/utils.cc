@@ -5,8 +5,16 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
+#include <d3d11.h>
+
 #include "tracelog.h"
 #include "macros.h"
+
+void safeRelease(IUnknown *ptr) {
+	if (ptr) {
+		ptr->Release();
+	}
+}
 
 // == string utils ================================================
 namespace str {

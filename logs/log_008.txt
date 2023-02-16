@@ -1,0 +1,12 @@
+[INFO] (00:25:0539): re-compiled shader brush_grid.hlsl successfully
+[INFO] (00:43:0522): re-compiled shader brush_grid.hlsl successfully
+[ERROR](01:14:0785): couldn't compile shader brush_grid.hlsl
+[ERROR](01:14:0786): \\StuHomeOdd\HomeDrive1$\1902881\cmp400_honours\Shader@0x0000029A5207B6F0(24,27): error X3000: syntax error: unexpected token ')'
+
+[INFO] (02:19:0290): re-compiled shader brush_grid.hlsl successfully
+[INFO] (06:05:0774): re-compiled shader brush_grid.hlsl successfully
+[ERROR](06:40:0855): couldn't compile shader brush_grid.hlsl
+[ERROR](06:40:0855): \\StuHomeOdd\HomeDrive1$\1902881\cmp400_honours\Shader@0x0000029A52173380(22,18-23): error X3003: redefinition of 'centre'
+
+[INFO] (06:49:0800): re-compiled shader brush_grid.hlsl successfully
+[INFO] (11:51:0720): re-compiled shader brush_grid.hlsl successfully

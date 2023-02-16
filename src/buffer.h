@@ -36,5 +36,5 @@ struct Buffer {
 	void unmapPS(unsigned int subresource = 0, unsigned int slot = 0);
 	void unmapGS(unsigned int subresource = 0, unsigned int slot = 0);
 
-	ID3D11Buffer *buffer = nullptr;
+	dxptr<ID3D11Buffer> buffer = nullptr;
 };

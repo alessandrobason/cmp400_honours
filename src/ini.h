@@ -41,7 +41,7 @@ namespace ini {
 		const Value get(const char *key) const;
 		const Value &operator[](const char *key) const;
 	};
-		
+	
 	struct Doc {
 		std::string text;
 		std::vector<Table> tables;

@@ -4,8 +4,6 @@
 #include "ini.h"
 #include "tracelog.h"
 
-
-
 void Options::load(const char *filename) {
 	watcher.watchFile(filename);
 

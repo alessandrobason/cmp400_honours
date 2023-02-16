@@ -33,6 +33,6 @@ struct Mesh {
 	
 	int vertex_count = 0;
 	int index_count = 0;
-	ID3D11Buffer *vert_buf = nullptr;
-	ID3D11Buffer *ind_buf = nullptr;
+	dxptr<ID3D11Buffer> vert_buf = nullptr;
+	dxptr<ID3D11Buffer> ind_buf = nullptr;
 };

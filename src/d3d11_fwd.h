@@ -1,5 +1,6 @@
 #pragma once
 
+struct IUnknown;
 struct ID3D11Device;
 struct ID3D11Debug;
 struct ID3D11DeviceContext;
@@ -18,7 +19,39 @@ struct ID3D11UnorderedAccessView;
 struct ID3D11RasterizerState;
 struct ID3D11SamplerState;
 
+void safeRelease(IUnknown *ptr);
+
+// unique_ptr-like structure for d3d11 data
+template<typename T>
+struct dxptr {
+	dxptr() = default;
+	dxptr(T *ptr) : ptr(ptr) {}
+	dxptr(dxptr &&other) { swap(other); }
+	dxptr &operator=(dxptr &&other) { if (ptr != other.ptr) swap(other); return *this; }
+	~dxptr() { destroy(); }
+
+	void swap(dxptr &other) { T *tmp = ptr; ptr = other.ptr; other.ptr = tmp; }
+	void destroy() { safeRelease(ptr); ptr = nullptr; }
+
+	T *get() { return ptr; }
+	const T *get() const { return ptr; }
+
+	operator bool() const { return ptr != nullptr; }
+	T *operator->() { return ptr; }
+	const T *operator->() const { return ptr; }
+
+	T **operator&() { return &ptr; }
+
+	operator T *() { return ptr; }
+	operator const T *() const { return ptr; }
+
+private:
+	T *ptr = nullptr;
+};
+
 // win32 forward stuff
+
+#define SAFE_CLOSE(h) if ((h) && (h) != INVALID_HANDLE_VALUE) { CloseHandle(h); (h) = nullptr; }
 
 #ifdef UNICODE
 typedef wchar_t TCHAR;

@@ -74,7 +74,6 @@ void logMessageV(LogLevel level, const char *fmt, va_list vlist) {
 
     HANDLE hc = GetStdHandle(STD_OUTPUT_HANDLE);
 
-    WORD attribute = 15;
     switch (level) {
         case LogLevel::Debug:   SetConsoleTextAttribute(hc, 1); break;
         case LogLevel::Info:    SetConsoleTextAttribute(hc, 2); break;

@@ -11,7 +11,7 @@
 #include "macros.h"
 #include "mesh.h"
 
-static ID3DBlob *compileShader(const char *filename, ShaderType type);
+static dxptr<ID3DBlob> compileShader(const char *filename, ShaderType type);
 
 Shader::Shader(Shader &&s) {
 	*this = std::move(s);
@@ -33,7 +33,7 @@ Shader &Shader::operator=(Shader &&s) {
 }
 
 bool Shader::loadVertex(const char *filename) {
-	SAFE_RELEASE(vert_sh);
+	vert_sh.destroy();
 
 	file::MemoryBuf buf = file::read(str::format("shaders/bin/%s.cso", filename));
 
@@ -76,7 +76,7 @@ bool Shader::loadVertex(const void *data, size_t len) {
 }
 
 bool Shader::loadFragment(const char *filename) {
-	SAFE_RELEASE(pixel_sh);
+	pixel_sh.destroy();
 
 	file::MemoryBuf buf = file::read(str::format("shaders/bin/%s.cso", filename));
 
@@ -99,7 +99,7 @@ bool Shader::loadFragment(const void *data, size_t len) {
 }
 
 bool Shader::loadCompute(const char *filename) {
-	SAFE_RELEASE(compute_sh);
+	compute_sh.destroy();
 
 	file::MemoryBuf buf = file::read(str::format("shaders/bin/%s.cso", filename));
 
@@ -174,35 +174,13 @@ void Shader::setSRV(ShaderType type, Slice<ID3D11ShaderResourceView *> textures)
 }
 
 void Shader::cleanup() {
-	SAFE_RELEASE(vert_sh);
-	SAFE_RELEASE(pixel_sh);
-	SAFE_RELEASE(compute_sh);
-	SAFE_RELEASE(layout);
+	vert_sh.destroy();
+	pixel_sh.destroy();
+	compute_sh.destroy();
+	layout.destroy();
 	for (Buffer &buf : buffers) buf.cleanup();
 	buffers.clear();
 }
-
-#if 0
-bool Shader::update(float time) {
-	if (pixel_sh) {
-		ShaderDataBuffer *buf = shader_data_buf.map<ShaderDataBuffer>();
-		if (!buf) {
-			err("could not map subresource shader data buffer");
-			return false;
-		}
-
-		buf->time = time;
-
-		shader_data_buf.unmapPS();
-	}
-
-	if (compute_sh) {
-
-	}
-
-	return true;
-}
-#endif
 
 void Shader::bind() {
 	gfx::context->IASetInputLayout(layout);
@@ -346,7 +324,7 @@ void DynamicShader::poll() {
 	}
 }
 
-static ID3DBlob *compileShader(const char *filename, ShaderType type) {
+static dxptr<ID3DBlob> compileShader(const char *filename, ShaderType type) {
 	const char *type_str = "";
 	switch (type) {
 	case ShaderType::Vertex:   type_str = "vs"; break;
@@ -359,7 +337,7 @@ static ID3DBlob *compileShader(const char *filename, ShaderType type) {
 
 	file::MemoryBuf filedata = file::read(str::format("shaders/%s", filename));
 
-	ID3DBlob *blob = nullptr;
+	dxptr<ID3DBlob> blob = nullptr;
 	dxptr<ID3DBlob> err_blob = nullptr;
 
 	UINT flags = 0;
@@ -378,7 +356,7 @@ static ID3DBlob *compileShader(const char *filename, ShaderType type) {
 		flags,
 		0, 
 		&blob, 
-		(ID3DBlob **)&err_blob
+		&err_blob
 	);
 
 	if (FAILED(hr)) {
@@ -386,9 +364,8 @@ static ID3DBlob *compileShader(const char *filename, ShaderType type) {
 		if (err_blob) {
 			err((const char *)err_blob->GetBufferPointer());
 		}
-		SAFE_RELEASE(blob);
+		blob.destroy();
 	}
 
-	SAFE_RELEASE(err_blob);
 	return blob;
 }

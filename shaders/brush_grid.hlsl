@@ -1,17 +1,45 @@
 RWTexture3D<float> tex : register(u0);
 
-#define WIDTH  (64 * 3)
-#define HEIGHT (64 * 3)
-#define DEPTH  (32 * 3)
-#define PRECISION 1
+// #define WIDTH  (64 * 5)
+// #define HEIGHT (64 * 5)
+// #define DEPTH  (32 * 5)
+// #define PRECISION 1
 
 float sdf_sphere(float3 position, float3 centre, float radius) 
 {
 	return length(position - centre) - radius;
 }
 
-[numthreads(4, 4, 4)]
-void main(uint3 id : SV_DispatchThreadID) {
+float sampleBrush(float3 position) {
+    return sdf_sphere(position, float3(0, 0, 0), 5.0);
+}
+
+[numthreads(8, 8, 8)]
+void main(uint3 id : SV_DispatchThreadID, uint3 group_id : SV_GroupID) {
+    // tex[id] = (float)(id.x + id.y + id.z);
+    const float3 centre = float3(group_id.x, group_id.y, group_id.z) * 16. - 8.;
+
+    // const float3 centre = float3(id.x, id.y, id.z);
+    const float value_at_centre = sampleBrush(centre);
+
+    // if the sdf value is more than tile bounds (16) + 4
+    if (value_at_centre > 20.) {
+        // ignore brush, for now it is only one so just return
+        return;
+    }
+
+    // const float3 pos = float3(id.x, id.y, id.z);
+
+    tex[float3(+id.x, +id.y, +id.z)] = sampleBrush(float3(+id.x, +id.y, +id.z));
+    tex[float3(+id.x, +id.y, -id.z)] = sampleBrush(float3(+id.x, +id.y, -id.z));
+    tex[float3(+id.x, -id.y, +id.z)] = sampleBrush(float3(+id.x, -id.y, +id.z));
+    tex[float3(+id.x, -id.y, -id.z)] = sampleBrush(float3(+id.x, -id.y, -id.z));
+    tex[float3(-id.x, +id.y, +id.z)] = sampleBrush(float3(-id.x, +id.y, +id.z));
+    tex[float3(-id.x, +id.y, -id.z)] = sampleBrush(float3(-id.x, +id.y, -id.z));
+    tex[float3(-id.x, -id.y, +id.z)] = sampleBrush(float3(-id.x, -id.y, +id.z));
+    tex[float3(-id.x, -id.y, -id.z)] = sampleBrush(float3(-id.x, -id.y, -id.z));
+
+#if 0
     const int z_tile = DEPTH / 4;
     const int y_tile = WIDTH / 4;
     const int x_tile = HEIGHT / 4;
@@ -39,4 +67,5 @@ void main(uint3 id : SV_DispatchThreadID) {
             }
         }
     }
+#endif
 }

@@ -11,6 +11,7 @@
 
 #include "timer.h"
 #include "d3d11_fwd.h"
+#include "macros.h"
 
 // == string utils ================================================
 
@@ -118,22 +119,3 @@ namespace mem {
 	template<typename T>
 	void copy(T &dst, const T &src) { memcpy(&dst, &src, sizeof(T)); }
 } // namespace mem
-
-template<typename T>
-struct dxptr {
-	dxptr() = default;
-	dxptr(T *ptr) : ptr(ptr) {}
-	dxptr(dxptr &&other) { *this = std::move(other); }
-	dxptr &operator=(dxptr &&other) { std::swap(ptr, other.ptr); return *this; }
-	~dxptr() { if (ptr) { ptr->Release(); ptr = nullptr; } }
-
-	T *get() { return ptr; }
-	const T *get() const { return ptr; }
-
-	operator bool() const { return ptr != nullptr; }
-	T *operator->() { return ptr; }
-	const T *operator->() const { return ptr; }
-
-private:
-	T *ptr = nullptr;
-};

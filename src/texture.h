@@ -22,9 +22,9 @@ namespace gfx {
 		bool takeScreenshot(const char *base_name = "screenshot");
 
 		vec2i size;
-		ID3D11Texture2D *texture = nullptr;
-		ID3D11RenderTargetView *view = nullptr;
-		ID3D11ShaderResourceView *resource = nullptr;
+		dxptr<ID3D11Texture2D> texture = nullptr;
+		dxptr<ID3D11RenderTargetView> view = nullptr;
+		dxptr<ID3D11ShaderResourceView> resource = nullptr;
 	};
 
 	struct Texture3D {
@@ -34,12 +34,13 @@ namespace gfx {
 		~Texture3D();
 		Texture3D &operator=(Texture3D &&rt);
 
+		inline bool create(const vec3u &texsize) { return create(texsize.x, texsize.y, texsize.z); }
 		bool create(int width, int height, int depth);
 		void cleanup();
 
 		vec3i size;
-		ID3D11Texture3D *texture = nullptr;
-		ID3D11UnorderedAccessView *uav = nullptr;
-		ID3D11ShaderResourceView* srv = nullptr;
+		dxptr<ID3D11Texture3D> texture = nullptr;
+		dxptr<ID3D11UnorderedAccessView> uav = nullptr;
+		dxptr<ID3D11ShaderResourceView> srv = nullptr;
 	};
 } // namespace gfx 

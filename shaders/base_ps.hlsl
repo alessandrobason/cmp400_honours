@@ -56,22 +56,20 @@ float4 map(float3 pos) {
 	float value = vol_tex.SampleLevel(sampler0, coords, 0);
 
 	return float4(coords, value);
-#endif
-
-#if 0
+#else
 	float displacement = sin(5 * pos.x) * sin(5 * pos.y) * sin(5 * pos.z) * sin(time * 3) * 0.4;
 	float sphere_0 = distFromSphere(pos, float3(-1, 0, 0), 2.3);
 	float sphere_1 = distFromSphere(pos, float3(1, 0, 0), 2.3);
 
 	// return sminCubic(sphere_0, sphere_1, max(sin(time * 3) + 1 * 0.5, 0.1));
-	return sminCubic(sphere_0, sphere_1, 0.5);
+	return sminCubic(sphere_0, sphere_1, 0.);
 #endif
 	// return sphere_0 + displacement;
 }
 
 float3 calcNormal(float3 pos) {
 #if 1
-	const float3 small_step = float3(3, 0, 0);
+	const float3 small_step = float3(0.5, 0, 0);
 
 	float3 gradient = float3(
 		map(pos + small_step.xyy).w - map(pos - small_step.xyy).w,
@@ -87,7 +85,7 @@ float3 calcNormal(float3 pos) {
 
 float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 	float distance_traveled = 0.0;
-	const int NUMBER_OF_STEPS = 200;
+	const int NUMBER_OF_STEPS = 100;
 	const float MIN_HIT_DISTANCE = 0.001;
 	const float MAX_TRACE_DISTANCE = 100;
 

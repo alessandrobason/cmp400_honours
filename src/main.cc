@@ -45,10 +45,10 @@ ID3D11UnorderedAccessView *gfx_buf_res_uav = nullptr;
 #endif
 
 constexpr vec2u tex_size = { 1920, 1080 };
-ID3D11Texture2D *gfx_tex = nullptr;
-ID3D11ShaderResourceView *gfx_tex_srv = nullptr;
-ID3D11UnorderedAccessView *gfx_tex_uav = nullptr;
+
 bool is_dirty = true;
+vec3u tex3d_size = { 1024,  1024, 512 };
+vec3u threads = { 64, 64, 32 };
 
 //ShapeBuilder builder;
 
@@ -91,129 +91,118 @@ void gfxErrorExit() {
 int main() {
 	win::create("hello world", 800, 600);
 
-	debug("debug");
-	info("info");
-	warn("warn");
-	err("err");
+	{
+#if 0
+		while (win::isOpen()) {
+			gfx::begin(Colour::dark_grey);
+			gfx::imgui_rtv.bind();
+			gfx::end();
 
-	debug("err");
-	info("debug");
-	warn("info");
-	err("warn");
-
-	debug("warn");
-	info("err");
-	warn("debug");
-	err("info");
-
-	debug("info");
-	info("warn");
-	warn("err");
-	err("debug");
-
-	gfx::Texture3D texture3d;
-	if (!texture3d.create(64 * 3, 64 * 3, 32 * 3)) {
-		gfxErrorExit();
-	}
-
-	DynamicShader sh;
-	if (!sh.init("base_vs", "base_ps", "brush_grid")) {
-		gfxErrorExit();
-	}
-	if (!sh.shader.addSampler()) {
-		gfxErrorExit();
-	}
-	int buf_ind = sh.shader.addBuffer<PSShaderData>(Usage::Dynamic);
-	Camera cam;
-
-	if (Buffer *buf = sh.shader.getBuffer(buf_ind)) {
-		if (PSShaderData *data = buf->map<PSShaderData>()) {
-			data->cam_pos = cam.pos;
-			data->cam_fwd = cam.fwd;
-			data->cam_right = cam.right;
-			data->cam_up = cam.up;
-			data->img_height = (float)tex_size.x;
-			data->img_width = (float)tex_size.y;
-			data->time = win::timeSinceStart();
-			buf->unmapPS();
+			gfx::logD3D11messages();
 		}
-	}
+#else
+		gfx::Texture3D texture3d;
+		if (!texture3d.create(tex3d_size)) {
+			gfxErrorExit();
+		}
 
-	Vertex verts[] = {
-		{ vec3(-1, -1, 0), vec2(0, 0) },
-		{ vec3(3, -1, 0), vec2(2, 0) },
-		{ vec3(-1,  3, 0), vec2(0, 2) },
-	};
+		DynamicShader sh;
+		if (!sh.init("base_vs", "base_ps", "brush_grid")) {
+			gfxErrorExit();
+		}
+		if (!sh.shader.addSampler()) {
+			gfxErrorExit();
+		}
+		int buf_ind = sh.shader.addBuffer<PSShaderData>(Usage::Dynamic);
+		Camera cam;
 
-	Index indices[] = {
-		0, 2, 1,
-	};
-
-	Mesh m;
-	if (!m.create(verts, indices)) {
-		gfxErrorExit();
-	}
-
-	sh.shader.dispatch({ 1, 1, 1 }, {}, { texture3d.uav });
-	sh.shader.setSRV(ShaderType::Fragment, { texture3d.srv });
-
-	while (win::isOpen()) {
-		sh.poll();
-
-#if 1
 		if (Buffer *buf = sh.shader.getBuffer(buf_ind)) {
 			if (PSShaderData *data = buf->map<PSShaderData>()) {
-				data->cam_pos    = cam.pos;
-				data->cam_fwd    = cam.fwd;
-				data->cam_right  = cam.right;
-				data->cam_up     = cam.up;
+				data->cam_pos = cam.pos;
+				data->cam_fwd = cam.fwd;
+				data->cam_right = cam.right;
+				data->cam_up = cam.up;
 				data->img_height = (float)tex_size.x;
-				data->img_width  = (float)tex_size.y;
-				data->time       = win::timeSinceStart();
+				data->img_width = (float)tex_size.y;
+				data->time = win::timeSinceStart();
 				buf->unmapPS();
-				is_dirty = true;
 			}
 		}
+
+		Vertex verts[] = {
+			{ vec3(-1, -1, 0), vec2(0, 0) },
+			{ vec3(3, -1, 0), vec2(2, 0) },
+			{ vec3(-1,  3, 0), vec2(0, 2) },
+		};
+
+		Index indices[] = {
+			0, 2, 1,
+		};
+
+		Mesh m;
+		if (!m.create(verts, indices)) {
+			gfxErrorExit();
+		}
+
+		sh.shader.dispatch(threads, {}, { texture3d.uav });
+		sh.shader.setSRV(ShaderType::Fragment, { texture3d.srv });
+
+		while (win::isOpen()) {
+			sh.poll();
+
+#if 1
+			if (Buffer *buf = sh.shader.getBuffer(buf_ind)) {
+				if (PSShaderData *data = buf->map<PSShaderData>()) {
+					data->cam_pos = cam.pos;
+					data->cam_fwd = cam.fwd;
+					data->cam_right = cam.right;
+					data->cam_up = cam.up;
+					data->img_height = (float)tex_size.x;
+					data->img_width = (float)tex_size.y;
+					data->time = win::timeSinceStart();
+					buf->unmapPS();
+					is_dirty = true;
+				}
+			}
 #endif
 
-		is_dirty |= sh.hasUpdated();
-
-		if (sh.hasUpdated()) {
-			is_dirty = true;
-			if (sh.getChanged() & ShaderType::Compute) {
-				sh.shader.setSRV(ShaderType::Fragment, { nullptr });
-				sh.shader.dispatch({ 1, 1, 1 }, {}, { texture3d.uav });
-				sh.shader.setSRV(ShaderType::Fragment, { texture3d.srv });
+			if (sh.hasUpdated()) {
+				is_dirty = true;
+				if (sh.getChanged() & ShaderType::Compute) {
+					// log so we also get some simple timings (milliseconds precision)
+					sh.shader.setSRV(ShaderType::Fragment, { nullptr });
+					sh.shader.dispatch(threads, {}, { texture3d.uav });
+					sh.shader.setSRV(ShaderType::Fragment, { texture3d.srv });
+					info(">> finished running compute shader <<");
+				}
 			}
-		}
 
-		gfx::begin(Colour::dark_grey);
+			gfx::begin(Colour::dark_grey);
 
-		if (is_dirty || !Options::get().lazy_render) {
-			if (Options::get().lazy_render) {
-				info("rendering again");
-			}
-			gfx::main_rtv.clear(Colour::dark_grey);
-			gfx::main_rtv.bind();
-			sh.shader.bind();
+			if (!Options::get().lazy_render || is_dirty) {
+				gfx::main_rtv.clear(Colour::dark_grey);
+				gfx::main_rtv.bind();
+				sh.shader.bind();
 				m.render();
-			sh.shader.unbind();
-		}
-		
-		gfx::imgui_rtv.bind();
+				sh.shader.unbind();
+			}
+
+			gfx::imgui_rtv.bind();
 			fpsWidget();
 			mainTargetWidget();
 			ImGui::ShowDemoWindow();
 			drawLogger();
-		gfx::end();
+			gfx::end();
 
-		if (ImGui::IsKeyPressed(ImGuiKey_P)) {
-			gfx::imgui_rtv.takeScreenshot();
+			if (ImGui::IsKeyPressed(ImGuiKey_P)) {
+				gfx::imgui_rtv.takeScreenshot();
+			}
+
+			gfx::logD3D11messages();
+
+			is_dirty = false;
 		}
-
-		gfx::logD3D11messages();
-
-		is_dirty = false;
+#endif
 	}
 
 	win::cleanup();
