@@ -1,0 +1,1 @@
+[INFO] (00:11:0372): saved screenshot as screenshots/screenshot_011.png

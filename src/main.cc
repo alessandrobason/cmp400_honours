@@ -150,6 +150,15 @@ int main() {
 		while (win::isOpen()) {
 			sh.poll();
 
+			vec3 velocity = {
+				(float)(isKeyDown(KEY_A) - isKeyDown(KEY_D)),
+				0.f,
+				(float)(isKeyDown(KEY_W) - isKeyDown(KEY_S))
+			};
+
+			float speed = 5.f * win::dt;
+			cam.pos += velocity * speed;
+
 #if 1
 			if (Buffer *buf = sh.shader.getBuffer(buf_ind)) {
 				if (PSShaderData *data = buf->map<PSShaderData>()) {
@@ -169,11 +178,11 @@ int main() {
 			if (sh.hasUpdated()) {
 				is_dirty = true;
 				if (sh.getChanged() & ShaderType::Compute) {
-					// log so we also get some simple timings (milliseconds precision)
 					sh.shader.setSRV(ShaderType::Fragment, { nullptr });
-					sh.shader.dispatch(threads, {}, { texture3d.uav });
+						PerformanceClock clock = "compute shader";
+							sh.shader.dispatch(threads, {}, { texture3d.uav });
+						clock.print();
 					sh.shader.setSRV(ShaderType::Fragment, { texture3d.srv });
-					info(">> finished running compute shader <<");
 				}
 			}
 
@@ -194,8 +203,8 @@ int main() {
 			drawLogger();
 			gfx::end();
 
-			if (ImGui::IsKeyPressed(ImGuiKey_P)) {
-				gfx::imgui_rtv.takeScreenshot();
+			if (isKeyPressed(KEY_P)) {
+				gfx::main_rtv.takeScreenshot();
 			}
 
 			gfx::logD3D11messages();

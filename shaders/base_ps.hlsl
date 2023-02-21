@@ -87,7 +87,7 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 	float distance_traveled = 0.0;
 	const int NUMBER_OF_STEPS = 100;
 	const float MIN_HIT_DISTANCE = 0.001;
-	const float MAX_TRACE_DISTANCE = 100;
+	const float MAX_TRACE_DISTANCE = 1000;
 
 	for (int i = 0; i < NUMBER_OF_STEPS; ++i) {
 		float3 current_pos = ray_origin + ray_dir * distance_traveled;
@@ -145,10 +145,10 @@ float4 main(PixelInput input) : SV_TARGET {
 	// float2 res = float2(img_width, img_height);
 	// float2 uv = (input.uv * 2.0 - res) / res.y;
 
-#if 0
+#if 1
 	float3x3 camera_mat = float3x3(cam_right, cam_up, cam_fwd);
 
-	float focal_length = 2.5;
+	float focal_length = 1.5;
 
 	float3 ray_dir = normalize(mul(camera_mat, normalize(float3(uv, focal_length))));
 

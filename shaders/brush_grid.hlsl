@@ -1,8 +1,8 @@
 RWTexture3D<float> tex : register(u0);
 
-// #define WIDTH  (64 * 5)
-// #define HEIGHT (64 * 5)
-// #define DEPTH  (32 * 5)
+#define WIDTH  (1024)
+#define HEIGHT (1024)
+#define DEPTH  (512)
 // #define PRECISION 1
 
 float sdf_sphere(float3 position, float3 centre, float radius) 
@@ -14,8 +14,14 @@ float sampleBrush(float3 position) {
     return sdf_sphere(position, float3(0, 0, 0), 5.0);
 }
 
+void setTex(float3 p) {
+    float3 c = (p / float3(WIDTH, HEIGHT, DEPTH) * 2.0 - 1.0) * 10.0;
+    tex[p] = sampleBrush(c);
+}
+
 [numthreads(8, 8, 8)]
 void main(uint3 id : SV_DispatchThreadID, uint3 group_id : SV_GroupID) {
+#if 0
     // tex[id] = (float)(id.x + id.y + id.z);
     const float3 centre = float3(group_id.x, group_id.y, group_id.z) * 16. - 8.;
 
@@ -28,16 +34,27 @@ void main(uint3 id : SV_DispatchThreadID, uint3 group_id : SV_GroupID) {
         return;
     }
 
-    // const float3 pos = float3(id.x, id.y, id.z);
+#endif
 
-    tex[float3(+id.x, +id.y, +id.z)] = sampleBrush(float3(+id.x, +id.y, +id.z));
-    tex[float3(+id.x, +id.y, -id.z)] = sampleBrush(float3(+id.x, +id.y, -id.z));
-    tex[float3(+id.x, -id.y, +id.z)] = sampleBrush(float3(+id.x, -id.y, +id.z));
-    tex[float3(+id.x, -id.y, -id.z)] = sampleBrush(float3(+id.x, -id.y, -id.z));
-    tex[float3(-id.x, +id.y, +id.z)] = sampleBrush(float3(-id.x, +id.y, +id.z));
-    tex[float3(-id.x, +id.y, -id.z)] = sampleBrush(float3(-id.x, +id.y, -id.z));
-    tex[float3(-id.x, -id.y, +id.z)] = sampleBrush(float3(-id.x, -id.y, +id.z));
-    tex[float3(-id.x, -id.y, -id.z)] = sampleBrush(float3(-id.x, -id.y, -id.z));
+    const float3 pos = float3(id.x, id.y, id.z) * 2.0;
+
+    setTex(pos);
+    setTex(pos + float3(0, 0, 1));
+    setTex(pos + float3(0, 1, 0));
+    setTex(pos + float3(0, 1, 1));
+    setTex(pos + float3(1, 0, 0));
+    setTex(pos + float3(1, 0, 1));
+    setTex(pos + float3(1, 1, 0));
+    setTex(pos + float3(1, 1, 1));
+
+    // tex[float3(+id.x, +id.y, +id.z)] = sampleBrush(float3(+id.x, +id.y, +id.z));
+    // tex[float3(+id.x, +id.y, -id.z)] = sampleBrush(float3(+id.x, +id.y, -id.z));
+    // tex[float3(+id.x, -id.y, +id.z)] = sampleBrush(float3(+id.x, -id.y, +id.z));
+    // tex[float3(+id.x, -id.y, -id.z)] = sampleBrush(float3(+id.x, -id.y, -id.z));
+    // tex[float3(-id.x, +id.y, +id.z)] = sampleBrush(float3(-id.x, +id.y, +id.z));
+    // tex[float3(-id.x, +id.y, -id.z)] = sampleBrush(float3(-id.x, +id.y, -id.z));
+    // tex[float3(-id.x, -id.y, +id.z)] = sampleBrush(float3(-id.x, -id.y, +id.z));
+    // tex[float3(-id.x, -id.y, -id.z)] = sampleBrush(float3(-id.x, -id.y, -id.z));
 
 #if 0
     const int z_tile = DEPTH / 4;
