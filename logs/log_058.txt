@@ -1,0 +1,11 @@
+[INFO] (00:00:0031): compiling base_vs.hlsl, type: vs
+[INFO] (00:00:0125): compiling base_ps.hlsl, type: ps
+[INFO] (00:00:0145): compiling brush_grid.hlsl, type: cs
+[INFO] (00:00:0156): compiling add_brush.hlsl, type: cs
+[INFO] (04:39:0386): reloading options
+[INFO] (04:39:0405): reloading options
+[INFO] (04:48:0241): reloading options
+[INFO] (04:52:0436): compiling base_ps.hlsl, type: ps
+[INFO] (04:52:0454): re-compiled shader base_ps.hlsl successfully
+[INFO] (05:00:0171): reloading options
+[INFO] (05:00:0176): reloading options

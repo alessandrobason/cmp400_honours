@@ -1,0 +1,7 @@
+[INFO] (00:00:0005): compiling base_vs.hlsl, type: vs
+[INFO] (00:00:0070): compiling base_ps.hlsl, type: ps
+[INFO] (00:00:0105): compiling brush_grid.hlsl, type: cs
+[INFO] (00:00:0121): compiling add_brush.hlsl, type: cs
+[WARN] (00:00:0266): ID3D11DeviceContext::CSSetUnorderedAccessViews: Resource being set to CS UnorderedAccessView slot 0 is still bound on input!
+[WARN] (00:00:0267): ID3D11DeviceContext::CSSetUnorderedAccessViews: Forcing PS shader resource slot 0 to NULL.
+[WARN] (00:00:0267): ID3D11DeviceContext::Dispatch: The size of the Constant Buffer at slot 0 of the Compute Shader unit is too small (16 bytes provided, 32 bytes, at least, expected). This is OK, as out-of-bounds reads are defined to return 0. It is also possible the developer knows the missing data will not be used anyway. This is only a problem if the developer actually intended to bind a sufficiently large Constant Buffer for what the shader expects. 

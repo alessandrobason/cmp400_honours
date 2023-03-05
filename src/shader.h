@@ -12,13 +12,6 @@
 #include "slice.h"
 #include "utils.h"
 
-enum class ShaderType : uint8_t {
-	None      = 0, 
-	Vertex    = 1 << 0, 
-	Fragment  = 1 << 1, 
-	Compute   = 1 << 2,
-};
-
 struct Shader {
 	Shader() = default;
 	Shader(const Shader &s) = delete;
@@ -49,7 +42,7 @@ struct Shader {
 	void bind();
 	void unbind();
 
-	void dispatch(const vec3u &threads, Slice<ID3D11ShaderResourceView *> srvs = {}, Slice<ID3D11UnorderedAccessView *> uavs = {});
+	void dispatch(const vec3u &threads, Slice<int> cbuffers = {}, Slice<ID3D11ShaderResourceView *> srvs = {}, Slice<ID3D11UnorderedAccessView *> uavs = {});
 
 	dxptr<ID3D11VertexShader> vert_sh = nullptr;
 	dxptr<ID3D11PixelShader> pixel_sh = nullptr;

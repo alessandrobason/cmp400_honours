@@ -1,0 +1,4 @@
+[INFO] (00:00:0167): compiling base_vs.hlsl, type: vs
+[INFO] (00:00:0382): compiling base_ps.hlsl, type: ps
+[INFO] (00:00:0412): compiling brush_grid.hlsl, type: cs
+[INFO] (00:00:0496): compiling add_brush.hlsl, type: cs

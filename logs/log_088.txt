@@ -1,0 +1,22 @@
+[INFO] (00:00:0004): compiling base_vs.hlsl, type: vs
+[INFO] (00:00:0140): compiling base_ps.hlsl, type: ps
+[INFO] (00:00:0170): compiling brush_grid.hlsl, type: cs
+[INFO] (00:00:0183): compiling add_brush.hlsl, type: cs
+[INFO] (00:10:0876): compiling base_ps.hlsl, type: ps
+[INFO] (00:10:0906): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:13:0111): compiling base_ps.hlsl, type: ps
+[INFO] (00:13:0144): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:17:0376): compiling base_ps.hlsl, type: ps
+[ERROR](00:17:0379): couldn't compile shader base_ps.hlsl
+[ERROR](00:17:0380): \\stuhomeodd\HomeDrive1$\1902881\cmp400_honours\Shader@0x0000026BC455BEB0(116,23): error X3000: syntax error: unexpected token '.'
+
+[INFO] (00:19:0176): compiling base_ps.hlsl, type: ps
+[INFO] (00:19:0206): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:22:0694): compiling base_ps.hlsl, type: ps
+[INFO] (00:22:0732): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:24:0195): compiling base_ps.hlsl, type: ps
+[INFO] (00:24:0223): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:26:0076): compiling base_ps.hlsl, type: ps
+[INFO] (00:26:0104): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:27:0993): compiling base_ps.hlsl, type: ps
+[INFO] (00:28:0020): re-compiled shader base_ps.hlsl successfully

@@ -51,6 +51,19 @@ void Buffer::cleanup() {
     buffer.destroy();
 }
 
+void Buffer::unmap(unsigned int subresource) {
+    gfx::context->Unmap(buffer, subresource);
+}
+
+void Buffer::bind(ShaderType type, unsigned int slot) {
+    switch (type) {
+        case ShaderType::Vertex:   gfx::context->VSSetConstantBuffers(slot, 1, &buffer); break;
+        case ShaderType::Fragment: gfx::context->PSSetConstantBuffers(slot, 1, &buffer); break;
+        case ShaderType::Compute:  gfx::context->CSSetConstantBuffers(slot, 1, &buffer); break;
+    }
+}
+
+#if 0
 void Buffer::unmapVS(unsigned int subresource, unsigned int slot) {
     gfx::context->Unmap(buffer, subresource);
     gfx::context->VSSetConstantBuffers(slot, 1, &buffer);
@@ -65,6 +78,12 @@ void Buffer::unmapGS(unsigned int subresource, unsigned int slot) {
     gfx::context->Unmap(buffer, subresource);
     gfx::context->GSSetConstantBuffers(slot, 1, &buffer);
 }
+
+void Buffer::unmapCS(unsigned int subresource, unsigned int slot){
+    gfx::context->Unmap(buffer, subresource);
+    gfx::context->CSSetConstantBuffers(slot, 1, &buffer);
+}
+#endif
 
 void* Buffer::map(unsigned int subresource) {
     D3D11_MAPPED_SUBRESOURCE resource;

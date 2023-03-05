@@ -1,9 +1,11 @@
+#define MAX_SDF_DISTANCE 10000000000.0
+
 RWTexture3D<float> tex : register(u0);
 
-#define WIDTH  (1024)
-#define HEIGHT (1024)
-#define DEPTH  (512)
-// #define PRECISION 1
+cbuffer SDFData : register(b0)  {
+    float3 tex_size;
+    float padding__0;
+};
 
 float sdf_sphere(float3 position, float3 centre, float radius) 
 {
@@ -11,13 +13,43 @@ float sdf_sphere(float3 position, float3 centre, float radius)
 }
 
 float sampleBrush(float3 position) {
-    return sdf_sphere(position, float3(0, 0, 0), 5.0);
+    return sdf_sphere(position, float3(0, 0, 0), 6.0 * 32.);
 }
 
 void setTex(float3 p) {
-    float3 c = (p / float3(WIDTH, HEIGHT, DEPTH) * 2.0 - 1.0) * 10.0;
+    // float3 c = (p / tex_size * 2.0 - 1.0) * 10.0;
+    float3 c = p;
     tex[p] = sampleBrush(c);
 }
+
+int3 voxelToWorld(int3 id) {
+    // move it half the volume size back, this way it is in the range (-half, +half)
+    const int3 tex_half = (uint3)tex_size / 2;
+    id = id - tex_half;
+    return id;
+}
+
+// group is the id of each kernel, each kernel has a range of (-4, +4) voxels
+// and every voxel has a precision of 32 (256 / 8)
+// this function doesn't return subvoxel precision
+int3 groupToWorld(int3 group) {
+    // convert from group to voxel id
+    group = group * 8;
+    return voxelToWorld(group);
+}
+
+/*
+1 ## BRUSH GRID
+  1. sample brush at tile centre
+    - if sdf > grid bounds + 4
+      -> discard
+    - else
+      -> add + store in GSM
+  2. loop through brushes in GSM
+    - sample at cell centre
+    - if accepted
+      -> store to grid (linear)
+*/
 
 [numthreads(8, 8, 8)]
 void main(uint3 id : SV_DispatchThreadID, uint3 group_id : SV_GroupID) {
@@ -35,6 +67,20 @@ void main(uint3 id : SV_DispatchThreadID, uint3 group_id : SV_GroupID) {
     }
 
 #endif
+
+    int3 world = groupToWorld((int3)group_id);
+    float distance = sampleBrush((float3)world);
+    
+    // // ignore if the sdf is farther than the kernel boundaries (8 voxels) + 4 voxels
+    // if (distance > (8 + 4)) {
+    //     tex[id] = distance;
+    //     return;
+    // }
+
+    int3 voxel_world = voxelToWorld((int3)id);
+    distance = sampleBrush((float3)voxel_world);
+    tex[id] = distance;
+    return;
 
     const float3 pos = float3(id.x, id.y, id.z) * 2.0;
 

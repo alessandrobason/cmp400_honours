@@ -39,7 +39,7 @@ namespace gfx {
 		td.Height = height;
 		td.MipLevels = 1;
 		td.ArraySize = 1;
-		td.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+		td.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 		td.SampleDesc.Count = 1;
 		td.Usage = D3D11_USAGE_DEFAULT;
 		td.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
@@ -201,7 +201,7 @@ namespace gfx {
 		desc.Height = (UINT)height;
 		desc.Depth  = (UINT)depth;
 		desc.MipLevels = 1;
-		//desc.Format = DXGI_FORMAT_R8_SINT;
+		// desc.Format = DXGI_FORMAT_R8_SINT;
 		desc.Format = DXGI_FORMAT_R32_FLOAT;
 		desc.Usage = D3D11_USAGE_DEFAULT;
 		desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;

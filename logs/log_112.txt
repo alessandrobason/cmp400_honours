@@ -1,0 +1,20 @@
+[INFO] (00:00:0008): compiling base_vs.hlsl, type: vs
+[INFO] (00:00:0165): compiling base_ps.hlsl, type: ps
+[INFO] (00:00:0175): compiling brush_grid.hlsl, type: cs
+[INFO] (00:00:0185): compiling add_brush.hlsl, type: cs
+[INFO] (06:07:0016): compiling base_vs.hlsl, type: vs
+[ERROR](06:07:0019): couldn't compile shader base_vs.hlsl
+[ERROR](06:07:0020): \\stuhomeodd\HomeDrive1$\1902881\cmp400_honours\Shader@0x0000026A5797D780(26,2): error X3000: syntax error: unexpected token ')'
+
+[INFO] (06:10:0264): compiling base_vs.hlsl, type: vs
+[ERROR](06:10:0266): couldn't compile shader base_vs.hlsl
+[ERROR](06:10:0267): \\stuhomeodd\HomeDrive1$\1902881\cmp400_honours\Shader@0x0000026A5797D780(26,2): error X3000: syntax error: unexpected token ')'
+
+[INFO] (06:30:0398): compiling base_vs.hlsl, type: vs
+[ERROR](06:30:0410): couldn't compile shader base_vs.hlsl
+[ERROR](06:30:0410): \\stuhomeodd\HomeDrive1$\1902881\cmp400_honours\Shader@0x0000026A5797D780(26,2): error X3000: syntax error: unexpected token ')'
+
+[INFO] (06:41:0115): compiling base_vs.hlsl, type: vs
+[INFO] (06:41:0123): re-compiled shader base_vs.hlsl successfully
+[INFO] (07:30:0532): compiling base_vs.hlsl, type: vs
+[INFO] (07:30:0541): re-compiled shader base_vs.hlsl successfully

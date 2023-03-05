@@ -1,0 +1,13 @@
+[INFO] (00:00:0002): compiling base_vs.hlsl, type: vs
+[INFO] (00:00:0035): compiling base_ps.hlsl, type: ps
+[INFO] (00:00:0081): compiling brush_grid.hlsl, type: cs
+[INFO] (00:03:0333): compiling brush_grid.hlsl, type: cs
+[ERROR](00:03:0336): couldn't compile shader brush_grid.hlsl
+[ERROR](00:03:0336): error X3501: 'main': entrypoint not found
+
+[ERROR](00:03:0336): file: (0)
+
+
+[INFO] (00:03:0339): compiling brush_grid.hlsl, type: cs
+[INFO] (00:03:0350): re-compiled shader brush_grid.hlsl successfully
+[INFO] (00:03:0351): [compute shader] time passed: 20.900000us

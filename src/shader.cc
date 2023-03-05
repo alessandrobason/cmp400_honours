@@ -194,10 +194,18 @@ void Shader::unbind() {
 	// todo, maybe remove?
 }
 
-void Shader::dispatch(const vec3u &threads, Slice<ID3D11ShaderResourceView *> srvs, Slice<ID3D11UnorderedAccessView *> uavs) {
+void Shader::dispatch(const vec3u &threads, Slice<int> cbuffers, Slice<ID3D11ShaderResourceView *> srvs, Slice<ID3D11UnorderedAccessView *> uavs) {
 	if (!compute_sh) return;
 
 	gfx::context->CSSetShader(compute_sh, nullptr, 0);
+		if (!cbuffers.empty()) {
+			UINT offset = 0;
+			for (int ind : cbuffers) {
+				if (Buffer *buf = getBuffer(ind)) {
+					gfx::context->CSSetConstantBuffers(offset++, 1, &buf->buffer);
+				}
+			}
+		}
 		if (!srvs.empty()) gfx::context->CSSetShaderResources(0, (UINT)srvs.len, srvs.data);
 		if (!uavs.empty()) gfx::context->CSSetUnorderedAccessViews(0, (UINT)uavs.len, uavs.data, nullptr);
 
@@ -206,8 +214,12 @@ void Shader::dispatch(const vec3u &threads, Slice<ID3D11ShaderResourceView *> sr
 		// set the resources back to NULL
 		// actually horrible, terrible, probably very inefficent; but realistically i'm only
 		// going to use 1/2 resources.
+		ID3D11Buffer *null_buf[] = { nullptr };
 		ID3D11ShaderResourceView *null_srv[] = { nullptr };
 		ID3D11UnorderedAccessView *null_uav[] = { nullptr };
+		for (size_t i = 0; i < cbuffers.len; ++i) {
+			gfx::context->CSSetConstantBuffers((UINT)i, 1, null_buf);
+		}
 		for (size_t i = 0; i < srvs.len; ++i) {
 			gfx::context->CSSetShaderResources((UINT)i, 1, null_srv);
 		}
@@ -292,7 +304,7 @@ bool DynamicShader::addFileWatch(const char *name, ShaderType type) {
 		}
 	}
 	else {
-		return true;
+		return false;
 	}
 #endif
 
@@ -327,15 +339,20 @@ void DynamicShader::poll() {
 static dxptr<ID3DBlob> compileShader(const char *filename, ShaderType type) {
 	const char *type_str = "";
 	switch (type) {
-	case ShaderType::Vertex:   type_str = "vs"; break;
-	case ShaderType::Fragment: type_str = "ps"; break;
-	case ShaderType::Compute:  type_str = "cs"; break;
+		case ShaderType::Vertex:   type_str = "vs"; break;
+		case ShaderType::Fragment: type_str = "ps"; break;
+		case ShaderType::Compute:  type_str = "cs"; break;
 	}
 
-	char target[16];
-	mem::zero(target);
-
 	file::MemoryBuf filedata = file::read(str::format("shaders/%s", filename));
+
+	if (filedata.size == 0) {
+		// we might be trying to read a file that is locked by some other application
+		// for now, just ignore this, the file watcher already calls this another time anyway
+		return nullptr;
+	}
+
+	info("compiling %s, type: %s", filename, type_str);
 
 	dxptr<ID3DBlob> blob = nullptr;
 	dxptr<ID3DBlob> err_blob = nullptr;
@@ -351,11 +368,11 @@ static dxptr<ID3DBlob> compileShader(const char *filename, ShaderType type) {
 		nullptr, 
 		nullptr, 
 		nullptr, 
-		"main", 
+		"main",
 		str::format("%s_5_0", type_str), 
 		flags,
-		0, 
-		&blob, 
+		0,
+		&blob,
 		&err_blob
 	);
 
