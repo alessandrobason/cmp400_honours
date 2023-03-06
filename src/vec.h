@@ -20,6 +20,8 @@ struct vec2T {
 	template<typename Q>
 	constexpr vec2T(const vec2T<Q> &v) : x((T)v.x), y((T)v.y) {}
 
+	vec2T operator-() const { return { -x, -y }; }
+
 	vec2T operator+(const vec2T &o) const { return { x + o.x, y + o.y }; }
 	vec2T operator-(const vec2T &o) const { return { x - o.x, y - o.y }; }
 	vec2T operator*(const vec2T &o) const { return { x * o.x, y * o.y }; }
@@ -57,16 +59,18 @@ struct vec3T {
 		T data[3];
 		struct { T x, y, z; };
 		struct { T r, g, b; };
-		struct { vec2T<T> v; T z; };
+		struct { vec2T<T> v; T v1; };
 	};
 
 	//constexpr vec3T() : x(0), y(0), z(0) {}
 	constexpr vec3T() = default;
 	constexpr vec3T(T v) : x(v), y(v), z(v) {}
 	constexpr vec3T(T x, T y, T z) : x(x), y(y), z(z) {}
-	constexpr vec3T(const vec2T<T> &v, T z) : v(v), z(z) {}
+	constexpr vec3T(const vec2T<T> &v, T z) : v(v), v1(z) {}
 	template<typename Q>
 	constexpr vec3T(const vec3T<Q> &v) : x((T)v.x), y((T)v.y), z((T)v.z) {}
+
+	vec3T operator-() const { return { -x, -y, -z }; }
 
 	vec3T operator+(const vec3T &o) const { return { x + o.x, y + o.y, z + o.z }; }
 	vec3T operator-(const vec3T &o) const { return { x - o.x, y - o.y, z - o.z }; }
@@ -125,6 +129,8 @@ struct vec4T {
 	constexpr vec4T(const vec3T<T> &v, T w) : v(v), w(w) {}
 	template<typename Q>
 	constexpr vec4T(const vec4T<Q> &v) : x((T)v.x), y((T)v.y), z((T)v.z), w((T)v.w) {}
+
+	vec4T operator-() const { return { -x, -y, -z, -w }; }
 
 	vec4T operator+(const vec4T &o) const { return { x + o.x, y + o.y, z + o.z, w + o.w }; }
 	vec4T operator-(const vec4T &o) const { return { x - o.x, y - o.y, z - o.z, w - o.w }; }

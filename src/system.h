@@ -2,6 +2,7 @@
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
+#include <stdint.h>
 
 #include "vec.h"
 #include "colours.h"
@@ -14,6 +15,7 @@ namespace gfx {
 	extern dxptr<IDXGISwapChain> swapchain;
 	extern RenderTexture imgui_rtv;
 	extern RenderTexture main_rtv;
+	extern void *tracy_ctx;
 
 	void init();
 	void cleanup();
@@ -28,7 +30,8 @@ namespace gfx {
 
 #ifndef NDEBUG
 	void logD3D11messages();
-#endif
+#endif	
+
 } // namespace gfx
 
 namespace win {

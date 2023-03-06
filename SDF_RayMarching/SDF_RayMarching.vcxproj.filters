@@ -25,6 +25,9 @@
     <Filter Include="stb">
       <UniqueIdentifier>{a5352279-4cc9-4eba-b022-f063aeb18e90}</UniqueIdentifier>
     </Filter>
+    <Filter Include="tracy">
+      <UniqueIdentifier>{73ad29b7-8cee-4101-81c2-f9871c2e1b79}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cc">
@@ -101,6 +104,9 @@
     </ClCompile>
     <ClCompile Include="..\src\shape_builder.cc">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\tracy\TracyClient.cpp">
+      <Filter>tracy</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

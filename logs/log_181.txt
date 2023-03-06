@@ -1,0 +1,11 @@
+[INFO] (00:00:0003): compiling base_vs.hlsl, type: vs
+[INFO] (00:00:0018): compiling base_ps.hlsl, type: ps
+[INFO] (00:00:0023): compiling brush_grid.hlsl, type: cs
+[INFO] (00:00:0027): compiling add_brush.hlsl, type: cs
+[INFO] (00:00:0032): compiling edit_cs.hlsl, type: cs
+[INFO] (00:00:0057): size: (34.1 34.1 17.1) tsize: (1024.0 1024.0 512.0)
+[INFO] (00:00:0057): [builder] time passed: 90.800000us
+[ERROR](00:00:0057): couldn't get start data
+[WARN] (00:00:0057): ID3D11DeviceContext::End: Begin is supported on this Query/ Predicate/ Counter; but Begin was not invoked before End. This is valid; but unusual. It is equivalent to invoking End immediately after a Begin.
+[WARN] (00:00:0057): (Edit) gpu clock has disjointed
+[INFO] (00:00:0057): (Edit) time taken: 0

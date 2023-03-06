@@ -1,0 +1,9 @@
+[INFO] (00:00:0002): compiling base_vs.hlsl, type: vs
+[INFO] (00:00:0013): compiling base_ps.hlsl, type: ps
+[INFO] (00:00:0018): compiling brush_grid.hlsl, type: cs
+[INFO] (00:00:0024): compiling add_brush.hlsl, type: cs
+[INFO] (00:00:0030): compiling edit_cs.hlsl, type: cs
+[ERROR](00:00:0054): couldn't create new buffer!
+[ERROR](00:00:0365): ID3D11Device::CreateBuffer: BindFlags D3D11_BIND_SHADER_RESOURCE and/or D3D11_BIND_UNORDERED_ACCESS must be set for a D3D11_USAGE_DEFAULT Buffer Resource to have CPUAccessFlags set. CPUAccessFlags are currently set to: D3D11_CPU_ACCESS_READ (0), D3D11_CPU_ACCESS_WRITE (1).
+[ERROR](00:00:0366): ID3D11Device::CreateBuffer: It is invalid for a D3D11_USAGE_DEFAULT Buffer Resource to have CPUAccessFlags set when BindFlags other than D3D11_BIND_SHADER_RESOURCE and D3D11_BIND_UNORDERED_ACCESS are set. CPUAccessFlags are currently set to: D3D11_CPU_ACCESS_READ (0), D3D11_CPU_ACCESS_WRITE (1). The following invalid BindFlags bits are set: (0x4), which correspond to: D3D11_BIND_VERTEX_BUFFER (0), D3D11_BIND_INDEX_BUFFER (0), D3D11_BIND_CONSTANT_BUFFER (0x1), D3D11_BIND_STREAM_OUTPUT (0), D3D11_BIND_RENDER_TARGET (0), D3D11_BIND_DEPTH_STENCIL (0), D3D11_BIND_DECODER (0), D3D11_BIND_VIDEO_ENCODER (0).
+[ERROR](00:00:0366): ID3D11Device::CreateBuffer: CreateBuffer returning E_INVALIDARG, meaning invalid parameters were passed.

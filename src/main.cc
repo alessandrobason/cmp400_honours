@@ -16,7 +16,11 @@
 #include <imgui.h>
 
 #include <d3d11.h>
+#include <functional>
+
 #include "utils.h"
+
+#include <tracy/TracyD3D11.hpp>
 
 //#include <array>
 #define USE_STRUCTURED_BUFFERS 1
@@ -47,7 +51,7 @@ ID3D11UnorderedAccessView *gfx_buf_res_uav = nullptr;
 constexpr vec2u tex_size = { 1920, 1080 };
 
 bool is_dirty = true;
-vec3u maintex_size = { 1024, 1024, 512 };
+constexpr vec3u maintex_size = { 1024, 1024, 512 };
 vec3u brush_size = { 32, 32, 32 };
 vec3u threads = { 64 * 2, 64 * 2, 32 * 2 };
 
@@ -74,6 +78,11 @@ struct PSShaderData {
 struct SDFData {
 	vec3 tex_size;
 	float padding__0;
+};
+
+struct SDFinfo{
+	vec3i half_tex_size;
+	unsigned int padding__0;
 };
 
 struct BrushData {
@@ -124,16 +133,9 @@ int main() {
 	assert(all(brush_size % 8 == 0));
 
 	{
-#if 0
-		while (win::isOpen()) {
-			gfx::begin(Colour::dark_grey);
-			gfx::imgui_rtv.bind();
-			gfx::end();
-
-			gfx::logD3D11messages();
-		}
-#else
 		Camera cam;
+		ShapeBuilder builder;
+		builder.init();
 
 		gfx::Texture3D main_texture, brush;
 
@@ -144,7 +146,7 @@ int main() {
 			gfxErrorExit();
 		}
 
-		DynamicShader main_sh, add_brush;
+		DynamicShader main_sh, add_brush, edit_sh;
 
 		if (!main_sh.init("base_vs", "base_ps", "brush_grid")) {
 			gfxErrorExit();
@@ -187,6 +189,21 @@ int main() {
 			}
 		}
 
+		if (!edit_sh.init(nullptr, nullptr, "edit_cs")) {
+			gfxErrorExit();
+		}
+
+		// TODO this never changes, set Usage::Immutable
+		int sdfinfo_ind = edit_sh.shader.addBuffer<SDFinfo>(Usage::Dynamic);
+
+		if (Buffer *buf = edit_sh.shader.getBuffer(sdfinfo_ind)) {
+			if (SDFinfo *data = buf->map<SDFinfo>()) {
+				data->half_tex_size = maintex_size / 2;
+				data->padding__0 = 0;
+				buf->unmap();
+			}
+		}
+		
 		Vertex verts[] = {
 			{ vec3(-1, -1, 0), vec2(0, 0) },
 			{ vec3(3, -1, 0), vec2(2, 0) },
@@ -209,18 +226,53 @@ int main() {
 			}
 		}
 
+		GPUClock compute_timer("Compute");
+
 		const auto runCompute = [&]() {
 			main_sh.shader.setSRV(ShaderType::Fragment, { nullptr });
-			main_sh.shader.dispatch(threads, { sdfbuf_ind }, {}, { main_texture.uav });
-			add_brush.shader.dispatch(threads, { brush_ind }, { brush.srv }, { main_texture.uav });
+			builder.bind();
+			TracyD3D11Zone(gfx::tracy_ctx, "Edit");
+			compute_timer.start();
+			edit_sh.shader.dispatch(threads, { sdfinfo_ind }, {}, { main_texture.uav });
+			compute_timer.end();
+			builder.unbind();
+			//main_sh.shader.dispatch(threads, { sdfbuf_ind }, {}, { main_texture.uav });
+			//add_brush.shader.dispatch(threads, { brush_ind }, { brush.srv }, { main_texture.uav });
 			main_sh.shader.setSRV(ShaderType::Fragment, { main_texture.srv });
 		};
+
+		PerformanceClock timer("builder");
+		
+		constexpr int len = 5;
+		for (int z = 0; z < len; ++z) {
+			for (int y = 0; y < len; ++y) {
+				for (int x = 0; x < len; ++x) {
+					constexpr vec3 tsize = maintex_size;
+					vec3 centre = -(tsize / 2.f) + vec3((float)x, (float)y, (float)z) * (tsize / len);
+					vec3 size = (tsize / len) * 0.1f;
+					static bool once = true;
+					if (once) { once = false; info("size: (%.1f %.1f %.1f) tsize: (%.1f %.1f %.1f)", size.x, size.y, size.z, tsize.x, tsize.y, tsize.z); }
+					builder.addBox(centre, size);
+				}
+			}
+		}
+
+		timer.print();
+
+		// builder.addSphere(vec3(-2.5, 0, 0) * 32.f, 5 * 32.f);
+		// builder.addBox(vec3(+2.5, 0, 0) * 32.f, vec3(2, 3, 4) * 32.f);
+		// builder.addBox(vec3(-1, -2, -3) * 32.f, vec3(2, 3, 4) * 32.f, Operations::None, Alteration::None);
 
 		runCompute();
 
 		while (win::isOpen()) {
 			main_sh.poll();
 			add_brush.poll();
+			edit_sh.poll();
+
+			if (compute_timer.isReady()) {
+				compute_timer.print();
+			}
 
 			if (isKeyPressed(KEY_ESCAPE)) {
 				win::close();
@@ -237,7 +289,6 @@ int main() {
 			//float speed = 5.f * win::dt;
 			//cam.pos += velocity * speed;
 
-#if 1
 			if (Buffer *buf = main_sh.shader.getBuffer(buf_ind)) {
 				if (PSShaderData *data = buf->map<PSShaderData>()) {
 					data->cam_pos = cam.pos;
@@ -252,7 +303,6 @@ int main() {
 					is_dirty = true;
 				}
 			}
-#endif
 
 			if (main_sh.hasUpdated()) {
 				is_dirty = true;
@@ -267,10 +317,12 @@ int main() {
 					//main_sh.shader.setSRV(ShaderType::Fragment, { main_texture.srv });
 				}
 			}
-			if (add_brush.hasUpdated()) {
+			
+			if (add_brush.hasUpdated() || edit_sh.hasUpdated()) {
 				is_dirty = true;
 				runCompute();
 			}
+
 
 			gfx::begin(Colour::dark_grey);
 
@@ -300,7 +352,6 @@ int main() {
 
 			is_dirty = false;
 		}
-#endif
 	}
 
 	win::cleanup();
@@ -579,9 +630,8 @@ HRESULT createStructuredBuffer(ID3D11Device *dev, UINT elem_sz, UINT count, void
 		init_data.pSysMem = data;
 		return dev->CreateBuffer(&desc, &init_data, out);
 	}
-	else {
-		return dev->CreateBuffer(&desc, nullptr, out);
-	}
+	
+	return dev->CreateBuffer(&desc, nullptr, out);
 }
 
 HRESULT createRawBuffer(ID3D11Device *dev, UINT size, void *data, ID3D11Buffer **out) {

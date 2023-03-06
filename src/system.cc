@@ -12,6 +12,9 @@
 #include <backends/imgui_impl_win32.h>
 #include <sokol_time.h>
 
+#include <tracy/Tracy.hpp>
+#include <tracy/TracyD3D11.hpp>
+
 #include "tracelog.h"
 #include "utils.h"
 #include "options.h"
@@ -28,6 +31,8 @@ namespace gfx {
 	dxptr<ID3D11InfoQueue> infodev = nullptr;
 	dxptr<IDXGISwapChain> swapchain = nullptr;
 	dxptr<ID3D11DepthStencilState> depth_stencil_state = nullptr;
+	TracyD3D11Ctx tracy_ctx = nullptr;
+
 	RenderTexture imgui_rtv;
 	RenderTexture main_rtv;
 
@@ -35,6 +40,8 @@ namespace gfx {
 		if (!createDevice()) {
 			fatal("couldn't create d3d11 device");
 		}
+
+		gpuTimerInit();
 
 		// -- Initialize ImGui --
 		IMGUI_CHECKVERSION();
@@ -58,6 +65,8 @@ namespace gfx {
 	}
 
 	void cleanup() {
+		gpuTimerCleanup();
+		
 		// Cleanup ImGui
 		ImGui_ImplDX11_Shutdown();
 		ImGui_ImplWin32_Shutdown();
@@ -68,6 +77,9 @@ namespace gfx {
 	}
 
 	void begin(Colour clear_colour) {
+		gpuTimerBeginFrame();
+		logD3D11messages();
+
 		UNUSED(clear_colour);
 
 		//main_rtv.bind();
@@ -89,6 +101,11 @@ namespace gfx {
 		
 		gfx::context->OMSetRenderTargets(0, nullptr, nullptr);
 		swapchain->Present(Options::get().vsync, 0);
+
+		gpuTimerEndFrame();
+		gpuTimerPoll();
+
+		TracyD3D11Collect(tracy_ctx);
 	}
 
 	bool createDevice() {
@@ -108,7 +125,7 @@ namespace gfx {
 		sd.Windowed = TRUE;
 		sd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 
-		UINT createDeviceFlags = 0;
+		UINT createDeviceFlags = D3D11_CREATE_DEVICE_DISABLE_GPU_TIMEOUT;
 #ifndef NDEBUG
 		createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
@@ -168,10 +185,14 @@ namespace gfx {
 
 		createImGuiRTV();
 
+		tracy_ctx = TracyD3D11Context(device, context);
+
 		return true;
 	}
 	
 	void cleanupDevice() {
+		TracyD3D11Destroy(tracy_ctx);
+
 #ifndef NDEBUG
 		// we need this as it doesn't report memory leaks otherwise
 		infodev->PushEmptyStorageFilter();

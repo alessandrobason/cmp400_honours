@@ -1,0 +1,9 @@
+[INFO] (00:00:0003): compiling base_vs.hlsl, type: vs
+[INFO] (00:00:0011): compiling base_ps.hlsl, type: ps
+[INFO] (00:00:0016): compiling brush_grid.hlsl, type: cs
+[INFO] (00:00:0021): compiling add_brush.hlsl, type: cs
+[INFO] (00:00:0027): compiling edit_cs.hlsl, type: cs
+[ERROR](00:00:0028): couldn't compile shader edit_cs.hlsl
+[ERROR](00:00:0028): C:\Users\ale55\Desktop\documents\uni\year-4\cmp400-honours\project\SDF_RayMarching\Shader@0x000002679FC36120(171,2-10): error X3000: unrecognized identifier 'ShapeType'
+C:\Users\ale55\Desktop\documents\uni\year-4\cmp400-honours\project\SDF_RayMarching\Shader@0x000002679FC36120(171,12): error X3000: unrecognized identifier 's'
+

@@ -1,0 +1,14 @@
+[INFO] (00:00:0005): compiling base_vs.hlsl, type: vs
+[INFO] (00:00:0031): compiling base_ps.hlsl, type: ps
+[INFO] (00:00:0038): compiling brush_grid.hlsl, type: cs
+[INFO] (00:00:0046): compiling add_brush.hlsl, type: cs
+[INFO] (00:00:0057): compiling edit_cs.hlsl, type: cs
+[INFO] (00:00:0101): size: (20.5 20.5 10.2) tsize: (1024.0 1024.0 512.0)
+[INFO] (00:00:0101): [builder] time passed: 172.200000us
+[INFO] (00:02:0986): GPU TIMER [Compute] time passed: 1.582534sec
+[INFO] (00:13:0814): compiling edit_cs.hlsl, type: cs
+[INFO] (00:13:0855): re-compiled shader edit_cs.hlsl successfully
+[INFO] (00:16:0442): GPU TIMER [Compute] time passed: 1.565756sec
+[INFO] (00:17:0997): compiling edit_cs.hlsl, type: cs
+[INFO] (00:18:0057): re-compiled shader edit_cs.hlsl successfully
+[INFO] (00:20:0668): GPU TIMER [Compute] time passed: 1.601752sec

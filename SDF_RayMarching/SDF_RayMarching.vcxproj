@@ -71,13 +71,13 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <ExternalIncludePath>C:\Users\ale55\Desktop\documents\uni\year-4\cmp400-honours\project\SDF_RayMarching\libs\ImGui;C:\Users\ale55\Desktop\documents\uni\year-4\cmp400-honours\project\SDF_RayMarching\libs\sokol;$(ExternalIncludePath)</ExternalIncludePath>
+    <ExternalIncludePath>$(SolutionDir)libs\ImGui;$(SolutionDir)libs\sokol;$(SolutionDir)libs\tracy;$(ExternalIncludePath)</ExternalIncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ExternalIncludePath>C:\Users\ale55\Desktop\documents\uni\year-4\cmp400-honours\project\SDF_RayMarching\libs\ImGui;C:\Users\ale55\Desktop\documents\uni\year-4\cmp400-honours\project\SDF_RayMarching\libs\sokol;$(ExternalIncludePath)</ExternalIncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <ExternalIncludePath>C:\Users\ale55\Desktop\documents\uni\year-4\cmp400-honours\project\SDF_RayMarching\libs\ImGui;C:\Users\ale55\Desktop\documents\uni\year-4\cmp400-honours\project\SDF_RayMarching\libs\sokol;$(ExternalIncludePath)</ExternalIncludePath>
+    <ExternalIncludePath>$(SolutionDir)libs\ImGui;$(SolutionDir)libs\sokol;$(SolutionDir)libs\tracy;$(ExternalIncludePath)</ExternalIncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ExternalIncludePath>C:\Users\ale55\Desktop\documents\uni\year-4\cmp400-honours\project\SDF_RayMarching\libs\ImGui;C:\Users\ale55\Desktop\documents\uni\year-4\cmp400-honours\project\SDF_RayMarching\libs\sokol;$(ExternalIncludePath)</ExternalIncludePath>
@@ -166,6 +166,10 @@
     <ClCompile Include="..\libs\ImGui\imgui_widgets.cpp" />
     <ClCompile Include="..\libs\sokol\sokol.c" />
     <ClCompile Include="..\libs\stb\stb.c" />
+    <ClCompile Include="..\libs\tracy\TracyClient.cpp">
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">TRACY_ENABLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">TRACY_ENABLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
     <ClCompile Include="..\src\buffer.cc" />
     <ClCompile Include="..\src\colours.cc" />
     <ClCompile Include="..\src\ini.cc" />

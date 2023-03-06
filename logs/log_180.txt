@@ -1,0 +1,15 @@
+[INFO] (00:00:0009): compiling base_vs.hlsl, type: vs
+[INFO] (00:00:0030): compiling base_ps.hlsl, type: ps
+[INFO] (00:00:0039): compiling brush_grid.hlsl, type: cs
+[INFO] (00:00:0045): compiling add_brush.hlsl, type: cs
+[INFO] (00:00:0054): compiling edit_cs.hlsl, type: cs
+[INFO] (00:00:0094): size: (34.1 34.1 17.1) tsize: (1024.0 1024.0 512.0)
+[INFO] (00:00:0095): [builder] time passed: 164.900000us
+[ERROR](00:00:0095): couldn't get disjointed data
+[ERROR](00:00:0095): ID3D11DeviceContext::Begin: Begin is not supported and cannot be invoked for the D3D11_QUERY, 2.
+[ERROR](00:00:0095): ID3D11DeviceContext::GetData: GetData is being invoked on a Query/ Predicate/ Counter, after invoking Begin, but not yet after End. The range of commands must be completed by invoking End, before invoking GetData.
+[ERROR](00:00:0095): couldn't get start data
+[ERROR](00:00:0095): couldn't get end data
+[ERROR](00:00:0095): ID3D11DeviceContext::GetData: GetData is being invoked on a Query/ Predicate/ Counter, after invoking Begin, but not yet after End. The range of commands must be completed by invoking End, before invoking GetData.
+[WARN] (00:00:0095): (Edit) gpu clock has disjointed
+[INFO] (00:00:0095): (Edit) time taken: 0

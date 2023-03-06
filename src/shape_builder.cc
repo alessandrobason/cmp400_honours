@@ -13,17 +13,17 @@ void ShapeBuilder::cleanup() {
 	destroyBuffer();
 }
 
-void ShapeBuilder::bind() {
+void ShapeBuilder::bind(unsigned int slot) {
 	if (dirty) {
 		dirty = false;
 		makeBuffer();
 	}
-	gfx::context->CSSetShaderResources(0, 1, &buf_srv);
+	gfx::context->CSSetShaderResources(slot, 1, &buf_srv);
 }
 
-void ShapeBuilder::unbind() {
+void ShapeBuilder::unbind(unsigned int slot) {
 	ID3D11ShaderResourceView *srv_nullptr[1] = { nullptr };
-	gfx::context->CSSetShaderResources(0, 1, srv_nullptr);
+	gfx::context->CSSetShaderResources(slot, 1, srv_nullptr);
 }
 
 void ShapeBuilder::addSphere(const vec3 &centre, float radius, Operations oper, Alteration alter) {
@@ -61,7 +61,7 @@ void ShapeBuilder::addPyramid(const vec3 &centre, float height, Operations oper,
 
 void ShapeBuilder::destroyBuffer() {
 	buffer.cleanup();
-	safeRelease(buf_srv);
+	buf_srv.destroy();
 }
 
 bool ShapeBuilder::makeBuffer() {
@@ -91,9 +91,9 @@ bool ShapeBuilder::makeBuffer() {
 	D3D11_BUFFER_DESC buf_desc;
 	mem::zero(buf_desc);
 	buf_desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
-	buf_desc.ByteWidth = (UINT)(sizeof(ShapeType) * shapes.size());
+	buf_desc.ByteWidth = (UINT)(sizeof(Shape) * shapes.size());
 	buf_desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-	buf_desc.StructureByteStride = sizeof(ShapeType);
+	buf_desc.StructureByteStride = sizeof(Shape);
 
 	D3D11_SUBRESOURCE_DATA data;
 	mem::zero(data);

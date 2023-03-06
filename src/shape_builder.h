@@ -15,7 +15,7 @@ struct Shape {
 		struct { float radius; } sphere;
 		struct { vec3 size; } box;
 		struct { vec2 angle_cos_sin; float height; } cone;
-		struct { vec3 bottom, top; float radius; } cylinder;
+		struct { vec3 bottom; float radius; vec3 top; } cylinder;
 		struct { float height; } pyramid;
 		struct { vec4 data_0; vec3 data_1; } data;
 	} as;
@@ -49,11 +49,14 @@ enum class Operations : uint32_t {
 };
 
 struct ShapeBuilder {
+	ShapeBuilder() = default;
+	ShapeBuilder(const ShapeBuilder &) = delete;
+	
 	void init();
 	void cleanup();
 
-	void bind();
-	void unbind();
+	void bind(unsigned int slot = 0);
+	void unbind(unsigned int slot = 0);
 
 	void addSphere(const vec3 &centre, float radius, Operations oper = Operations::None, Alteration alter = Alteration::None);
 	void addBox(const vec3 &centre, const vec3 &size, Operations oper = Operations::None, Alteration alter = Alteration::None);
@@ -71,7 +74,7 @@ private:
 	bool dirty = false;
 	size_t buffer_cap = 0;
 	Buffer buffer;
-	ID3D11ShaderResourceView *buf_srv = nullptr;
+	dxptr<ID3D11ShaderResourceView> buf_srv = nullptr;
 };
 
 #if 0
