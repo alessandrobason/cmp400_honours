@@ -1,0 +1,9 @@
+[INFO] (00:00:0005): compiling base_vs.hlsl, type: vs
+[INFO] (00:00:0361): compiling base_ps.hlsl, type: ps
+[INFO] (00:00:0373): compiling brush_grid.hlsl, type: cs
+[INFO] (00:00:0386): compiling sculpt_cs.hlsl, type: cs
+[INFO] (00:00:0406): compiling gen_brush_cs.hlsl, type: cs
+[ERROR](00:00:0415): couldn't map buffer
+[ERROR](00:00:0482): ID3D11DeviceContext::Map: Subresource requested (1) is greater than or equal to the number of existing subresources (1)!
+[ERROR](00:00:0483): ID3D11DeviceContext::Map: This resource is already mapped!
+[ERROR](00:00:0514): couldn't get disjointed data

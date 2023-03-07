@@ -103,7 +103,6 @@ namespace gfx {
 		swapchain->Present(Options::get().vsync, 0);
 
 		gpuTimerEndFrame();
-		gpuTimerPoll();
 
 		TracyD3D11Collect(tracy_ctx);
 	}
@@ -265,6 +264,7 @@ namespace win {
 
 	bool isOpen() {
 		poll();
+		gpuTimerPoll();
 		return is_open;
 	}
 

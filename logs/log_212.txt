@@ -1,0 +1,6 @@
+[INFO] (00:00:0010): compiling base_vs.hlsl, type: vs
+[INFO] (00:00:0343): compiling base_ps.hlsl, type: ps
+[INFO] (00:00:0354): compiling brush_grid.hlsl, type: cs
+[ERROR](00:00:0367): couldn't create new buffer!
+[ERROR](00:00:0367): ID3D11Device::CreateBuffer: A D3D11_USAGE_IMMUTABLE Resource cannot have any CPUAccessFlags set. The flags are currently set to: D3D11_CPU_ACCESS_READ (0), D3D11_CPU_ACCESS_WRITE (1).
+[ERROR](00:00:0368): ID3D11Device::CreateBuffer: CreateBuffer returning E_INVALIDARG, meaning invalid parameters were passed.

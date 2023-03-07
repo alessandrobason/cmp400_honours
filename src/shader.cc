@@ -140,6 +140,17 @@ int Shader::addBuffer(size_t type_size, Usage usage, bool can_write, bool can_re
 	return index;
 }
 
+int Shader::addBuffer(size_t type_size, Usage usage, const void *initial_data, size_t data_count, bool can_write, bool can_read) {
+	Buffer newbuf;
+	if (!newbuf.create(type_size, usage, initial_data, data_count, can_write, can_read)) {
+		err("couldn't create new buffer!");
+		return -1;
+	}
+	int index = (int)buffers.size();
+	buffers.emplace_back(std::move(newbuf));
+	return index;
+}
+
 Buffer *Shader::getBuffer(int index) {
 	if (index < 0 || index >= (int)buffers.size()) {
 		return nullptr;

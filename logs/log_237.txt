@@ -1,0 +1,50 @@
+[INFO] (00:00:0012): compiling base_vs.hlsl, type: vs
+[INFO] (00:00:0880): compiling base_ps.hlsl, type: ps
+[INFO] (00:00:0896): compiling brush_grid.hlsl, type: cs
+[INFO] (00:00:0912): compiling sculpt_cs.hlsl, type: cs
+[INFO] (00:00:0935): compiling gen_brush_cs.hlsl, type: cs
+[INFO] (00:00:0946): compiling empty_texture_cs.hlsl, type: cs
+[ERROR](00:00:0955): couldn't get disjointed data
+[INFO] (00:01:0054): GPU TIMER [Sculpt] time passed: 1.222ms
+[INFO] (00:04:0139): compiling sculpt_cs.hlsl, type: cs
+[INFO] (00:04:0155): re-compiled shader sculpt_cs.hlsl successfully
+[INFO] (00:04:0221): GPU TIMER [Sculpt] time passed: 2.232ms
+[INFO] (00:05:0422): compiling sculpt_cs.hlsl, type: cs
+[INFO] (00:05:0437): re-compiled shader sculpt_cs.hlsl successfully
+[INFO] (00:05:0504): GPU TIMER [Sculpt] time passed: 1.783ms
+[INFO] (00:06:0239): compiling sculpt_cs.hlsl, type: cs
+[INFO] (00:06:0253): re-compiled shader sculpt_cs.hlsl successfully
+[INFO] (00:06:0321): GPU TIMER [Sculpt] time passed: 1.764ms
+[INFO] (00:08:0122): compiling sculpt_cs.hlsl, type: cs
+[INFO] (00:08:0136): re-compiled shader sculpt_cs.hlsl successfully
+[INFO] (00:08:0254): GPU TIMER [Sculpt] time passed: 2.098ms
+[INFO] (00:10:0072): compiling sculpt_cs.hlsl, type: cs
+[INFO] (00:10:0087): re-compiled shader sculpt_cs.hlsl successfully
+[INFO] (00:10:0154): GPU TIMER [Sculpt] time passed: 1.831ms
+[INFO] (00:13:0708): compiling sculpt_cs.hlsl, type: cs
+[INFO] (00:13:0723): re-compiled shader sculpt_cs.hlsl successfully
+[INFO] (00:13:0837): GPU TIMER [Sculpt] time passed: 41.285ms
+[INFO] (00:14:0807): compiling sculpt_cs.hlsl, type: cs
+[INFO] (00:14:0824): re-compiled shader sculpt_cs.hlsl successfully
+[INFO] (00:14:0937): GPU TIMER [Sculpt] time passed: 44.067ms
+[INFO] (00:15:0643): compiling sculpt_cs.hlsl, type: cs
+[INFO] (00:15:0673): re-compiled shader sculpt_cs.hlsl successfully
+[INFO] (00:15:0771): GPU TIMER [Sculpt] time passed: 43.051ms
+[INFO] (00:17:0273): compiling sculpt_cs.hlsl, type: cs
+[INFO] (00:17:0288): re-compiled shader sculpt_cs.hlsl successfully
+[INFO] (00:17:0354): GPU TIMER [Sculpt] time passed: 1.020ms
+[INFO] (00:30:0434): compiling sculpt_cs.hlsl, type: cs
+[INFO] (00:30:0528): re-compiled shader sculpt_cs.hlsl successfully
+[INFO] (00:30:0638): GPU TIMER [Sculpt] time passed: 49.143ms
+[INFO] (00:31:0910): compiling sculpt_cs.hlsl, type: cs
+[INFO] (00:31:0924): re-compiled shader sculpt_cs.hlsl successfully
+[INFO] (00:32:0037): GPU TIMER [Sculpt] time passed: 43.239ms
+[INFO] (00:34:0024): compiling sculpt_cs.hlsl, type: cs
+[INFO] (00:34:0040): re-compiled shader sculpt_cs.hlsl successfully
+[INFO] (00:34:0104): GPU TIMER [Sculpt] time passed: 1.056ms
+[INFO] (00:37:0906): compiling sculpt_cs.hlsl, type: cs
+[INFO] (00:37:0921): re-compiled shader sculpt_cs.hlsl successfully
+[INFO] (00:37:0987): GPU TIMER [Sculpt] time passed: 1.056ms
+[INFO] (00:53:0925): compiling sculpt_cs.hlsl, type: cs
+[INFO] (00:53:0951): re-compiled shader sculpt_cs.hlsl successfully
+[INFO] (00:54:0004): GPU TIMER [Sculpt] time passed: 1.765ms

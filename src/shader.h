@@ -29,8 +29,14 @@ struct Shader {
 	bool load(const char *vertex, const char *fragment, const char *compute);
 
 	int addBuffer(size_t type_size, Usage usage = Usage::Default, bool can_write = true, bool can_read = false);
+	int addBuffer(size_t type_size, Usage usage, const void *initial_data, size_t data_count = 1, bool can_write = true, bool can_read = false);
 	template<typename T>
 	int addBuffer(Usage usage = Usage::Default, bool can_write = true, bool can_read = false) { return addBuffer(sizeof(T), usage, can_write, can_read); }
+	template<typename T>
+	int addBuffer(Usage usage, const void *initial_data, size_t data_count = 1, bool can_write = true, bool can_read = false) { 
+		return addBuffer(sizeof(T), usage, initial_data, data_count, can_write, can_read); 
+	}
+
 	Buffer *getBuffer(int index);
 
 	bool addSampler();

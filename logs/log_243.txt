@@ -1,0 +1,3 @@
+[INFO] (00:00:0006): compiling base_vs.hlsl, type: vs
+[INFO] (00:00:0540): compiling base_ps.hlsl, type: ps
+[ERROR](00:00:0562): couldn't open file: shaders/render_cs.hlsl

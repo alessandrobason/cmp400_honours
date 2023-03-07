@@ -1,0 +1,4 @@
+[INFO] (00:00:0031): compiling base_vs.hlsl, type: vs
+[INFO] (00:00:0610): compiling base_ps.hlsl, type: ps
+[INFO] (00:00:0624): compiling brush_grid.hlsl, type: cs
+[ERROR](00:00:0710): couldn't create new buffer!

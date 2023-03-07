@@ -51,9 +51,9 @@ ID3D11UnorderedAccessView *gfx_buf_res_uav = nullptr;
 constexpr vec2u tex_size = { 1920, 1080 };
 
 bool is_dirty = true;
-constexpr vec3u maintex_size = { 1024, 1024, 512 };
+constexpr vec3u maintex_size = { 512, 512, 512 };
 vec3u brush_size = { 32, 32, 32 };
-vec3u threads = { 64 * 2, 64 * 2, 32 * 2 };
+constexpr vec3u threads = maintex_size / 8;
 
 //ShapeBuilder builder;
 
@@ -85,11 +85,33 @@ struct SDFinfo{
 	unsigned int padding__0;
 };
 
+#if BRUSH_BUILDER
 struct BrushData {
 	vec3i brush_size;
 	unsigned int operation;
 	vec3i brush_pos;
 	int unused__1;
+};
+#endif
+
+constexpr uint32_t SMOOTH_OP               = (uint32_t)1 << 31;
+constexpr uint32_t OP_UNION                = (uint32_t)1 << 1;
+constexpr uint32_t OP_SUBTRACTION          = (uint32_t)1 << 2;
+constexpr uint32_t OP_INTERSECTION         = (uint32_t)1 << 3;
+constexpr uint32_t OP_SMOOTH_UNION         = SMOOTH_OP | OP_UNION;
+constexpr uint32_t OP_SMOOTH_SUBTRACTION   = SMOOTH_OP | OP_SUBTRACTION;
+constexpr uint32_t OP_SMOOTH_INTERSECTION  = SMOOTH_OP | OP_INTERSECTION;
+
+struct VolumeTexData {
+	vec3 volume_tex_size = maintex_size;
+	int padding__0;
+};
+
+struct BrushData {
+	vec3 brush_size;
+	unsigned int operation;
+	vec3 brush_position;
+	int padding__0;
 };
 
 struct Camera {
@@ -126,6 +148,149 @@ void gfxErrorExit() {
 	exit(1);
 }
 
+Mesh makeFullScreenTriangle() {
+	Vertex verts[] = {
+		{ vec3(-1, -1, 0), vec2(0, 0) },
+		{ vec3(3, -1, 0), vec2(2, 0) },
+		{ vec3(-1,  3, 0), vec2(0, 2) },
+	};
+
+	Index indices[] = {
+		0, 2, 1,
+	};
+
+	Mesh m;
+	if (!m.create(verts, indices)) {
+		gfxErrorExit();
+	}
+
+	return m;
+}
+
+int main() {
+	win::create("hello world", 800, 600);
+	assert(all(maintex_size % 8 == 0));
+	assert(all(brush_size % 8 == 0));
+
+	{
+		Camera cam;
+		gfx::Texture3D main_texture, brush;
+		DynamicShader main_sh, sculpt, gen_brush, empty_texture;
+
+		if (!main_texture.create(maintex_size)) gfxErrorExit();
+		if (!brush.create(brush_size))          gfxErrorExit();
+
+		if (!main_sh.init("base_vs", "base_ps", "brush_grid")) gfxErrorExit();
+		int buf_ind = main_sh.shader.addBuffer<PSShaderData>(Usage::Dynamic);
+		SDFData sdf_data{};
+		int sdfbuf_ind = main_sh.shader.addBuffer<SDFData>(Usage::Immutable, &sdf_data);
+
+		if (!sculpt.init(nullptr, nullptr, "sculpt_cs")) gfxErrorExit();
+		VolumeTexData volume_tex_data{};
+		int volume_tex_data_ind = sculpt.shader.addBuffer<VolumeTexData>(Usage::Immutable, &volume_tex_data);
+		int brush_data_ind = sculpt.shader.addBuffer<BrushData>(Usage::Dynamic);
+
+		if (!gen_brush.init(nullptr, nullptr, "gen_brush_cs")) gfxErrorExit();
+
+		if (!empty_texture.init(nullptr, nullptr, "empty_texture_cs")) gfxErrorExit();
+
+		Mesh triangle = makeFullScreenTriangle();
+
+		// generate brush
+		gen_brush.shader.dispatch(vec3u(32) / 8, {}, {}, { brush.uav });
+
+		// fill texture
+		empty_texture.shader.dispatch(threads, {}, {}, { main_texture.uav });
+
+		GPUClock sculpt_clock("Sculpt");
+
+		if (Buffer *buf = sculpt.shader.getBuffer(brush_data_ind)) {
+			if (BrushData *data = buf->map<BrushData>(0)) {
+				data->brush_position = vec3(0);
+				data->brush_size = 32.f;
+				data->operation = OP_UNION;
+				buf->unmap();
+			}
+		}
+
+		sculpt_clock.start();
+		sculpt.shader.dispatch(threads, { volume_tex_data_ind, brush_data_ind }, { brush.srv }, { main_texture.uav });
+		sculpt_clock.end();
+
+		while (win::isOpen()) {
+			main_sh.poll();
+			sculpt.poll();
+			gen_brush.poll();
+
+			if (sculpt_clock.isReady()) sculpt_clock.print();
+			if (isKeyPressed(KEY_ESCAPE)) win::close();
+
+			cam.input();
+
+			if (main_sh.hasUpdated()) {
+				is_dirty = true;
+				if (main_sh.getChanged() & ShaderType::Compute) {
+					// TODO run compute
+				}
+			}
+
+			if (sculpt.hasUpdated()) {
+				is_dirty = true;
+				empty_texture.shader.dispatch(threads, {}, {}, { main_texture.uav });
+				sculpt_clock.start();
+				sculpt.shader.dispatch(threads, { volume_tex_data_ind, brush_data_ind }, { brush.srv }, { main_texture.uav });
+				sculpt_clock.end();
+			}
+
+			gfx::begin(Colour::dark_grey);
+
+			if (!Options::get().lazy_render || is_dirty) {
+				if (Options::get().lazy_render) {
+					info("(Lazy Rendering) rendering scene again");
+				}
+
+				if (Buffer *buf = main_sh.shader.getBuffer(buf_ind)) {
+					if (PSShaderData *data = buf->map<PSShaderData>()) {
+						data->cam_pos = cam.pos;
+						data->cam_fwd = cam.fwd;
+						data->cam_right = cam.right;
+						data->cam_up = cam.up;
+						data->img_height = (float)tex_size.x;
+						data->img_width = (float)tex_size.y;
+						data->time = win::timeSinceStart();
+						buf->unmap();
+						buf->bind(ShaderType::Fragment);
+						is_dirty = true;
+					}
+				}
+
+				gfx::main_rtv.clear(Colour::dark_grey);
+				gfx::main_rtv.bind();
+				main_sh.shader.bind();
+				main_sh.shader.setSRV(ShaderType::Fragment, { main_texture.srv });
+				triangle.render();
+				main_sh.shader.setSRV(ShaderType::Fragment, { nullptr });
+				main_sh.shader.unbind();
+			}
+
+			gfx::imgui_rtv.bind();
+			fpsWidget();
+			mainTargetWidget();
+			drawLogger();
+			gfx::end();
+
+			if (isKeyPressed(KEY_P)) {
+				gfx::main_rtv.takeScreenshot();
+			}
+
+			gfx::logD3D11messages();
+
+			is_dirty = false;
+		}
+	}
+}
+
+#if BRUSH_BUILDER
 int main() {
 	win::create("hello world", 800, 600);
 
@@ -241,9 +406,9 @@ int main() {
 			main_sh.shader.setSRV(ShaderType::Fragment, { main_texture.srv });
 		};
 
-		PerformanceClock timer("builder");
+		CPUClock timer("builder");
 		
-		constexpr int len = 5;
+		constexpr int len = 2;
 		for (int z = 0; z < len; ++z) {
 			for (int y = 0; y < len; ++y) {
 				for (int x = 0; x < len; ++x) {
@@ -356,6 +521,7 @@ int main() {
 
 	win::cleanup();
 }
+#endif
 
 #if 0
 int main() {

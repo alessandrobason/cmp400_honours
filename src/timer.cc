@@ -9,7 +9,7 @@
 
 struct GpuTimer {
 	dxptr<ID3D11Query> query = nullptr;
-	char debug_name[64];
+	char debug_name[64] = {0};
 	bool is_valid = true;
 	bool should_read = false;
 	uint64_t value = 0;
@@ -25,6 +25,8 @@ static double gpuTimerSec(uint64_t time);
 static double gpuTimerMs(uint64_t time);
 static double gpuTimerUs(uint64_t time);
 
+// == ONCE CLOCK ========================================================================================
+
 OnceClock::OnceClock() {
 	start = stm_now();
 }
@@ -38,36 +40,46 @@ bool OnceClock::after(float seconds) {
 	return finished;
 }
 
-PerformanceClock::PerformanceClock(const char *name) {
+bool OnceClock::once() {
+	if (finished) {
+		return false;
+	}
+	finished = true;
+	return true;
+}
+
+// == CPU CLOCK =========================================================================================
+
+CPUClock::CPUClock(const char *name) {
 	setName(name);
 	start = stm_now();
 }
 
-void PerformanceClock::setName(const char *name) {
+void CPUClock::setName(const char *name) {
 	strncpy_s(debug_name, name ? name : "(none)", sizeof(debug_name) - 1);
 }
 
-uint64_t PerformanceClock::getTime() {
+uint64_t CPUClock::getTime() {
 	return stm_since(start);
 }
 
-double PerformanceClock::getNanoseconds() {
+double CPUClock::getNanoseconds() {
 	return stm_ns(stm_since(start));
 }
 
-double PerformanceClock::getMilliseconds() {
+double CPUClock::getMilliseconds() {
 	return stm_ms(stm_since(start));
 }
 
-double PerformanceClock::getMicroseconds() {
+double CPUClock::getMicroseconds() {
 	return stm_us(stm_since(start));
 }
 
-double PerformanceClock::getSeconds() {
+double CPUClock::getSeconds() {
 	return stm_sec(stm_since(start));
 }
 
-void PerformanceClock::print(LogLevel level) {
+void CPUClock::print(LogLevel level) {
 	uint64_t time_passed = stm_since(start);
 	if (stm_sec(time_passed) >= 1.0) {
 		logMessage(level, "[%s] time passed: %.3fsec", debug_name, stm_sec(time_passed));
@@ -82,6 +94,8 @@ void PerformanceClock::print(LogLevel level) {
 		logMessage(level, "[%s] time passed: %.3fns", debug_name, stm_ns(time_passed));
 	}
 }
+
+// == GPU CLOCK =========================================================================================
 
 GPUClock::GPUClock(const char *name) {
 	setName(name);
@@ -146,13 +160,15 @@ void GPUClock::print(LogLevel level) {
 }
 
 bool GPUClock::isReady() {
-	return gpuTimerIsReady(start_timer) && gpuTimerIsReady(end_timer);
+	bool is_ready = false;
+	if (GpuTimer *t = gpuTimerGet(start_timer)) is_ready |= (bool)t->value;
+	if (GpuTimer *t = gpuTimerGet(end_timer)) is_ready |= (bool)t->value;
+	return is_ready;
 }
 
-static uint64_t disjoint_freq = 1;
-static bool has_updated_disjoint = true;
+// == GPU TIMER =========================================================================================
+
 static std::vector<GpuTimer> gpu_timers;
-static GpuTimer *freelist = nullptr;
 
 void gpuTimerInit() {
 	GpuTimer disjoint_timer;
@@ -174,28 +190,28 @@ void gpuTimerCleanup() {
 }
 
 void gpuTimerBeginFrame() {
-	if (has_updated_disjoint) {
+	if (gpu_timers[0].should_read) {
 		gfx::context->Begin(gpu_timers[0].query);
 	}
 }
 
 void gpuTimerEndFrame() {
-	if (has_updated_disjoint) {
+	if (gpu_timers[0].should_read) {
 		gfx::context->End(gpu_timers[0].query);
 	}
 }
 
 void gpuTimerPoll() {
-	has_updated_disjoint = false;
+	GpuTimer &disjoint = gpu_timers[0];
+	disjoint.should_read = false;
 	HRESULT hr;
 	
-	if (gpuTimerIsReady(gpu_timers.front())) {
-		has_updated_disjoint = true;
+	if (gpuTimerIsReady(disjoint)) {
+		disjoint.should_read = true;
 		
 		D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disjoint_data;
-		hr = gfx::context->GetData(gpu_timers[0].query, &disjoint_data, sizeof(disjoint_data), 0);
+		hr = gfx::context->GetData(disjoint.query, &disjoint_data, sizeof(disjoint_data), 0);
 		if (FAILED(hr)) {
-			err("couldn't get disjointed data");
 			gfx::logD3D11messages();
 			return;
 		}
@@ -204,7 +220,7 @@ void gpuTimerPoll() {
 			warn("Disjointed");
 		}
 
-		disjoint_freq = disjoint_data.Frequency;
+		disjoint.value = disjoint_data.Frequency;
 	}
 
 	for (size_t i = 1; i < gpu_timers.size(); ++i) {
@@ -278,13 +294,13 @@ static bool gpuTimerIsReady(GpuTimer &timer) {
 }
 
 static double gpuTimerSec(uint64_t time) {
-	return (double)(time) / (double)disjoint_freq;
+	return (double)(time) / (double)gpu_timers[0].value;
 }
 
 static double gpuTimerMs(uint64_t time) {
-	return (double)(time) / (double)disjoint_freq * 1000.0;
+	return (double)(time) / (double)gpu_timers[0].value * 1000.0;
 }
 
 static double gpuTimerUs(uint64_t time) {
-	return (double)(time) / (double)disjoint_freq * 1000000.0;
+	return (double)(time) / (double)gpu_timers[0].value * 1000000.0;
 }

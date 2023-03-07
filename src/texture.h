@@ -38,7 +38,7 @@ namespace gfx {
 		bool create(int width, int height, int depth);
 		void cleanup();
 
-		vec3i size;
+		vec3i size = 0;
 		dxptr<ID3D11Texture3D> texture = nullptr;
 		dxptr<ID3D11UnorderedAccessView> uav = nullptr;
 		dxptr<ID3D11ShaderResourceView> srv = nullptr;

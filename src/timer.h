@@ -4,16 +4,19 @@
 #include "tracelog.h"
 #include "d3d11_fwd.h"
 
+// Used to run an action only once
 struct OnceClock {
 	OnceClock();
 	bool after(float seconds);
+	bool once();
 
 	uint64_t start = 0;
 	bool finished = false;
 };
 
-struct PerformanceClock {
-	PerformanceClock(const char *name = nullptr);
+// Used to get nanosecond accurate CPU performance
+struct CPUClock {
+	CPUClock(const char *name = nullptr);
 	void setName(const char *name);
 	uint64_t getTime();
 	double getNanoseconds();
@@ -26,6 +29,7 @@ struct PerformanceClock {
 	char debug_name[64] = {};
 };
 
+// Used to get GPU performance
 struct GPUClock{
 	GPUClock(const char *name = nullptr);
 	~GPUClock();
@@ -44,4 +48,3 @@ void gpuTimerCleanup();
 void gpuTimerBeginFrame();
 void gpuTimerEndFrame();
 void gpuTimerPoll();
-

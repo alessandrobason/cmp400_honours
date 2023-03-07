@@ -125,7 +125,6 @@ float4 main(PixelInput input) : SV_TARGET {
 	float3x3 camera_mat = float3x3(cam_right, cam_up, cam_fwd);
 	float focal_length = .5;
 	float3 ray_dir = normalize(mul(camera_mat, normalize(float3(uv * 2, focal_length))));
-	return float4(ray_dir, 1);
 	float3 colour = rayMarch(cam_pos + float3(0, 0, -1.0), ray_dir);
 #else
 	float3 ray_ori = float3(0, 0, -8);

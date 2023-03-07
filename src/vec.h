@@ -20,37 +20,37 @@ struct vec2T {
 	template<typename Q>
 	constexpr vec2T(const vec2T<Q> &v) : x((T)v.x), y((T)v.y) {}
 
-	vec2T operator-() const { return { -x, -y }; }
+	constexpr vec2T operator-() const { return { -x, -y }; }
 
-	vec2T operator+(const vec2T &o) const { return { x + o.x, y + o.y }; }
-	vec2T operator-(const vec2T &o) const { return { x - o.x, y - o.y }; }
-	vec2T operator*(const vec2T &o) const { return { x * o.x, y * o.y }; }
-	vec2T operator/(const vec2T &o) const { return { x / o.x, y / o.y }; }
-	vec2T operator%(const vec2T &o) const { return { x % o.x, y % o.y }; }
+	constexpr vec2T operator+(const vec2T &o) const { return { x + o.x, y + o.y }; }
+	constexpr vec2T operator-(const vec2T &o) const { return { x - o.x, y - o.y }; }
+	constexpr vec2T operator*(const vec2T &o) const { return { x * o.x, y * o.y }; }
+	constexpr vec2T operator/(const vec2T &o) const { return { x / o.x, y / o.y }; }
+	constexpr vec2T operator%(const vec2T &o) const { return { x % o.x, y % o.y }; }
 
 	vec2T &operator+=(const vec2T &o) { x += o.x; y += o.y; return *this; }
 	vec2T &operator-=(const vec2T &o) { x -= o.x; y -= o.y; return *this; }
 	vec2T &operator*=(const vec2T &o) { x *= o.x; y *= o.y; return *this; }
 	vec2T &operator/=(const vec2T &o) { x /= o.x; y /= o.y; return *this; }
 
-	vec2T operator+(T o) const { return { x + o, y + o }; }
-	vec2T operator-(T o) const { return { x - o, y - o }; }
-	vec2T operator*(T o) const { return { x * o, y * o }; }
-	vec2T operator/(T o) const { return { x / o, y / o }; }
-	vec2T operator%(T o) const { return { x % o, y % o }; }
+	constexpr vec2T operator+(T o) const { return { x + o, y + o }; }
+	constexpr vec2T operator-(T o) const { return { x - o, y - o }; }
+	constexpr vec2T operator*(T o) const { return { x * o, y * o }; }
+	constexpr vec2T operator/(T o) const { return { x / o, y / o }; }
+	constexpr vec2T operator%(T o) const { return { x % o, y % o }; }
 
 	vec2T &operator+=(T o) { x += o; y += o; return *this; }
 	vec2T &operator-=(T o) { x -= o; y -= o; return *this; }
 	vec2T &operator*=(T o) { x *= o; y *= o; return *this; }
 	vec2T &operator/=(T o) { x /= o; y /= o; return *this; }
 
-	vec2T<bool> operator==(const vec2T &o) const { return { x == o.x, y == o.y }; }
-	vec2T<bool> operator==(T o) const { return { x == o, y == o }; }
+	constexpr vec2T<bool> operator==(const vec2T &o) const { return { x == o.x, y == o.y }; }
+	constexpr vec2T<bool> operator==(T o) const { return { x == o, y == o }; }
 
-	T mag2() const { return x * x + y * y; }
-	T mag() const { return sqrt(mag2()); }
+	constexpr T mag2() const { return x * x + y * y; }
+	constexpr T mag() const { return sqrt(mag2()); }
 	void norm() { T m = mag(); if (m) *this /= m; }
-	vec2T normalise() const { vec2T v = *this; v.norm(); return v; }
+	constexpr vec2T normalise() const { vec2T v = *this; v.norm(); return v; }
 };
 
 template<typename T>
@@ -70,37 +70,37 @@ struct vec3T {
 	template<typename Q>
 	constexpr vec3T(const vec3T<Q> &v) : x((T)v.x), y((T)v.y), z((T)v.z) {}
 
-	vec3T operator-() const { return { -x, -y, -z }; }
+	constexpr vec3T operator-() const { return { -x, -y, -z }; }
 
-	vec3T operator+(const vec3T &o) const { return { x + o.x, y + o.y, z + o.z }; }
-	vec3T operator-(const vec3T &o) const { return { x - o.x, y - o.y, z - o.z }; }
-	vec3T operator*(const vec3T &o) const { return { x * o.x, y * o.y, z * o.z }; }
-	vec3T operator/(const vec3T &o) const { return { x / o.x, y / o.y, z / o.z }; }
-	vec3T operator%(const vec3T &o) const { return { x % o.x, y % o.y, z % o.z }; }
+	constexpr vec3T operator+(const vec3T &o) const { return { x + o.x, y + o.y, z + o.z }; }
+	constexpr vec3T operator-(const vec3T &o) const { return { x - o.x, y - o.y, z - o.z }; }
+	constexpr vec3T operator*(const vec3T &o) const { return { x * o.x, y * o.y, z * o.z }; }
+	constexpr vec3T operator/(const vec3T &o) const { return { x / o.x, y / o.y, z / o.z }; }
+	constexpr vec3T operator%(const vec3T &o) const { return { x % o.x, y % o.y, z % o.z }; }
 
 	vec3T &operator+=(const vec3T &o) { x += o.x; y += o.y; z += o.z; return *this; }
 	vec3T &operator-=(const vec3T &o) { x -= o.x; y -= o.y; z -= o.z; return *this; }
 	vec3T &operator*=(const vec3T &o) { x *= o.x; y *= o.y; z *= o.z; return *this; }
 	vec3T &operator/=(const vec3T &o) { x /= o.x; y /= o.y; z /= o.z; return *this; }
 
-	vec3T operator+(T o) const { return { x + o, y + o, z + o }; }
-	vec3T operator-(T o) const { return { x - o, y - o, z - o }; }
-	vec3T operator*(T o) const { return { x * o, y * o, z * o }; }
-	vec3T operator/(T o) const { return { x / o, y / o, z / o }; }
-	vec3T operator%(T o) const { return { x % o, y % o, z % o }; }
+	constexpr vec3T operator+(T o) const { return { x + o, y + o, z + o }; }
+	constexpr vec3T operator-(T o) const { return { x - o, y - o, z - o }; }
+	constexpr vec3T operator*(T o) const { return { x * o, y * o, z * o }; }
+	constexpr vec3T operator/(T o) const { return { x / o, y / o, z / o }; }
+	constexpr vec3T operator%(T o) const { return { x % o, y % o, z % o }; }
 
 	vec3T &operator+=(T o) { x += o; y += o; z += o; return *this; }
 	vec3T &operator-=(T o) { x -= o; y -= o; z -= o; return *this; }
 	vec3T &operator*=(T o) { x *= o; y *= o; z *= o; return *this; }
 	vec3T &operator/=(T o) { x /= o; y /= o; z /= o; return *this; }
 
-	vec3T<bool> operator==(const vec3T &o) const { return { x == o.x, y == o.y, z == o.z }; }
-	vec3T<bool> operator==(T o) const { return { x == o, y == o, z == o }; }
+	constexpr vec3T<bool> operator==(const vec3T &o) const { return { x == o.x, y == o.y, z == o.z }; }
+	constexpr vec3T<bool> operator==(T o) const { return { x == o, y == o, z == o }; }
 
-	T mag2() const { return x * x + y * y + z * z; }
-	T mag() const { return (T)sqrt(mag2()); }
+	constexpr T mag2() const { return x * x + y * y + z * z; }
+	constexpr T mag() const { return (T)sqrt(mag2()); }
 	void norm() { T m = mag(); if (m) *this /= m; }
-	vec3T normalise() const { vec3T o = *this; o.norm(); return o; }
+	constexpr vec3T normalise() const { vec3T o = *this; o.norm(); return o; }
 	static vec3T cross(const vec3T &a, const vec3T &b) {
 		return vec3T(
 			a.y * b.z - b.y * a.z,
@@ -130,37 +130,37 @@ struct vec4T {
 	template<typename Q>
 	constexpr vec4T(const vec4T<Q> &v) : x((T)v.x), y((T)v.y), z((T)v.z), w((T)v.w) {}
 
-	vec4T operator-() const { return { -x, -y, -z, -w }; }
+	constexpr vec4T operator-() const { return { -x, -y, -z, -w }; }
 
-	vec4T operator+(const vec4T &o) const { return { x + o.x, y + o.y, z + o.z, w + o.w }; }
-	vec4T operator-(const vec4T &o) const { return { x - o.x, y - o.y, z - o.z, w - o.w }; }
-	vec4T operator*(const vec4T &o) const { return { x * o.x, y * o.y, z * o.z, w * o.w }; }
-	vec4T operator/(const vec4T &o) const { return { x / o.x, y / o.y, z / o.z, w / o.w }; }
-	vec4T operator%(const vec4T &o) const { return { x % o.x, y % o.y, z % o.z, w % o.w }; }
+	constexpr vec4T operator+(const vec4T &o) const { return { x + o.x, y + o.y, z + o.z, w + o.w }; }
+	constexpr vec4T operator-(const vec4T &o) const { return { x - o.x, y - o.y, z - o.z, w - o.w }; }
+	constexpr vec4T operator*(const vec4T &o) const { return { x * o.x, y * o.y, z * o.z, w * o.w }; }
+	constexpr vec4T operator/(const vec4T &o) const { return { x / o.x, y / o.y, z / o.z, w / o.w }; }
+	constexpr vec4T operator%(const vec4T &o) const { return { x % o.x, y % o.y, z % o.z, w % o.w }; }
 
 	vec4T &operator+=(const vec4T &o) { x += o.x; y += o.y; z += o.z; w += o.w; return *this; }
 	vec4T &operator-=(const vec4T &o) { x -= o.x; y -= o.y; z -= o.z; w -= o.w; return *this; }
 	vec4T &operator*=(const vec4T &o) { x *= o.x; y *= o.y; z *= o.z; w *= o.w; return *this; }
 	vec4T &operator/=(const vec4T &o) { x /= o.x; y /= o.y; z /= o.z; w /= o.w; return *this; }
 
-	vec4T operator+(T o) const { return { x + o, y + o, z + o, w + o }; }
-	vec4T operator-(T o) const { return { x - o, y - o, z - o, w - o }; }
-	vec4T operator*(T o) const { return { x * o, y * o, z * o, w * o }; }
-	vec4T operator/(T o) const { return { x / o, y / o, z / o, w / o }; }
-	vec4T operator%(T o) const { return { x % o, y % o, z % o, w % o }; }
-
+	constexpr vec4T operator+(T o) const { return { x + o, y + o, z + o, w + o }; }
+	constexpr vec4T operator-(T o) const { return { x - o, y - o, z - o, w - o }; }
+	constexpr vec4T operator*(T o) const { return { x * o, y * o, z * o, w * o }; }
+	constexpr vec4T operator/(T o) const { return { x / o, y / o, z / o, w / o }; }
+	constexpr vec4T operator%(T o) const { return { x % o, y % o, z % o, w % o }; }
+	
 	vec4T &operator+=(T o) { x += o; y += o; z += o; w += o; return *this; }
 	vec4T &operator-=(T o) { x -= o; y -= o; z -= o; w -= o; return *this; }
 	vec4T &operator*=(T o) { x *= o; y *= o; z *= o; w *= o; return *this; }
 	vec4T &operator/=(T o) { x /= o; y /= o; z /= o; w /= o; return *this; }
 
-	vec4T<bool> operator==(const vec4T &o) const { return { x == o.x, y == o.y, z == o.z, w == o.w }; }
-	vec4T<bool> operator==(T o) const { return { x == o, y == o, z == o, w == o }; }
+	constexpr vec4T<bool> operator==(const vec4T &o) const { return { x == o.x, y == o.y, z == o.z, w == o.w }; }
+	constexpr vec4T<bool> operator==(T o) const { return { x == o, y == o, z == o, w == o }; }
 
-	T mag2() const { return x * x + y * y + z * z + w * w; }
-	T mag() const { return sqrt(mag2()); }
+	constexpr T mag2() const { return x * x + y * y + z * z + w * w; }
+	constexpr T mag() const { return sqrt(mag2()); }
 	void norm() { T m = mag(); if (m) *this /= m; }
-	vec4T normalise() const { vec4T o = *this; o.norm(); return o; }
+	constexpr vec4T normalise() const { vec4T o = *this; o.norm(); return o; }
 };
 
 template<typename T>

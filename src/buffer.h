@@ -32,6 +32,7 @@ struct Buffer {
 	}
 
 	bool create(size_t type_size, Usage usage, bool can_write = true, bool can_read = false);
+	bool create(size_t type_size, Usage usage, const void *initial_data, size_t data_count = 1, bool can_write = true, bool can_read = false);
 	void cleanup();
 
 	template<typename T>

@@ -34,6 +34,7 @@ bool Buffer::create(size_t type_size, Usage usage, bool can_write, bool can_read
     D3D11_BUFFER_DESC bd;
     mem::zero(bd);
     bd.Usage = usage_to_d3d11[(size_t)usage];
+    bd.StructureByteStride = (UINT)type_size;
     bd.ByteWidth = (UINT)type_size;
     bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
     if (can_write) {
@@ -43,6 +44,34 @@ bool Buffer::create(size_t type_size, Usage usage, bool can_write, bool can_read
         bd.CPUAccessFlags |= D3D11_CPU_ACCESS_READ;
     }
     
+    HRESULT hr = gfx::device->CreateBuffer(&bd, nullptr, &buffer);
+    return SUCCEEDED(hr);
+}
+
+bool Buffer::create(size_t type_size, Usage usage, const void *initial_data, size_t data_count, bool can_write, bool can_read) {
+    D3D11_BUFFER_DESC bd;
+    mem::zero(bd);
+    bd.Usage = usage_to_d3d11[(size_t)usage];
+    bd.StructureByteStride = (UINT)type_size;
+    bd.ByteWidth = (UINT)(type_size * data_count);
+    bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    if (usage != Usage::Immutable) {
+        if (can_write) {
+            bd.CPUAccessFlags |= D3D11_CPU_ACCESS_WRITE;
+        }
+        if (can_read) {
+            bd.CPUAccessFlags |= D3D11_CPU_ACCESS_READ;
+        }
+    }
+
+    if (initial_data) {
+        D3D11_SUBRESOURCE_DATA dd;
+        mem::zero(dd);
+        dd.pSysMem = initial_data;
+        HRESULT hr = gfx::device->CreateBuffer(&bd, &dd, &buffer);
+        return SUCCEEDED(hr);
+    }
+
     HRESULT hr = gfx::device->CreateBuffer(&bd, nullptr, &buffer);
     return SUCCEEDED(hr);
 }
