@@ -80,8 +80,7 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 
 		// hit
 		if (closest < MIN_HIT_DISTANCE) {
-			return float3(1, 0, 0);
-			return float3(1, 0, 0) * (float(i) / NUMBER_OF_STEPS);
+			//return float3(1, 0, 0);
 			// float base_colour = 1 - (float(i) / NUMBER_OF_STEPS);
 			//float3 material = lerp(float3(1, 0, 0), float3(0, 0, 1), float(i) / NUMBER_OF_STEPS);
 			float3 material = float3(1, 0, 0);

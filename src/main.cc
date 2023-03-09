@@ -132,24 +132,34 @@ struct Camera {
 
 	void input() {
 		vec3 velocity = {
-			(float)(isKeyDown(KEY_D) - isKeyDown(KEY_A)),
-			0.f,
+			(float)(isKeyDown(KEY_A) - isKeyDown(KEY_D)),
+			(float)(isKeyDown(KEY_Q) - isKeyDown(KEY_E)),
 			(float)(isKeyDown(KEY_W) - isKeyDown(KEY_S))
 		};
 
 		float speed = 50.f * win::dt;
 		pos += velocity * speed;
 
-		vec2 relmouse = getMousePosRel();
-		vec2 winsize = win::getSize();
-		vec2 rotation = relmouse / winsize;
+		vec3 lookat = pos + fwd;
+
+		vec3 rotation = {
+			(float)(isKeyDown(KEY_LEFT) - isKeyDown(KEY_RIGHT)),
+			(float)(isKeyDown(KEY_DOWN) - isKeyDown(KEY_UP)),
+			0
+		};
+
+		lookat += rotation * win::dt;
+		fwd = norm(lookat - pos);
+		//fwd = norm(fwd + rotation * win::dt);
+		right = norm(cross(fwd, up));
+		up = cross(right, fwd);
 	}
 
 	void update(const vec3 &newpos, const vec3 &newdir) {
 		pos = newpos;
 		fwd = newdir;
 		right = norm(cross(fwd, up));
-		// up = cross(right, fwd);
+		up = cross(right, fwd);
 	}
 };
 
@@ -231,9 +241,9 @@ int main() {
 			}
 		}
 
-		sculpt_clock.start();
-		sculpt.shader.dispatch(threads, { volume_tex_data_ind, brush_data_ind }, { brush.srv }, { main_texture.uav });
-		sculpt_clock.end();
+		// sculpt_clock.start();
+		// sculpt.shader.dispatch(threads, { volume_tex_data_ind, brush_data_ind }, { brush.srv }, { main_texture.uav });
+		// sculpt_clock.end();
 
 		while (win::isOpen()) {
 			main_sh.poll();

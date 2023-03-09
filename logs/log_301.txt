@@ -1,0 +1,42 @@
+[INFO] (00:00:0006): compiling base_vs.hlsl, type: vs
+[INFO] (00:00:0529): compiling base_ps.hlsl, type: ps
+[INFO] (00:00:0570): compiling sculpt_cs.hlsl, type: cs
+[INFO] (00:00:0596): compiling gen_brush_cs.hlsl, type: cs
+[INFO] (00:00:0606): compiling empty_texture_cs.hlsl, type: cs
+[INFO] (00:00:0719): GPU TIMER [Sculpt] time passed: 1.379ms
+[INFO] (00:06:0677): compiling base_ps.hlsl, type: ps
+[INFO] (00:06:0715): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:06:0726): compiling base_ps.hlsl, type: ps
+[INFO] (00:06:0766): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:12:0142): compiling base_ps.hlsl, type: ps
+[INFO] (00:12:0177): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:15:0066): compiling base_ps.hlsl, type: ps
+[INFO] (00:15:0097): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:19:0085): compiling base_ps.hlsl, type: ps
+[ERROR](00:19:0088): couldn't compile shader base_ps.hlsl
+[ERROR](00:19:0088): \\StuHomeOdd\HomeDrive1$\1902881\cmp400_honours\Shader@0x000002449FB4DEA0(44,21): error X3000: syntax error: unexpected token ';'
+
+[INFO] (00:20:0920): compiling base_ps.hlsl, type: ps
+[INFO] (00:20:0964): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:24:0780): compiling base_ps.hlsl, type: ps
+[INFO] (00:24:0813): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:25:0724): compiling base_ps.hlsl, type: ps
+[INFO] (00:25:0758): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:31:0796): compiling base_ps.hlsl, type: ps
+[INFO] (00:31:0828): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:33:0466): compiling base_ps.hlsl, type: ps
+[INFO] (00:33:0500): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:37:0200): compiling base_ps.hlsl, type: ps
+[INFO] (00:37:0234): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:39:0407): compiling base_ps.hlsl, type: ps
+[INFO] (00:39:0444): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:41:0315): compiling base_ps.hlsl, type: ps
+[INFO] (00:41:0346): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:43:0948): compiling base_ps.hlsl, type: ps
+[INFO] (00:43:0985): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:43:0994): compiling base_ps.hlsl, type: ps
+[INFO] (00:44:0029): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:47:0442): compiling base_ps.hlsl, type: ps
+[INFO] (00:47:0478): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:49:0048): compiling base_ps.hlsl, type: ps
+[INFO] (00:49:0090): re-compiled shader base_ps.hlsl successfully

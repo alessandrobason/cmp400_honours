@@ -1,0 +1,10 @@
+[INFO] (00:00:0006): compiling base_vs.hlsl, type: vs
+[INFO] (00:00:0550): compiling base_ps.hlsl, type: ps
+[INFO] (00:00:0585): compiling sculpt_cs.hlsl, type: cs
+[INFO] (00:00:0611): compiling gen_brush_cs.hlsl, type: cs
+[INFO] (00:00:0621): compiling empty_texture_cs.hlsl, type: cs
+[INFO] (00:00:0762): GPU TIMER [Sculpt] time passed: 1.382ms
+[INFO] (00:27:0901): compiling base_ps.hlsl, type: ps
+[INFO] (00:27:0931): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:27:0940): compiling base_ps.hlsl, type: ps
+[INFO] (00:27:0963): re-compiled shader base_ps.hlsl successfully

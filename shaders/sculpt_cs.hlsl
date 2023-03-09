@@ -85,7 +85,7 @@ void main(uint3 id : SV_DispatchThreadID, uint3 group_id : SV_GroupID) {
     // -- do <operation> on the current pixel
     switch (operation) {
         case OP_UNION:               tex[id] = op_union(tex[id], distance);                    break;              
-        case OP_SUBTRACTION:         tex[id] = op_subtraction(tex[id], distance);             break;        
+        case OP_SUBTRACTION:         tex[id] = distance >= 0 ? op_subtraction(tex[id], distance) : tex[id]; break;        
         case OP_INTERSECTION:        tex[id] = op_intersection(tex[id], distance);             break;       
         case OP_SMOOTH_UNION:        tex[id] = op_smooth_union(tex[id], distance, 0.5);        break;       
         case OP_SMOOTH_SUBTRACTION:  tex[id] = op_smooth_subtraction(tex[id], distance, 0.5);  break; 
