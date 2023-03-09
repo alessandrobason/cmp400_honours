@@ -1,0 +1,15 @@
+[INFO] (00:00:0010): compiling base_vs.hlsl, type: vs
+[INFO] (00:00:0910): compiling base_ps.hlsl, type: ps
+[INFO] (00:00:0940): compiling sculpt_cs.hlsl, type: cs
+[INFO] (00:00:0958): compiling gen_brush_cs.hlsl, type: cs
+[INFO] (00:00:0966): compiling empty_texture_cs.hlsl, type: cs
+[INFO] (00:01:0062): GPU TIMER [Sculpt] time passed: 1312768.000sec
+[INFO] (00:10:0827): GPU TIMER [Sculpt] time passed: 1.141ms
+[INFO] (00:42:0126): GPU TIMER [Sculpt] time passed: 1.182ms
+[INFO] (00:58:0133): compiling sculpt_cs.hlsl, type: cs
+[INFO] (00:58:0152): re-compiled shader sculpt_cs.hlsl successfully
+[INFO] (00:58:0165): compiling sculpt_cs.hlsl, type: cs
+[INFO] (00:58:0181): re-compiled shader sculpt_cs.hlsl successfully
+[WARN] (00:58:0183): ID3D11DeviceContext::End: End is being invoked on a Query, where the previous results have not been obtained with GetData. This is valid; but unusual. The previous results are being abandoned, and new Query results will be generated.
+[WARN] (00:58:0184): ID3D11DeviceContext::End: End is being invoked on a Query, where the previous results have not been obtained with GetData. This is valid; but unusual. The previous results are being abandoned, and new Query results will be generated.
+[INFO] (00:58:0259): GPU TIMER [Sculpt] time passed: 1.183ms

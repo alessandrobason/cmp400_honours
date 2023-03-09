@@ -6,6 +6,8 @@
 #include "tracelog.h"
 #include "utils.h"
 
+#if 0
+
 void ShapeBuilder::init() {
 }
 
@@ -135,6 +137,8 @@ void ShapeBuilder::addShape(ShapeType type, Operations oper, Alteration alter, c
 	shape.as = data;
 	shapes.emplace_back(shape);
 }
+
+#endif
 
 #if 0
 #include <d3d11.h>

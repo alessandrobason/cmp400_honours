@@ -10,6 +10,7 @@
 
 #include "system.h"
 #include "utils.h"
+#include "input.h"
 
 static const char *level_strings[(int)LogLevel::Count] = {
     "[NONE] ",
@@ -134,6 +135,8 @@ void Logger::endLine(LogLevel level, int minutes, int seconds, int millis) {
 
 void Logger::draw() {
     static bool is_open = true;
+    if (isKeyPressed(KEY_L)) is_open = true;
+    if (!is_open) return;
     if (!ImGui::Begin("Logger", &is_open)) {
         ImGui::End();
         return;

@@ -92,6 +92,15 @@ void Buffer::bind(ShaderType type, unsigned int slot) {
     }
 }
 
+void Buffer::unbind(ShaderType type, unsigned int slot) {
+    ID3D11Buffer *null_buf[1] = { nullptr };
+    switch (type) {
+        case ShaderType::Vertex:   gfx::context->VSSetConstantBuffers(slot, 1, null_buf); break;
+        case ShaderType::Fragment: gfx::context->PSSetConstantBuffers(slot, 1, null_buf); break;
+        case ShaderType::Compute:  gfx::context->CSSetConstantBuffers(slot, 1, null_buf); break;
+    }
+}
+
 #if 0
 void Buffer::unmapVS(unsigned int subresource, unsigned int slot) {
     gfx::context->Unmap(buffer, subresource);

@@ -161,12 +161,10 @@ Buffer *Shader::getBuffer(int index) {
 bool Shader::addSampler() {
 	D3D11_SAMPLER_DESC desc;
 	mem::zero(desc);
-	desc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+	desc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
 	desc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
 	desc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
 	desc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-	float border[4] = { 100000, 100000, 100000, 100000 };
-	mem::copy(desc.BorderColor, border);
 	desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
 
 	HRESULT hr = gfx::device->CreateSamplerState(&desc, &sampler);
@@ -201,9 +199,38 @@ void Shader::bind() {
 	gfx::context->PSSetSamplers(0, 1, &sampler);
 }
 
-void Shader::unbind() {
-	// todo, maybe remove?
+//void Shader::unbind() {
+//	// todo, maybe remove?
+//}
+
+void Shader::bindBuf(ShaderType type, int buffer, unsigned int slot) {
+	if (Buffer *buf = getBuffer(buffer)) {
+		buf->bind(type, slot);
+	}
 }
+
+void Shader::bindBuffers(ShaderType type, Slice<int> cbuffers) {
+	int slot = 0;
+	for (int ind : cbuffers) {
+		if (Buffer *buf = getBuffer(ind)) {
+			buf->bind(type, slot++);
+		}
+	}
+}
+
+void Shader::unbindBuf(ShaderType type, int buffer, unsigned int slot) {
+	if (Buffer *buf = getBuffer(buffer)) {
+		buf->unbind(type, slot);
+	}
+}
+
+void Shader::unbindBuffers(ShaderType type, int count) {
+	if (count >= (int)buffers.size()) count = (int)buffers.size() - 1;
+	for (int i = 0; i < count; ++i) {
+		buffers[i].unbind(type, i);
+	}
+}
+
 
 void Shader::dispatch(const vec3u &threads, Slice<int> cbuffers, Slice<ID3D11ShaderResourceView *> srvs, Slice<ID3D11UnorderedAccessView *> uavs) {
 	if (!compute_sh) return;

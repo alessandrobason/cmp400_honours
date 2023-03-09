@@ -7,6 +7,7 @@
 #include "buffer.h"
 #include "vec.h"
 
+#if 0
 // ordered for minimum padding
 struct Shape {
 	uint32_t type;
@@ -76,6 +77,7 @@ private:
 	Buffer buffer;
 	dxptr<ID3D11ShaderResourceView> buf_srv = nullptr;
 };
+#endif
 
 #if 0
 struct ShapeType {

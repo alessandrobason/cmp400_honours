@@ -1,0 +1,21 @@
+[INFO] (00:00:0006): compiling base_vs.hlsl, type: vs
+[INFO] (00:00:0442): compiling base_ps.hlsl, type: ps
+[INFO] (00:00:0483): compiling sculpt_cs.hlsl, type: cs
+[INFO] (00:00:0503): compiling gen_brush_cs.hlsl, type: cs
+[INFO] (00:00:0514): compiling empty_texture_cs.hlsl, type: cs
+[INFO] (00:00:0702): GPU TIMER [Sculpt] time passed: 1974272.000sec
+[INFO] (00:07:0735): saved screenshot as screenshots/screenshot_018.png
+[INFO] (00:14:0046): compiling base_ps.hlsl, type: ps
+[INFO] (00:14:0075): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:23:0396): compiling base_ps.hlsl, type: ps
+[INFO] (00:23:0435): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:38:0249): compiling base_ps.hlsl, type: ps
+[INFO] (00:38:0283): re-compiled shader base_ps.hlsl successfully
+[INFO] (00:42:0363): compiling base_ps.hlsl, type: ps
+[INFO] (00:42:0393): re-compiled shader base_ps.hlsl successfully
+[INFO] (01:05:0531): compiling base_ps.hlsl, type: ps
+[INFO] (01:05:0565): re-compiled shader base_ps.hlsl successfully
+[INFO] (01:10:0230): compiling base_ps.hlsl, type: ps
+[INFO] (01:10:0258): re-compiled shader base_ps.hlsl successfully
+[INFO] (01:12:0196): compiling base_ps.hlsl, type: ps
+[INFO] (01:12:0231): re-compiled shader base_ps.hlsl successfully

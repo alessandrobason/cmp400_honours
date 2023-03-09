@@ -173,6 +173,8 @@ static std::vector<GpuTimer> gpu_timers;
 void gpuTimerInit() {
 	GpuTimer disjoint_timer;
 	strncpy_s(disjoint_timer.debug_name, "disjoint", sizeof(disjoint_timer.debug_name));
+	// set initial value to 1 so we never accidentally divide by zero
+	disjoint_timer.value = 1;
 	
 	D3D11_QUERY_DESC disjoint_desc;
 	mem::zero(disjoint_desc);

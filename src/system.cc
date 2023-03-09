@@ -57,8 +57,8 @@ namespace gfx {
 		ImGui_ImplWin32_Init(win::hwnd);
 		ImGui_ImplDX11_Init(device, context);
 
-		//bool rtv_success = main_rtv.create(1920, 1080);
-		bool rtv_success = main_rtv.create(1000, 1000);
+		bool rtv_success = main_rtv.create(1920, 1080);
+		//bool rtv_success = main_rtv.create(1000, 1000);
 		if (!rtv_success) {
 			fatal("couldn't create main RTV");
 		}

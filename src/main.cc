@@ -51,8 +51,8 @@ ID3D11UnorderedAccessView *gfx_buf_res_uav = nullptr;
 constexpr vec2u tex_size = { 1920, 1080 };
 
 bool is_dirty = true;
-constexpr vec3u maintex_size = { 512, 512, 512 };
-vec3u brush_size = { 32, 32, 32 };
+constexpr vec3u maintex_size = 512;
+constexpr vec3u brush_size = 64;
 constexpr vec3u threads = maintex_size / 8;
 
 //ShapeBuilder builder;
@@ -75,17 +75,17 @@ struct PSShaderData {
 	float unused__2;
 };
 
+#if BRUSH_BUILDER
 struct SDFData {
 	vec3 tex_size;
 	float padding__0;
 };
 
-struct SDFinfo{
+struct SDFinfo {
 	vec3i half_tex_size;
 	unsigned int padding__0;
 };
 
-#if BRUSH_BUILDER
 struct BrushData {
 	vec3i brush_size;
 	unsigned int operation;
@@ -94,40 +94,50 @@ struct BrushData {
 };
 #endif
 
-constexpr uint32_t SMOOTH_OP               = (uint32_t)1 << 31;
-constexpr uint32_t OP_UNION                = (uint32_t)1 << 1;
-constexpr uint32_t OP_SUBTRACTION          = (uint32_t)1 << 2;
-constexpr uint32_t OP_INTERSECTION         = (uint32_t)1 << 3;
-constexpr uint32_t OP_SMOOTH_UNION         = SMOOTH_OP | OP_UNION;
-constexpr uint32_t OP_SMOOTH_SUBTRACTION   = SMOOTH_OP | OP_SUBTRACTION;
-constexpr uint32_t OP_SMOOTH_INTERSECTION  = SMOOTH_OP | OP_INTERSECTION;
+enum class Operations : uint32_t {
+	None               = 0,
+	Union              = 1u << 1,
+	Subtraction        = 1u << 2,
+	Intersection       = 1u << 3,
+	Smooth             = 1u << 31,
+	SmoothUnion        = Smooth | Union,
+	SmoothSubtraction  = Smooth | Subtraction,
+	SmoothIntersection = Smooth | Intersection,
+};
 
 struct VolumeTexData {
 	vec3 volume_tex_size = maintex_size;
 	int padding__0;
 };
 
+struct TexData {
+	vec3 tex_size = maintex_size;
+	float padding__0;
+	vec3 tex_position = 0;
+	float padding__1;
+};
+
 struct BrushData {
 	vec3 brush_size;
-	unsigned int operation;
+	Operations operation;
 	vec3 brush_position;
 	int padding__0;
 };
 
 struct Camera {
-	vec3 pos   = vec3(0, 0, -7);
+	vec3 pos   = vec3(0, 0, -100);
 	vec3 fwd   = vec3(0, 0, 1);
 	vec3 right = vec3(1, 0, 0);
 	vec3 up    = vec3(0, 1, 0);
 
 	void input() {
 		vec3 velocity = {
-			(float)(isKeyDown(KEY_A) - isKeyDown(KEY_D)),
+			(float)(isKeyDown(KEY_D) - isKeyDown(KEY_A)),
 			0.f,
 			(float)(isKeyDown(KEY_W) - isKeyDown(KEY_S))
 		};
 
-		float speed = 5.f * win::dt;
+		float speed = 50.f * win::dt;
 		pos += velocity * speed;
 
 		vec2 relmouse = getMousePosRel();
@@ -168,7 +178,7 @@ Mesh makeFullScreenTriangle() {
 }
 
 int main() {
-	win::create("hello world", 800, 600);
+	win::create("Honours Project", 800, 600);
 	assert(all(maintex_size % 8 == 0));
 	assert(all(brush_size % 8 == 0));
 
@@ -180,10 +190,10 @@ int main() {
 		if (!main_texture.create(maintex_size)) gfxErrorExit();
 		if (!brush.create(brush_size))          gfxErrorExit();
 
-		if (!main_sh.init("base_vs", "base_ps", "brush_grid")) gfxErrorExit();
-		int buf_ind = main_sh.shader.addBuffer<PSShaderData>(Usage::Dynamic);
-		SDFData sdf_data{};
-		int sdfbuf_ind = main_sh.shader.addBuffer<SDFData>(Usage::Immutable, &sdf_data);
+		if (!main_sh.init("base_vs", "base_ps", nullptr)) gfxErrorExit();
+		main_sh.shader.addSampler();
+		int shader_data_ind = main_sh.shader.addBuffer<PSShaderData>(Usage::Dynamic);
+		int tex_data_ind = main_sh.shader.addBuffer<TexData>(Usage::Dynamic);
 
 		if (!sculpt.init(nullptr, nullptr, "sculpt_cs")) gfxErrorExit();
 		VolumeTexData volume_tex_data{};
@@ -197,18 +207,26 @@ int main() {
 		Mesh triangle = makeFullScreenTriangle();
 
 		// generate brush
-		gen_brush.shader.dispatch(vec3u(32) / 8, {}, {}, { brush.uav });
+		gen_brush.shader.dispatch(brush_size / 8, {}, {}, { brush.uav });
 
 		// fill texture
 		empty_texture.shader.dispatch(threads, {}, {}, { main_texture.uav });
 
 		GPUClock sculpt_clock("Sculpt");
 
+		if (Buffer *buf = main_sh.shader.getBuffer(tex_data_ind)) {
+			if (TexData *data = buf->map<TexData>(0)) {
+				data->tex_size = maintex_size;
+				data->tex_position = 0;
+				buf->unmap();
+			}
+		}
+
 		if (Buffer *buf = sculpt.shader.getBuffer(brush_data_ind)) {
 			if (BrushData *data = buf->map<BrushData>(0)) {
 				data->brush_position = vec3(0);
-				data->brush_size = 32.f;
-				data->operation = OP_UNION;
+				data->brush_size = brush_size;
+				data->operation = Operations::Union;
 				buf->unmap();
 			}
 		}
@@ -249,7 +267,7 @@ int main() {
 					info("(Lazy Rendering) rendering scene again");
 				}
 
-				if (Buffer *buf = main_sh.shader.getBuffer(buf_ind)) {
+				if (Buffer *buf = main_sh.shader.getBuffer(shader_data_ind)) {
 					if (PSShaderData *data = buf->map<PSShaderData>()) {
 						data->cam_pos = cam.pos;
 						data->cam_fwd = cam.fwd;
@@ -267,16 +285,50 @@ int main() {
 				gfx::main_rtv.clear(Colour::dark_grey);
 				gfx::main_rtv.bind();
 				main_sh.shader.bind();
+				main_sh.shader.bindBuffers(ShaderType::Fragment, { shader_data_ind, tex_data_ind });
 				main_sh.shader.setSRV(ShaderType::Fragment, { main_texture.srv });
 				triangle.render();
 				main_sh.shader.setSRV(ShaderType::Fragment, { nullptr });
-				main_sh.shader.unbind();
+				main_sh.shader.unbindBuffers(ShaderType::Fragment, 2);
+				//main_sh.shader.unbind();
 			}
 
 			gfx::imgui_rtv.bind();
 			fpsWidget();
 			mainTargetWidget();
 			drawLogger();
+			
+			ImGui::Begin("New Shape");
+			static vec3 newpos = 0;
+			static int cur_op = 0;
+			ImGui::Combo("Operation", &cur_op, "Union\0Subtraction\0Intersection\0Smooth Union\0Smooth Subtraction\0Smooth Intersection");
+			ImGui::DragFloat3("Position", newpos.data, 1.f, -(maintex_size.x / 2.f), maintex_size.x / 2.f);
+			if (ImGui::Button("Add")) {
+				static Operations int_to_oper[6] = {
+					Operations::Union,
+					Operations::Subtraction,
+					Operations::Intersection,
+					Operations::SmoothUnion,
+					Operations::SmoothSubtraction,
+					Operations::SmoothIntersection,
+				};
+
+				if (Buffer *buf = sculpt.shader.getBuffer(brush_data_ind)) {
+					if (BrushData *data = buf->map<BrushData>(0)) {
+						data->brush_position = newpos;
+						data->brush_size = brush_size;
+						data->operation = int_to_oper[cur_op];
+						buf->unmap();
+					}
+				}
+
+				sculpt_clock.start();
+				sculpt.shader.dispatch(threads, { volume_tex_data_ind, brush_data_ind }, { brush.srv }, { main_texture.uav });
+				sculpt_clock.end();
+			}
+			
+			ImGui::End();
+
 			gfx::end();
 
 			if (isKeyPressed(KEY_P)) {

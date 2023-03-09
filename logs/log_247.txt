@@ -1,0 +1,7 @@
+[INFO] (00:00:0005): compiling base_vs.hlsl, type: vs
+[INFO] (00:00:0428): compiling base_ps.hlsl, type: ps
+[INFO] (00:00:0460): compiling brush_grid.hlsl, type: cs
+[INFO] (00:00:0471): compiling sculpt_cs.hlsl, type: cs
+[INFO] (00:00:0488): compiling gen_brush_cs.hlsl, type: cs
+[INFO] (00:00:0497): compiling empty_texture_cs.hlsl, type: cs
+[INFO] (00:00:0674): GPU TIMER [Sculpt] time passed: infsec

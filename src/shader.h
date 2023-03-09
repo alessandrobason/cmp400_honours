@@ -46,7 +46,11 @@ struct Shader {
 
 	//bool update(float time);
 	void bind();
-	void unbind();
+	//void unbind(int srv_count = 0, int buffer_count = 0);
+	void bindBuf(ShaderType type, int buffer, unsigned int slot = 0);
+	void bindBuffers(ShaderType type, Slice<int> cbuffers = {});
+	void unbindBuf(ShaderType type, int buffer, unsigned int slot = 0);
+	void unbindBuffers(ShaderType type, int count = 1);
 
 	void dispatch(const vec3u &threads, Slice<int> cbuffers = {}, Slice<ID3D11ShaderResourceView *> srvs = {}, Slice<ID3D11UnorderedAccessView *> uavs = {});
 

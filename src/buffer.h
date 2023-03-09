@@ -4,10 +4,10 @@
 #include "d3d11_fwd.h"
 
 enum class Usage {
-	Default,
-	Immutable,
-	Dynamic,
-	Staging,
+	Default,   // can read/write from GPU
+	Immutable, // can be read from the GPU
+	Dynamic,   // can be read from the GPU and written by the CPU
+	Staging,   // used to transfer from the GPU to the CPU
 	Count,
 };
 
@@ -43,10 +43,7 @@ struct Buffer {
 	void* map(unsigned int subresource = 0);
 	void unmap(unsigned int subresource = 0);
 	void bind(ShaderType type, unsigned int slot = 0);
-	// void unmapVS(unsigned int subresource = 0, unsigned int slot = 0);
-	// void unmapPS(unsigned int subresource = 0, unsigned int slot = 0);
-	// void unmapGS(unsigned int subresource = 0, unsigned int slot = 0);
-	// void unmapCS(unsigned int subresource = 0, unsigned int slot = 0);
+	void unbind(ShaderType type, unsigned int slot = 0);
 
 	dxptr<ID3D11Buffer> buffer = nullptr;
 };

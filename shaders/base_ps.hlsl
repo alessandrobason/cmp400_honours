@@ -11,39 +11,37 @@ cbuffer ShaderData : register(b0) {
 	float3 cam_right;
 	float img_height;
 	float3 cam_pos; 
-	float unused__2;   ///////-PADDING-///////
+	float padding__0;
 };
 
-#define SIZE 10.0
-#define HSIZE (SIZE/2.0)
+cbuffer TexData : register(b1) {
+    float3 tex_size;
+    float padding__1;
+	float3 tex_position;
+	float padding__2;
+};
 
 Texture3D<float> vol_tex : register(t0);
+sampler sampler_0;
 
 // == scene functions ================================
 
 float3 worldToTex(float3 world) {
-	const float3 tex_size = float3(1024, 1024, 512);
-	
-	float3 tex_space = world * 32. + tex_size / 2.;
-	tex_space.y = tex_size.y - tex_space.y;
-	return tex_space;
+	return world - tex_position + tex_size / 2.;
 }
 
-float4 map(float3 tex_pos) {
-	int3 coords = int3(tex_pos);
-	int value = vol_tex.Load(int4(coords, 0));
-	float distance = (float)(value) / 32.0;
-
+float4 map(float3 coords) {
+	float distance = vol_tex.Load(int4(coords, 0));
 	return float4(coords, distance);
 }
 
 bool isInsideTexture(float3 pos) {
-	return all(pos >= 0 && pos < float3(1024, 1024, 512));
+	return all(pos >= 0 && pos < 512);
 }
 
 float3 calcNormal(float3 pos) {
 	const float3 small_step = float3(1, 0, 0);
-	const float step = 64;
+	const float step = 1;
 	const float2 k = float2(1, -1);
 
 	return normalize(
@@ -55,29 +53,38 @@ float3 calcNormal(float3 pos) {
 }
 
 float3 rayMarch(float3 ray_origin, float3 ray_dir) {
-	float distance_traveled = 0.0;
-	const int NUMBER_OF_STEPS = 300;
+	float distance_traveled = 0;
+	const int NUMBER_OF_STEPS = 100;
 	const float MIN_HIT_DISTANCE = 0.001;
 	const float MAX_TRACE_DISTANCE = 1000;
 
 	for (int i = 0; i < NUMBER_OF_STEPS; ++i) {
 		float3 current_pos = ray_origin + ray_dir * distance_traveled;
 
+		float closest = 0;
+
 		float3 tex_pos = worldToTex(current_pos);
-		if (!isInsideTexture(tex_pos)) {
-			// return float(i) / NUMBER_OF_STEPS;
-			return float3(0, 1, 0);
-			//break;
+		if (any(tex_pos > tex_size)) {
+			return float3(0, 0, 1);
+			// break;
 		}
 
-		float4 result = map(tex_pos);
-		float closest = result.w;
+		if (any(tex_pos < 0)) {
+			// move a bit closer
+			closest = length(tex_pos) / 2.;
+		}
+		else {
+			float4 result = map(tex_pos);
+			closest = result.w;
+		}
 
 		// hit
 		if (closest < MIN_HIT_DISTANCE) {
 			return float3(1, 0, 0);
+			return float3(1, 0, 0) * (float(i) / NUMBER_OF_STEPS);
 			// float base_colour = 1 - (float(i) / NUMBER_OF_STEPS);
-			float3 material = lerp(float3(1, 0, 0), float3(0, 0, 1), float(i) / NUMBER_OF_STEPS);
+			//float3 material = lerp(float3(1, 0, 0), float3(0, 0, 1), float(i) / NUMBER_OF_STEPS);
+			float3 material = float3(1, 0, 0);
 			// material *= base_colour;
 
 			float3 normal = calcNormal(tex_pos);
@@ -95,7 +102,6 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 		// miss
 		if (distance_traveled > MAX_TRACE_DISTANCE) {
 			//return float(i) / NUMBER_OF_STEPS;
-			//break;
 			return float3(0, 0, 1);
 		}
 
@@ -113,21 +119,20 @@ float3x3 setCamera(float3 pos, float3 target, float rot) {
     return float3x3( right, actual_up, fwd );
 }
 
-float get(int3 coords) {
-	return vol_tex.Load(int4(coords, 0));
-}
-
 float4 main(PixelInput input) : SV_TARGET {
 	// convert to range (-1, 1)
 	float2 uv = input.uv * 2.0 - 1.0;
+	float aspect_ratio = img_width / img_height;
+	uv.y *= aspect_ratio;
 
 #if 1
 	float3x3 camera_mat = float3x3(cam_right, cam_up, cam_fwd);
-	float focal_length = .5;
-	float3 ray_dir = normalize(mul(camera_mat, normalize(float3(uv * 2, focal_length))));
-	float3 colour = rayMarch(cam_pos + float3(0, 0, -1.0), ray_dir);
+	float focal_length = 2.;
+	float3 ray_dir = mul(camera_mat, normalize(float3(uv.xy, focal_length)));
+	// float3 ray_dir = normalize(mul(camera_mat, normalize(float3(uv * 2, focal_length))));
+	float3 colour = rayMarch(cam_pos, ray_dir);
 #else
-	float3 ray_ori = float3(0, 0, -8);
+	float3 ray_ori = float3(0, 0, -100);
 	float3 ray_dir = float3(uv, .5);
 	float3 colour = rayMarch(ray_ori, normalize(ray_dir));
 #endif

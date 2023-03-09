@@ -28,6 +28,18 @@ float sampleBrush(float3 position) {
     return brush.Load(int4(int3(position), 0));
 }
 
+float op_union(float d1, float d2) {
+    return min(d1, d2);
+}
+
+float op_subtraction(float d1, float d2) {
+    return min(-d1, d2);
+}
+
+float op_intersection(float d1, float d2) {
+    return max(d1, d2);
+}
+
 float op_smooth_union(float d1, float d2, float k) {
 	float h = clamp(0.5 + 0.5 * (d2 - d1) / k, 0.0, 1.0);
 	return lerp(d2, d1, h) - k * h * (1.0 - h);
@@ -43,28 +55,38 @@ float op_smooth_intersection(float d1, float d2, float k) {
 	return lerp(d2, d1, h) + k * h * (1.0 - h);
 }
 
+float3 worldToBrush(float3 pos) {
+    return pos - brush_position + brush_size / 2.;
+}
+
 [numthreads(8, 8, 8)]
 void main(uint3 id : SV_DispatchThreadID, uint3 group_id : SV_GroupID) {
     // -- first check if the brush is in the tile, otherwise cull
     const float3 group_centre = float3(group_id) * 8. + 4.;
     const float3 group_world = group_centre - volume_tex_size / 2.;
     // convert group position to be in brush coordinates
-    const float3 group_brush = group_world - brush_position;
+    const float3 group_brush = worldToBrush(group_world);
     // if the tile is not inside the brush volume texture, return early
     if (!all(group_brush >= 0 && group_brush < brush_size)) {
+        // if (length(group_brush) > 12.);
         return;
     }
 
     // -- sample brush at current position
     const float3 id_world = float3(id) - volume_tex_size / 2.;
-    const float3 id_brush = id_world - brush_position;
+    // move the position relative to where the brush is, then convert it to brush coordinates
+    const float3 id_brush = worldToBrush(id_world);
+    // if the cell is not inside the brush volume texture, return early
+    if (!all(id_brush >= 0 && id_brush < brush_size)) {
+        return;
+    }
     const float distance = sampleBrush(id_brush);
 
     // -- do <operation> on the current pixel
     switch (operation) {
-        case OP_UNION:               tex[id] = min(tex[id], distance);                         break;              
-        case OP_SUBTRACTION:         tex[id] = min(-tex[id], distance);                        break;        
-        case OP_INTERSECTION:        tex[id] = max(tex[id], distance);                         break;       
+        case OP_UNION:               tex[id] = op_union(tex[id], distance);                    break;              
+        case OP_SUBTRACTION:         tex[id] = op_subtraction(tex[id], distance);             break;        
+        case OP_INTERSECTION:        tex[id] = op_intersection(tex[id], distance);             break;       
         case OP_SMOOTH_UNION:        tex[id] = op_smooth_union(tex[id], distance, 0.5);        break;       
         case OP_SMOOTH_SUBTRACTION:  tex[id] = op_smooth_subtraction(tex[id], distance, 0.5);  break; 
         case OP_SMOOTH_INTERSECTION: tex[id] = op_smooth_intersection(tex[id], distance, 0.5); break;
