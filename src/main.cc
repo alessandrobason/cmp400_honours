@@ -98,12 +98,14 @@ enum class Operations : uint32_t {
 	None               = 0,
 	Union              = 1u << 1,
 	Subtraction        = 1u << 2,
-	Intersection       = 1u << 3,
+	// Intersection       = 1u << 3,
 	Smooth             = 1u << 31,
 	SmoothUnion        = Smooth | Union,
 	SmoothSubtraction  = Smooth | Subtraction,
-	SmoothIntersection = Smooth | Intersection,
+	// SmoothIntersection = Smooth | Intersection,
 };
+
+Operations &operator|=(Operations &a, Operations b) { a = (Operations)((uint32_t)a | (uint32_t)b); return a; }
 
 struct VolumeTexData {
 	vec3 volume_tex_size = maintex_size;
@@ -121,7 +123,7 @@ struct BrushData {
 	vec3 brush_size;
 	Operations operation;
 	vec3 brush_position;
-	int padding__0;
+	float smooth_amount;
 };
 
 struct Camera {
@@ -131,18 +133,18 @@ struct Camera {
 	vec3 up    = vec3(0, 1, 0);
 
 	void input() {
-		vec3 velocity = {
+		const vec3 velocity = {
 			(float)(isKeyDown(KEY_A) - isKeyDown(KEY_D)),
 			(float)(isKeyDown(KEY_Q) - isKeyDown(KEY_E)),
 			(float)(isKeyDown(KEY_W) - isKeyDown(KEY_S))
 		};
 
-		float speed = 50.f * win::dt;
+		const float speed = 50.f * win::dt;
 		pos += velocity * speed;
 
 		vec3 lookat = pos + fwd;
 
-		vec3 rotation = {
+		const vec3 rotation = {
 			(float)(isKeyDown(KEY_LEFT) - isKeyDown(KEY_RIGHT)),
 			(float)(isKeyDown(KEY_DOWN) - isKeyDown(KEY_UP)),
 			0
@@ -311,16 +313,23 @@ int main() {
 			ImGui::Begin("New Shape");
 			static vec3 newpos = 0;
 			static int cur_op = 0;
-			ImGui::Combo("Operation", &cur_op, "Union\0Subtraction\0Intersection\0Smooth Union\0Smooth Subtraction\0Smooth Intersection");
+			static bool is_smooth = false;
+			static float smooth_amount = 0.5f;
+			// ImGui::Combo("Operation", &cur_op, "Union\0Subtraction\0Intersection\0Smooth Union\0Smooth Subtraction\0Smooth Intersection");
+			ImGui::Combo("Operation", &cur_op, "Union\0Subtraction");
+			ImGui::Checkbox("Is smooth", &is_smooth);
+			if (is_smooth) {
+				ImGui::SliderFloat("Smooth Amount", &smooth_amount, 0.f, 1.f);
+			}
 			ImGui::DragFloat3("Position", newpos.data, 1.f, -(maintex_size.x / 2.f), maintex_size.x / 2.f);
 			if (ImGui::Button("Add")) {
 				static Operations int_to_oper[6] = {
 					Operations::Union,
 					Operations::Subtraction,
-					Operations::Intersection,
-					Operations::SmoothUnion,
-					Operations::SmoothSubtraction,
-					Operations::SmoothIntersection,
+					// Operations::Intersection,
+					// Operations::SmoothUnion,
+					// Operations::SmoothSubtraction,
+					// Operations::SmoothIntersection,
 				};
 
 				if (Buffer *buf = sculpt.shader.getBuffer(brush_data_ind)) {
@@ -328,6 +337,8 @@ int main() {
 						data->brush_position = newpos;
 						data->brush_size = brush_size;
 						data->operation = int_to_oper[cur_op];
+						if (is_smooth) data->operation |= Operations::Smooth;
+						data->smooth_amount = smooth_amount;
 						buf->unmap();
 					}
 				}
