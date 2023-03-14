@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <iostream>
+//#include <iostream>
 
 #include "system.h"
 #include "input.h"
@@ -7,10 +7,9 @@
 #include "options.h"
 #include "tracelog.h"
 #include "widgets.h"
-#include "shader.h"
-#include "mesh.h"
 #include "macros.h"
 #include "timer.h"
+#include "gfx.h"
 #include "shape_builder.h"
 
 #include <imgui.h>
@@ -20,9 +19,8 @@
 
 #include "utils.h"
 
-#include <tracy/TracyD3D11.hpp>
+//#include <tracy/TracyD3D11.hpp>
 
-//#include <array>
 #define USE_STRUCTURED_BUFFERS 1
 #define TEST_DOUBLE 1
 
@@ -171,13 +169,13 @@ void gfxErrorExit() {
 }
 
 Mesh makeFullScreenTriangle() {
-	Vertex verts[] = {
+	Mesh::Vertex verts[] = {
 		{ vec3(-1, -1, 0), vec2(0, 0) },
-		{ vec3(3, -1, 0), vec2(2, 0) },
+		{ vec3( 3, -1, 0), vec2(2, 0) },
 		{ vec3(-1,  3, 0), vec2(0, 2) },
 	};
 
-	Index indices[] = {
+	Mesh::Index indices[] = {
 		0, 2, 1,
 	};
 
@@ -196,7 +194,7 @@ int main() {
 
 	{
 		Camera cam;
-		gfx::Texture3D main_texture, brush;
+		Texture3D main_texture, brush;
 		DynamicShader main_sh, sculpt, gen_brush, empty_texture;
 
 		if (!main_texture.create(maintex_size)) gfxErrorExit();
@@ -204,13 +202,13 @@ int main() {
 
 		if (!main_sh.init("base_vs", "base_ps", nullptr)) gfxErrorExit();
 		main_sh.shader.addSampler();
-		int shader_data_ind = main_sh.shader.addBuffer<PSShaderData>(Usage::Dynamic);
-		int tex_data_ind = main_sh.shader.addBuffer<TexData>(Usage::Dynamic);
+		int shader_data_ind = main_sh.shader.addBuffer<PSShaderData>(Buffer::Usage::Dynamic);
+		int tex_data_ind = main_sh.shader.addBuffer<TexData>(Buffer::Usage::Dynamic);
 
 		if (!sculpt.init(nullptr, nullptr, "sculpt_cs")) gfxErrorExit();
 		VolumeTexData volume_tex_data{};
-		int volume_tex_data_ind = sculpt.shader.addBuffer<VolumeTexData>(Usage::Immutable, &volume_tex_data);
-		int brush_data_ind = sculpt.shader.addBuffer<BrushData>(Usage::Dynamic);
+		int volume_tex_data_ind = sculpt.shader.addBuffer<VolumeTexData>(Buffer::Usage::Immutable, &volume_tex_data);
+		int brush_data_ind = sculpt.shader.addBuffer<BrushData>(Buffer::Usage::Dynamic);
 
 		if (!gen_brush.init(nullptr, nullptr, "gen_brush_cs")) gfxErrorExit();
 
@@ -272,7 +270,7 @@ int main() {
 				sculpt_clock.end();
 			}
 
-			gfx::begin(Colour::dark_grey);
+			gfx::begin();
 
 			if (!Options::get().lazy_render || is_dirty) {
 				if (Options::get().lazy_render) {

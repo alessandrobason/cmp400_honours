@@ -12,8 +12,8 @@
 #include <backends/imgui_impl_win32.h>
 #include <sokol_time.h>
 
-#include <tracy/Tracy.hpp>
-#include <tracy/TracyD3D11.hpp>
+//#include <tracy/Tracy.hpp>
+//#include <tracy/TracyD3D11.hpp>
 
 #include "tracelog.h"
 #include "utils.h"
@@ -31,7 +31,7 @@ namespace gfx {
 	dxptr<ID3D11InfoQueue> infodev = nullptr;
 	dxptr<IDXGISwapChain> swapchain = nullptr;
 	dxptr<ID3D11DepthStencilState> depth_stencil_state = nullptr;
-	TracyD3D11Ctx tracy_ctx = nullptr;
+	//TracyD3D11Ctx tracy_ctx = nullptr;
 
 	RenderTexture imgui_rtv;
 	RenderTexture main_rtv;
@@ -76,16 +76,10 @@ namespace gfx {
 		cleanupDevice();
 	}
 
-	void begin(Colour clear_colour) {
+	void begin() {
 		gpuTimerBeginFrame();
 		logD3D11messages();
 
-		UNUSED(clear_colour);
-
-		//main_rtv.bind();
-		//main_rtv.clear(clear_colour);
-
-		//imgui_rtv.bind();
 		imgui_rtv.clear(Colour::black);
 
 		// Start the Dear ImGui frame
@@ -104,7 +98,7 @@ namespace gfx {
 
 		gpuTimerEndFrame();
 
-		TracyD3D11Collect(tracy_ctx);
+		//TracyD3D11Collect(tracy_ctx);
 	}
 
 	bool createDevice() {
@@ -118,7 +112,7 @@ namespace gfx {
 		sd.BufferDesc.RefreshRate.Denominator = 1;
 		sd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 		sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		sd.OutputWindow = win::hwnd;
+		sd.OutputWindow = (HWND)win::hwnd;
 		sd.SampleDesc.Count = 1;
 		sd.SampleDesc.Quality = 0;
 		sd.Windowed = TRUE;
@@ -184,13 +178,13 @@ namespace gfx {
 
 		createImGuiRTV();
 
-		tracy_ctx = TracyD3D11Context(device, context);
+		//tracy_ctx = TracyD3D11Context(device, context);
 
 		return true;
 	}
 	
 	void cleanupDevice() {
-		TracyD3D11Destroy(tracy_ctx);
+		//TracyD3D11Destroy(tracy_ctx);
 
 #ifndef NDEBUG
 		// we need this as it doesn't report memory leaks otherwise
@@ -253,8 +247,10 @@ namespace gfx {
 } // namespace gfx
 
 namespace win {
-	HWND hwnd = nullptr;
-	HINSTANCE hinstance = nullptr;
+	win32_handle_t hwnd = nullptr;
+	win32_handle_t hinstance = nullptr;
+	// HWND hwnd = nullptr;
+	// HINSTANCE hinstance = nullptr;
 	const TCHAR *windows_class_name = TEXT("thesis-app");
 	float dt = 1.f / 60.f;
 	float fps = 60.f;
@@ -299,27 +295,27 @@ namespace win {
 		wc.cbSize = sizeof(wc);
 		wc.style = CS_CLASSDC;
 		wc.lpfnWndProc = wndProc;
-		wc.hInstance = hinstance;
+		wc.hInstance = (HINSTANCE)hinstance;
 		wc.lpszClassName = windows_class_name;
 		RegisterClassEx(&wc);
 
 		str::tstr window_name = name;
 
-		hwnd = CreateWindow(
+		hwnd = (win32_handle_t)CreateWindow(
 			windows_class_name,
 			window_name,
 			WS_OVERLAPPEDWINDOW,
 			CW_USEDEFAULT, CW_USEDEFAULT,
 			width, height,
 			NULL, NULL,
-			hinstance,
+			(HINSTANCE)hinstance,
 			NULL
 		);
 
 		gfx::init();
 
-		ShowWindow(hwnd, SW_SHOWDEFAULT);
-		UpdateWindow(hwnd);
+		ShowWindow((HWND)hwnd, SW_SHOWDEFAULT);
+		UpdateWindow((HWND)hwnd);
 
 		Options::get().load();
 
@@ -330,8 +326,8 @@ namespace win {
 	void cleanup() {
 		gfx::cleanup();
 
-		DestroyWindow(hwnd);
-		UnregisterClass(windows_class_name, hinstance);
+		DestroyWindow((HWND)hwnd);
+		UnregisterClass(windows_class_name, (HINSTANCE)hinstance);
 		hwnd = nullptr;
 		hinstance = nullptr;
 

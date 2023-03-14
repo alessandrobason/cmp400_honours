@@ -1,3 +1,4 @@
+#if 0
 #include "shape_builder.h"
 
 #include <d3d11.h>
@@ -6,7 +7,6 @@
 #include "tracelog.h"
 #include "utils.h"
 
-#if 0
 
 void ShapeBuilder::init() {
 }

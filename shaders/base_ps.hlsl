@@ -84,11 +84,12 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 			// float base_colour = 1 - (float(i) / NUMBER_OF_STEPS);
 			//float3 material = lerp(float3(1, 0, 0), float3(0, 0, 1), float(i) / NUMBER_OF_STEPS);
 			float3 material = float3(1, 0, 0);
+			float ambient_occlusion = 1 - (float)i / (NUMBER_OF_STEPS - 1);
 			// material *= base_colour;
 
 			float3 normal = calcNormal(tex_pos);
 
-			const float3 light_pos = float3(2, -5, 3);
+			const float3 light_pos = float3(sin(time) * 2, -5, cos(time) * 2) * 20.;
 			float3 dir_to_light = normalize(current_pos - light_pos);
 
 			float diffuse_intensity = max(0, dot(normal, dir_to_light));

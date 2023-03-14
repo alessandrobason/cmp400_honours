@@ -1,4 +1,4 @@
-#include "buffer.h"
+#include "gfx.h"
 
 #include <d3d11.h>
 
@@ -7,7 +7,7 @@
 #include "macros.h"
 #include "tracelog.h"
 
-static D3D11_USAGE usage_to_d3d11[(size_t)Usage::Count] = {
+static D3D11_USAGE usage_to_d3d11[(size_t)Buffer::Usage::Count] = {
     D3D11_USAGE_DEFAULT,
     D3D11_USAGE_IMMUTABLE,
     D3D11_USAGE_DYNAMIC,
@@ -15,7 +15,7 @@ static D3D11_USAGE usage_to_d3d11[(size_t)Usage::Count] = {
 };
 
 Buffer::Buffer(Buffer &&buf) {
-    *this = std::move(buf);
+    *this = mem::move(buf);
 }
 
 Buffer::~Buffer() {
@@ -24,7 +24,7 @@ Buffer::~Buffer() {
 
 Buffer &Buffer::operator=(Buffer &&buf) {
     if (this != &buf) {
-        std::swap(buffer, buf.buffer);
+        mem::swap(buffer, buf.buffer);
     }
 
     return *this;

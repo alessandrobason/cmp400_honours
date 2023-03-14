@@ -105,9 +105,6 @@
     <ClCompile Include="..\src\shape_builder.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\libs\tracy\TracyClient.cpp">
-      <Filter>tracy</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\ini.h">
@@ -155,16 +152,10 @@
     <ClInclude Include="..\src\maths.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\colours.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\libs\sokol\sokol_time.h">
       <Filter>sokol</Filter>
     </ClInclude>
     <ClInclude Include="..\src\widgets.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\texture.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\d3d11_fwd.h">
@@ -173,19 +164,10 @@
     <ClInclude Include="..\src\vec.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\mesh.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\shader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\matrix.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\macros.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\buffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\slice.h">
@@ -198,6 +180,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\shape_builder.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\gfx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

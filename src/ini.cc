@@ -7,7 +7,7 @@ struct StrStream {
 	const char *cur;
 	size_t len;
 
-	StrStream(const char *str) : start(str), cur(str), len(strlen(str)) {}
+	StrStream(const file::MemoryBuf &buf) : start((const char *)buf.data.get()), cur(start), len(buf.size) {}
 	bool isFinished() { return (size_t)(cur - start) >= len; }
 	void skipWhitespace();
 	void skipUntil(char until);
@@ -68,9 +68,9 @@ namespace ini {
 		return to_copy;
 	}
 
-	std::vector<std::string_view> Value::asVec(char delim) const {
+	arr<std::string_view> Value::asVec(char delim) const {
 		if (value.empty()) return {};
-		std::vector<std::string_view> out;
+		arr<std::string_view> out;
 
 		size_t start = 0;
 		for (size_t i = 0; i < value.size(); ++i) {
@@ -113,12 +113,11 @@ namespace ini {
 		}
 	}
 
-	void Value::trySet(std::vector<std::string_view> &val) const {
+	void Value::trySet(arr<std::string_view> &val) const {
 		if (isValid()) {
 			val = asVec();
 		}
 	}
-
 
 	const Value Table::get(const char *key) const {
 		for (const Value &v : values) {
@@ -206,12 +205,12 @@ namespace ini {
 	}
 
 	void Doc::parse(const char *filename) {
-		text = file::readString(filename);
-		if (text.empty()) return;
+		text = file::read(filename);
+		if (!text.data) return;
 
 		tables.clear();
 		tables.emplace_back("root");
-		StrStream in{ text.data()};
+		StrStream in = text;
 
 		while (!in.isFinished()) {
 			switch (*in.cur) {

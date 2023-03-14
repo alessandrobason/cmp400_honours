@@ -1,4 +1,4 @@
-#include "shader.h"
+#include "gfx.h"
 
 #include <d3d11.h>
 
@@ -9,12 +9,12 @@
 #include "tracelog.h"
 #include "utils.h"
 #include "macros.h"
-#include "mesh.h"
+#include "gfx.h"
 
 static dxptr<ID3DBlob> compileShader(const char *filename, ShaderType type);
 
 Shader::Shader(Shader &&s) {
-	*this = std::move(s);
+	*this = mem::move(s);
 }
 
 Shader::~Shader() {
@@ -23,11 +23,11 @@ Shader::~Shader() {
 
 Shader &Shader::operator=(Shader &&s) {
 	if (this != &s) {
-		std::swap(vert_sh, s.vert_sh);
-		std::swap(pixel_sh, s.pixel_sh);
-		std::swap(compute_sh, s.compute_sh);
-		std::swap(layout, s.layout);
-		std::swap(buffers, s.buffers);
+		mem::swap(vert_sh, s.vert_sh);
+		mem::swap(pixel_sh, s.pixel_sh);
+		mem::swap(compute_sh, s.compute_sh);
+		mem::swap(layout, s.layout);
+		mem::swap(buffers, s.buffers);
 	}
 	return *this;
 }
@@ -58,8 +58,8 @@ bool Shader::loadVertex(const void *data, size_t len) {
 	}
 
 	D3D11_INPUT_ELEMENT_DESC layout_desc[] = {
-		"POSITION",  0, DXGI_FORMAT_R32G32B32_FLOAT,    0, (UINT)offsetof(Vertex, position), D3D11_INPUT_PER_VERTEX_DATA, 0,
-		"TEXCOORDS", 0, DXGI_FORMAT_R32G32_FLOAT,       0, (UINT)offsetof(Vertex, uv),       D3D11_INPUT_PER_VERTEX_DATA, 0,
+		"POSITION",  0, DXGI_FORMAT_R32G32B32_FLOAT,    0, (UINT)offsetof(Mesh::Vertex, position), D3D11_INPUT_PER_VERTEX_DATA, 0,
+		"TEXCOORDS", 0, DXGI_FORMAT_R32G32_FLOAT,       0, (UINT)offsetof(Mesh::Vertex, uv),       D3D11_INPUT_PER_VERTEX_DATA, 0,
 	};
 
 	hr = gfx::device->CreateInputLayout(
@@ -129,25 +129,25 @@ bool Shader::load(const char *vertex, const char *fragment, const char *compute)
 	return success;
 }
 
-int Shader::addBuffer(size_t type_size, Usage usage, bool can_write, bool can_read) {
+int Shader::addBuffer(size_t type_size, Buffer::Usage usage, bool can_write, bool can_read) {
 	Buffer newbuf;
 	if (!newbuf.create(type_size, usage, can_write, can_read)) {
 		err("couldn't create new buffer!");
 		return -1;
 	}
 	int index = (int)buffers.size();
-	buffers.emplace_back(std::move(newbuf));
+	buffers.emplace_back(mem::move(newbuf));
 	return index;
 }
 
-int Shader::addBuffer(size_t type_size, Usage usage, const void *initial_data, size_t data_count, bool can_write, bool can_read) {
+int Shader::addBuffer(size_t type_size, Buffer::Usage usage, const void *initial_data, size_t data_count, bool can_write, bool can_read) {
 	Buffer newbuf;
 	if (!newbuf.create(type_size, usage, initial_data, data_count, can_write, can_read)) {
 		err("couldn't create new buffer!");
 		return -1;
 	}
 	int index = (int)buffers.size();
-	buffers.emplace_back(std::move(newbuf));
+	buffers.emplace_back(mem::move(newbuf));
 	return index;
 }
 
@@ -269,7 +269,7 @@ void Shader::dispatch(const vec3u &threads, Slice<int> cbuffers, Slice<ID3D11Sha
 }
 
 DynamicShader::DynamicShader(DynamicShader &&s) {
-	*this = std::move(s);
+	*this = mem::move(s);
 }
 
 DynamicShader::~DynamicShader() {
@@ -278,8 +278,8 @@ DynamicShader::~DynamicShader() {
 
 DynamicShader &DynamicShader::operator=(DynamicShader &&s) {
 	if (this != &s) {
-		std::swap(shader, s.shader);
-		std::swap(watcher, s.watcher);
+		mem::swap(shader, s.shader);
+		mem::swap(watcher, s.watcher);
 	}
 	return *this;
 }

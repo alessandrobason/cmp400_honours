@@ -1,13 +1,8 @@
 #pragma once
 
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
 #include <stdint.h>
 
-#include "vec.h"
-#include "colours.h"
-#include "d3d11_fwd.h"
-#include "texture.h"
+#include "gfx.h"
 
 namespace gfx {
 	extern dxptr<ID3D11Device> device;
@@ -20,7 +15,7 @@ namespace gfx {
 	void init();
 	void cleanup();
 
-	void begin(Colour clear_colour);
+	void begin();
 	void end();
 
 	bool createDevice();
@@ -35,8 +30,10 @@ namespace gfx {
 } // namespace gfx
 
 namespace win {
-	extern HWND hwnd;
-	extern HINSTANCE hinstance;
+	extern win32_handle_t hwnd;
+	//extern HWND hwnd;
+	extern win32_handle_t hinstance;
+	//extern HINSTANCE hinstance;
 	extern const TCHAR *windows_class_name;
 	extern float dt;
 	extern float fps;

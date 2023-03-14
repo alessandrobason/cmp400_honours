@@ -1,5 +1,6 @@
 #pragma once
 
+#if 0
 #include <stdint.h>
 #include <vector>
 
@@ -7,7 +8,6 @@
 #include "buffer.h"
 #include "vec.h"
 
-#if 0
 // ordered for minimum padding
 struct Shape {
 	uint32_t type;

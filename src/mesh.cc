@@ -1,4 +1,4 @@
-#include "mesh.h"
+#include "gfx.h"
 
 #include <d3d11.h>
 
@@ -8,7 +8,7 @@
 #include "macros.h"
 
 Mesh::Mesh(Mesh &&m) {
-    *this = std::move(m);
+    *this = mem::move(m);
 }
 
 Mesh::~Mesh() {

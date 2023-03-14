@@ -8,6 +8,9 @@
 #include <sokol_time.h>
 #include <imgui.h>
 
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+
 #include "system.h"
 #include "utils.h"
 #include "input.h"
@@ -112,7 +115,7 @@ void logMessageV(LogLevel level, const char *fmt, va_list vlist) {
 
     if (level == LogLevel::Fatal) {
         str::tstr temp = str::formatV(fmt, vlist);
-        MessageBox(win::hwnd, temp, TEXT("FATAL ERROR"), MB_OK);
+        MessageBox((HWND)win::hwnd, temp, TEXT("FATAL ERROR"), MB_OK);
         exit(1);
     }
 }

@@ -168,7 +168,7 @@ bool GPUClock::isReady() {
 
 // == GPU TIMER =========================================================================================
 
-static std::vector<GpuTimer> gpu_timers;
+static arr<GpuTimer> gpu_timers;
 
 void gpuTimerInit() {
 	GpuTimer disjoint_timer;
@@ -184,7 +184,7 @@ void gpuTimerInit() {
 		fatal("couldn't create disjoint query");
 	}
 
-	gpu_timers.emplace_back(std::move(disjoint_timer));
+	gpu_timers.emplace_back(mem::move(disjoint_timer));
 }
 
 void gpuTimerCleanup() {
@@ -259,7 +259,7 @@ static size_t gpuTimerAdd(const char *name) {
 	HRESULT hr = gfx::device->CreateQuery(&desc, &new_timer.query);
 	if (FAILED(hr)) err("couldn't create start query");
 	
-	gpu_timers.emplace_back(std::move(new_timer));
+	gpu_timers.emplace_back(mem::move(new_timer));
 	
 	return index;
 }

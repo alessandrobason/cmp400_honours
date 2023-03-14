@@ -1,10 +1,9 @@
 #include "utils.h"
 
-#include <assert.h>
+#include <stdio.h>
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
-
 #include <d3d11.h>
 
 #include "tracelog.h"
@@ -18,11 +17,11 @@ void safeRelease(IUnknown *ptr) {
 
 // == string utils ================================================
 namespace str {
-	std::unique_ptr<wchar_t[]> ansiToWide(const char *cstr, size_t len) {
+	mem::ptr<wchar_t[]> ansiToWide(const char *cstr, size_t len) {
 		if (len == 0) len = strlen(cstr);
 		// MultiByteToWideChar returns length INCLUDING null-terminating character
 		int result_len = MultiByteToWideChar(CP_UTF8, 0, cstr, (int)len, NULL, 0);
-		std::unique_ptr<wchar_t[]> wstr = std::make_unique<wchar_t[]>(result_len + 1);
+		mem::ptr<wchar_t[]> wstr = mem::ptr<wchar_t[]>::make(result_len + 1);
 		result_len = MultiByteToWideChar(CP_UTF8, 0, cstr, (int)len, wstr.get(), result_len);
 		wstr[result_len] = '\0';
 		return wstr;
@@ -38,10 +37,10 @@ namespace str {
 		return false;
 	}
 
-	std::unique_ptr<char[]> wideToAnsi(const wchar_t *wstr, size_t len) {
+	mem::ptr<char[]> wideToAnsi(const wchar_t *wstr, size_t len) {
 		if (len == 0) len = wcslen(wstr);
 		int result_len = WideCharToMultiByte(CP_UTF8, 0, wstr, (int)len, NULL, 0, NULL, NULL);
-		std::unique_ptr<char[]> cstr = std::make_unique<char[]>(result_len + 1);
+		mem::ptr<char[]> cstr = mem::ptr<char[]>::make(result_len + 1);
 		result_len = WideCharToMultiByte(CP_UTF8, 0, wstr, (int)len, cstr.get(), result_len, NULL, NULL);
 		cstr[result_len] = '\0';
 		return cstr;
@@ -57,8 +56,8 @@ namespace str {
 		return false;
 	}
 
-	std::unique_ptr<char[]> formatStr(const char *fmt, ...) {
-		std::unique_ptr<char[]> out;
+	mem::ptr<char[]> formatStr(const char *fmt, ...) {
+		mem::ptr<char[]> out;
 		va_list va, vtemp;
 		va_start(va, fmt);
 
@@ -71,17 +70,17 @@ namespace str {
 			return out;
 		}
 
-		out = std::make_unique<char[]>((size_t)len + 1);
+		out = mem::ptr<char[]>::make((size_t)len + 1);
 		len = vsnprintf(out.get(), (size_t)len + 1, fmt, va);
 		va_end(va);
 
 		return out;
 	}
 
-	std::unique_ptr<char[]> dup(const char *cstr, size_t len) {
+	mem::ptr<char[]> dup(const char *cstr, size_t len) {
 		if (!cstr) return nullptr;
 		if (!len) len = strlen(cstr);
-		auto ptr = std::make_unique<char[]>(len + 1);
+		auto ptr = mem::ptr<char[]>::make(len + 1);
 		memcpy(ptr.get(), cstr, len);
 		ptr[len] = '\0';
 		return ptr;
@@ -195,13 +194,13 @@ namespace str {
 	}
 
 	tstr::tstr(tstr &&t) {
-		*this = std::move(t);
+		*this = mem::move(t);
 	}
 
 	tstr &tstr::operator=(tstr &&t) {
 		if (this != &t) {
-			std::swap(buf, t.buf);
-			std::swap(is_owned, t.is_owned);
+			mem::swap(buf, t.buf);
+			mem::swap(is_owned, t.is_owned);
 		}
 		return *this;
 	}
@@ -237,7 +236,7 @@ namespace file {
 		return GetFileAttributesA(filename) != INVALID_FILE_ATTRIBUTES;
 	}
 
-	size_t getSize(FILE *fp) {
+	static size_t getSize(FILE *fp) {
 		if (!fp) {
 			err("invalid FILE handler passed to getSize");
 			return 0;
@@ -246,6 +245,26 @@ namespace file {
 		long len = ftell(fp);
 		fseek(fp, 0, SEEK_SET);
 		return (size_t)len;
+	}
+
+	static MemoryBuf read(FILE *fp) {
+		if (!fp) {
+			err("invalid FILE handler passed to read");
+			return {};
+		}
+
+		MemoryBuf out;
+
+		out.size = getSize(fp);
+		out.data = mem::ptr<uint8_t[]>::make(out.size);
+		size_t read = fread(out.data.get(), 1, out.size, fp);
+
+		assert(read == out.size);
+		if (read != out.size) {
+			out = {};
+		}
+
+		return out;
 	}
 
 	MemoryBuf read(const char *filename) {
@@ -257,59 +276,12 @@ namespace file {
 		return read(fp);
 	}
 
-	MemoryBuf read(FILE *fp) {
-		if (!fp) {
-			err("invalid FILE handler passed to read");
-			return {};
-		}
-
-		MemoryBuf out;
-
-		out.size = getSize(fp);
-		out.data = std::make_unique<uint8_t[]>(out.size);
-		size_t read = fread(out.data.get(), 1, out.size, fp);
-
-		assert(read == out.size);
-		if (read != out.size) {
-			out = {};
-		}
-
-		return out;
-	}
-
-	std::string readString(const char *filename) {
-		FILE *fp = fopen(filename, "rb");
-		if (!fp) {
-			err("couldn't open file: %s", filename);
-			return {};
-		}
-		return readString(fp);
-	}
-
-	std::string readString(FILE *fp) {
-		if (!fp) {
-			err("invalid FILE handler passed to readString");
-			return {};
-		}
-
-		std::string out;
-		out.resize(getSize(fp));
-		size_t read = fread(&out[0], 1, out.size(), fp);
-
-		assert(read == out.size());
-		if (read != out.size()) {
-			out.clear();
-		}
-
-		return out;
-	}
-
 	Watcher::Watcher(const char *watch_folder) {
 		init(watch_folder);
 	}
 
 	Watcher::Watcher(Watcher &&w) {
-		*this = std::move(w);
+		*this = mem::move(w);
 	}
 
 	Watcher::~Watcher() {
@@ -318,10 +290,11 @@ namespace file {
 
 	Watcher &Watcher::operator=(Watcher &&w) {
 		if (this != &w) {
-			std::swap(watched, w.watched);
-			std::swap(changed, w.changed);
-			std::swap(change_buf, w.change_buf);
-			std::swap(handle, w.handle);
+			mem::swap(watched, w.watched);
+			mem::swap(changed, w.changed);
+			mem::copy(change_buf, w.change_buf);
+			//mem::swap(change_buf, w.change_buf);
+			mem::swap(handle, w.handle);
 		}
 
 		return *this;
@@ -460,7 +433,7 @@ namespace file {
 			size_t index = findChangedFromWatched(previous);
 			if (index < changed.size()) {
 				// remove it from list by swapping it with the last one
-				std::swap(changed[index], changed.back());
+				mem::swap(changed[index], changed.back());
 				changed.pop_back();
 			}
 		}
@@ -515,8 +488,8 @@ namespace file {
 		return SIZE_MAX;
 	}
 
-	Watcher::WatchedFile::WatchedFile(std::unique_ptr<char[]> &&new_name, void *udata) {
-		name = std::move(new_name);
+	Watcher::WatchedFile::WatchedFile(mem::ptr<char[]> &&new_name, void *udata) {
+		name = mem::move(new_name);
 		custom_data = udata;
 	}
 
