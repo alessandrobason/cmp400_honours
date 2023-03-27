@@ -167,6 +167,7 @@
     <ClCompile Include="..\libs\sokol\sokol.c" />
     <ClCompile Include="..\libs\stb\stb.c" />
     <ClCompile Include="..\src\buffer.cc" />
+    <ClCompile Include="..\src\camera.cc" />
     <ClCompile Include="..\src\colours.cc" />
     <ClCompile Include="..\src\ini.cc" />
     <ClCompile Include="..\src\input.cc" />
@@ -194,6 +195,7 @@
     <ClInclude Include="..\libs\ImGui\imstb_truetype.h" />
     <ClInclude Include="..\libs\sokol\sokol_time.h" />
     <ClInclude Include="..\libs\stb\stb_image_write.h" />
+    <ClInclude Include="..\src\camera.h" />
     <ClInclude Include="..\src\d3d11_fwd.h" />
     <ClInclude Include="..\src\gfx.h" />
     <ClInclude Include="..\src\ini.h" />

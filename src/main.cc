@@ -11,6 +11,7 @@
 #include "timer.h"
 #include "gfx.h"
 #include "shape_builder.h"
+#include "camera.h"
 
 #include <imgui.h>
 
@@ -124,6 +125,7 @@ struct BrushData {
 	float smooth_amount;
 };
 
+#if 0
 struct Camera {
 	vec3 pos   = vec3(0, 0, -100);
 	vec3 fwd   = vec3(0, 0, 1);
@@ -162,6 +164,7 @@ struct Camera {
 		up = cross(right, fwd);
 	}
 };
+#endif
 
 void gfxErrorExit() {
 	gfx::logD3D11messages();
@@ -253,7 +256,8 @@ int main() {
 			if (sculpt_clock.isReady()) sculpt_clock.print();
 			if (isKeyPressed(KEY_ESCAPE)) win::close();
 
-			cam.input();
+			//cam.input();
+			cam.update();
 
 			if (main_sh.hasUpdated()) {
 				is_dirty = true;
@@ -282,6 +286,8 @@ int main() {
 						data->cam_pos = cam.pos;
 						data->cam_fwd = cam.fwd;
 						data->cam_right = cam.right;
+						//data->cam_fwd = norm(cam.target - cam.pos); // cam.fwd;
+						//data->cam_right = norm(cross(data->cam_fwd, cam.up)); // cam.right;
 						data->cam_up = cam.up;
 						data->img_height = (float)tex_size.x;
 						data->img_width = (float)tex_size.y;

@@ -170,13 +170,16 @@ Keys win32ToKeys(uintptr_t virtual_key) {
 	case VK_MULTIPLY:     return KEY_MULTIPLY;
 	case VK_SUBTRACT:     return KEY_SUBTRACT;
 	case VK_ADD:          return KEY_ADD;
-	case VK_LSHIFT:       return KEY_LSHIFT;
-	case VK_LCONTROL:     return KEY_LCTRL;
-	case VK_LMENU:        return KEY_LALT;
+	case VK_SHIFT:		  return KEY_SHIFT;
+	case VK_CONTROL:	  return KEY_CTRL;
+	case VK_MENU:		  return KEY_ALT;
+	// case VK_LSHIFT:       return KEY_LSHIFT;
+	// case VK_LCONTROL:     return KEY_LCTRL;
+	// case VK_LMENU:        return KEY_LALT;
 	case VK_LWIN:         return KEY_LWIN;
-	case VK_RSHIFT:       return KEY_RSHIFT;
-	case VK_RCONTROL:     return KEY_RCTRL;
-	case VK_RMENU:        return KEY_RALT;
+	// case VK_RSHIFT:       return KEY_RSHIFT;
+	// case VK_RCONTROL:     return KEY_RCTRL;
+	// case VK_RMENU:        return KEY_RALT;
 	case VK_RWIN:         return KEY_RWIN;
 	case VK_APPS:         return KEY_APPS;
 	}
@@ -192,6 +195,10 @@ void setKeyState(Keys key, bool is_down) {
 void setMousePosition(vec2i pos) {
 	mouse_relative = pos - mouse_position;
 	mouse_position = pos;
+}
+
+void setMouseRelative(vec2i rel) {
+	mouse_relative = rel;
 }
 
 void setMouseButtonState(Mouse button, bool is_down) {

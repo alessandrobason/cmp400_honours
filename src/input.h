@@ -118,13 +118,16 @@ enum Keys {
 	KEY_MULTIPLY,
 	KEY_SUBTRACT,
 	KEY_ADD,
-	KEY_LSHIFT,
-	KEY_LCTRL,
-	KEY_LALT,
+	KEY_SHIFT,
+	KEY_CTRL,
+	KEY_ALT,
+	//KEY_LSHIFT,
+	//KEY_LCTRL,
+	//KEY_LALT,
 	KEY_LWIN,
-	KEY_RSHIFT,
-	KEY_RCTRL,
-	KEY_RALT,
+	//KEY_RSHIFT,
+	//KEY_RCTRL,
+	//KEY_RALT,
 	KEY_RWIN,
 	KEY_APPS,
 	KEY__COUNT,
@@ -145,5 +148,6 @@ Keys win32ToKeys(uintptr_t virtual_key);
 
 void setKeyState(Keys key, bool is_down);
 void setMousePosition(vec2i pos);
+void setMouseRelative(vec2i rel);
 void setMouseButtonState(Mouse button, bool is_down);
 void setMouseWheel(float value);

@@ -54,7 +54,7 @@ float3 calcNormal(float3 pos) {
 
 float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 	float distance_traveled = 0;
-	const int NUMBER_OF_STEPS = 100;
+	const int NUMBER_OF_STEPS = 300;
 	const float MIN_HIT_DISTANCE = 0.001;
 	const float MAX_TRACE_DISTANCE = 1000;
 
@@ -83,8 +83,9 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 			//return float3(1, 0, 0);
 			// float base_colour = 1 - (float(i) / NUMBER_OF_STEPS);
 			//float3 material = lerp(float3(1, 0, 0), float3(0, 0, 1), float(i) / NUMBER_OF_STEPS);
-			float3 material = float3(1, 0, 0);
-			float ambient_occlusion = 1 - (float)i / (NUMBER_OF_STEPS - 1);
+			float3 material = normalize((tex_pos.xyz - 230.0) / 50);
+			
+			//float ambient_occlusion = 1 - (float)i / (NUMBER_OF_STEPS - 1);
 			// material *= base_colour;
 
 			float3 normal = calcNormal(tex_pos);
@@ -94,9 +95,7 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 
 			float diffuse_intensity = max(0, dot(normal, dir_to_light));
 
-			float3 diffuse = float3(1, 0, 0) * diffuse_intensity;
-
-			return material * saturate(diffuse);
+			return material * 1;//saturate(diffuse_intensity + float3(0.01, 0.1, 0.4));
 		}
 
 		// miss

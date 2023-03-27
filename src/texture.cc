@@ -29,7 +29,7 @@ bool RenderTexture::create(int width, int height) {
 	cleanup();
 
 	size = { width, height };
-		
+
 	D3D11_TEXTURE2D_DESC td;
 	mem::zero(td);
 	td.Width = width;

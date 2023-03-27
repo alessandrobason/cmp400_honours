@@ -46,11 +46,17 @@ struct vec2T {
 
 	constexpr vec2T<bool> operator==(const vec2T &o) const { return { x == o.x, y == o.y }; }
 	constexpr vec2T<bool> operator==(T o) const { return { x == o, y == o }; }
+	constexpr vec2T<bool> operator!=(const vec2T &o) const { return { x != o.x, y != o.y }; }
+	constexpr vec2T<bool> operator!=(T o) const { return { x != o, y != o }; }
+
+	T &operator[](size_t ind) { return data[ind]; }
+	constexpr const T &operator[](size_t ind) const { return data[ind]; }
 
 	constexpr T mag2() const { return x * x + y * y; }
 	constexpr T mag() const { return sqrt(mag2()); }
 	void norm() { T m = mag(); if (m) *this /= m; }
 	constexpr vec2T normalise() const { vec2T v = *this; v.norm(); return v; }
+	constexpr T dot(const vec2T& o) const { return x * o.x + y * o.y; }
 };
 
 template<typename T>
@@ -96,6 +102,11 @@ struct vec3T {
 
 	constexpr vec3T<bool> operator==(const vec3T &o) const { return { x == o.x, y == o.y, z == o.z }; }
 	constexpr vec3T<bool> operator==(T o) const { return { x == o, y == o, z == o }; }
+	constexpr vec3T<bool> operator!=(const vec3T &o) const { return { x != o.x, y != o.y, z != o.z }; }
+	constexpr vec3T<bool> operator!=(T o) const { return { x != o, y != o, z != o }; }
+
+	T& operator[](size_t ind) { return data[ind]; }
+	constexpr const T &operator[](size_t ind) const { return data[ind]; }
 
 	constexpr T mag2() const { return x * x + y * y + z * z; }
 	constexpr T mag() const { return (T)sqrt(mag2()); }
@@ -108,6 +119,7 @@ struct vec3T {
 			a.x * b.y - b.x * a.y
 		);
 	}
+	constexpr T dot(const vec3T& o) const { return x * o.x + y * o.y + z * o.z; }
 };
 
 template<typename T>
@@ -156,11 +168,17 @@ struct vec4T {
 
 	constexpr vec4T<bool> operator==(const vec4T &o) const { return { x == o.x, y == o.y, z == o.z, w == o.w }; }
 	constexpr vec4T<bool> operator==(T o) const { return { x == o, y == o, z == o, w == o }; }
+	constexpr vec4T<bool> operator!=(const vec4T &o) const { return { x != o.x, y != o.y, z != o.z, w != o.w }; }
+	constexpr vec4T<bool> operator!=(T o) const { return { x != o, y != o, z != o, w != o }; }
+
+	T& operator[](size_t ind) { return data[ind]; }
+	constexpr const T &operator[](size_t ind) const { return data[ind]; }
 
 	constexpr T mag2() const { return x * x + y * y + z * z + w * w; }
 	constexpr T mag() const { return sqrt(mag2()); }
 	void norm() { T m = mag(); if (m) *this /= m; }
 	constexpr vec4T normalise() const { vec4T o = *this; o.norm(); return o; }
+	constexpr T dot(const vec4T& o) const { return x * o.x + y * o.y + z * o.z + w * o.w; }
 };
 
 template<typename T>
@@ -172,6 +190,10 @@ template<typename T>
 vec3T<T> cross(const vec3T<T> &a, const vec3T<T> &b) {
 	return vec3T<T>::cross(a, b);
 }
+
+template<typename T> T dot(const vec2T<T>& v1, const vec2T<T>& v2) { return v1.dot(v2); }
+template<typename T> T dot(const vec3T<T>& v1, const vec3T<T>& v2) { return v1.dot(v2); }
+template<typename T> T dot(const vec4T<T>& v1, const vec4T<T>& v2) { return v1.dot(v2); }
 
 inline bool any(const vec2T<bool> &v) { return v.x || v.y; }
 inline bool any(const vec3T<bool> &v) { return v.x || v.y || v.z; }
