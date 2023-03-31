@@ -296,8 +296,6 @@ namespace file {
 		WatchedFile *getNextChanged();
 		size_t findChangedFromWatched(WatchedFile *file);
 
-		//std::vector<WatchedFile> watched;
-		//std::vector<ChangedFile> changed;
 		arr<WatchedFile> watched;
 		arr<ChangedFile> changed;
 		uint8_t change_buf[1024];

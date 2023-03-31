@@ -315,7 +315,7 @@ int main() {
 			drawLogger();
 			
 			ImGui::Begin("New Shape");
-			static vec3 newpos = 0;
+			static vec3 newpos = norm(vec3(1)) * 25.f;
 			static int cur_op = 0;
 			static bool is_smooth = false;
 			static float smooth_amount = 0.5f;
@@ -326,7 +326,11 @@ int main() {
 				ImGui::SliderFloat("Smooth Amount", &smooth_amount, 0.f, 1.f);
 			}
 			ImGui::DragFloat3("Position", newpos.data, 1.f, -(maintex_size.x / 2.f), maintex_size.x / 2.f);
-			if (ImGui::Button("Add")) {
+
+			static bool once = true;
+
+			if (ImGui::Button("Add") || once) {
+				once = false;
 				static Operations int_to_oper[6] = {
 					Operations::Union,
 					Operations::Subtraction,

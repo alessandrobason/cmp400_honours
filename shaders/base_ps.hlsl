@@ -124,12 +124,37 @@ float4 main(PixelInput input) : SV_TARGET {
 	float aspect_ratio = img_width / img_height;
 	uv.y *= aspect_ratio;
 
+	const float3 target = 0;
+	float3 eye = float3(sin(time), 0., cos(time));
+	//float3 eye = float3(0, sin(time), cos(time));
+	eye = normalize(eye) * 200.0;
+	float3 fwd = normalize(target - eye);
+	float3 right, up;
+
+	if (true) {
+		if (eye.z > 0) {
+			right = normalize(cross(fwd, float3(0, 1, 0)));
+		}
+		else {
+			right = normalize(cross(fwd, float3(0, 1, 0)));
+			//right = normalize(cross(float3(0, 1, 0), fwd));
+		}
+
+		up = normalize(cross(right, fwd));
+	}
+	else {
+		right = normalize(cross(fwd, float3(0, 1, 0)));
+		up = normalize(cross(right, fwd));
+	}
+
 #if 1
-	float3x3 camera_mat = float3x3(cam_right, cam_up, cam_fwd);
+	// float3x3 camera_mat = float3x3(cam_right, cam_up, cam_fwd);
+	float3x3 camera_mat = float3x3(right, up, fwd);
 	float focal_length = 2.;
-	float3 ray_dir = mul(camera_mat, normalize(float3(uv.xy, focal_length)));
-	// float3 ray_dir = normalize(mul(camera_mat, normalize(float3(uv * 2, focal_length))));
-	float3 colour = rayMarch(cam_pos, ray_dir);
+	//float3 ray_dir = mul(camera_mat, normalize(float3(uv.xy, focal_length)));
+	float3 ray_dir = normalize(mul(camera_mat, normalize(float3(uv * 2, focal_length))));
+	// float3 colour = rayMarch(cam_pos, ray_dir);
+	float3 colour = rayMarch(eye, ray_dir);
 #else
 	float3 ray_ori = float3(0, 0, -100);
 	float3 ray_dir = float3(uv, .5);

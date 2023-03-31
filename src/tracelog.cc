@@ -14,6 +14,7 @@
 #include "system.h"
 #include "utils.h"
 #include "input.h"
+#include "options.h"
 
 static const char *level_strings[(int)LogLevel::Count] = {
     "[NONE] ",
@@ -24,7 +25,7 @@ static const char *level_strings[(int)LogLevel::Count] = {
     "[FATAL]",
 };
 
-ImColor level_colours[(int)LogLevel::Count] = {
+static const ImColor level_colours[(int)LogLevel::Count] = {
     ImColor(  0,   0,   0), // None
     ImColor( 26, 102, 191), // Debug
     ImColor( 30, 149,  96), // Info
@@ -87,33 +88,38 @@ void logMessageV(LogLevel level, const char *fmt, va_list vlist) {
         default:                SetConsoleTextAttribute(hc, 15); 
     }
 
-    printf("%s", level_strings[(int)level]);
-    SetConsoleTextAttribute(hc, 6); // yellow
-    printf("(%02d:%02d:%04d): ", minutes, seconds, millis);
-    SetConsoleTextAttribute(hc, 15); // white
-    printf("%s\n", logger.buf.c_str() + start);
-
-    // also print to file cause why not 
-    if (!logger.fp) {
-        char name[255];
-        mem::zero(name);
-        int count = 0;
-        while (
-            file::exists(
-                str::formatBuf(name, sizeof(name), "logs/log_%.3d.txt", count)
-            )
-        ) {
-            count++;
-        }
-
-        logger.fp = fopen(name, "wb+");
+    const Options &options = Options::get();
+    
+    if (options.print_to_console) {
+        printf("%s", level_strings[(int)level]);
+        SetConsoleTextAttribute(hc, 6); // yellow
+        printf("(%02d:%02d:%04d): ", minutes, seconds, millis);
+        SetConsoleTextAttribute(hc, 15); // white
+        printf("%s\n", logger.buf.c_str() + start);
     }
 
-    fputs(level_strings[(int)level], logger.fp);
-    fprintf(logger.fp, "(%02d:%02d:%04d): ", minutes, seconds, millis);
-    fprintf(logger.fp, "%s\n", logger.buf.c_str() + start);
+    if (options.print_to_file) {
+        if (!logger.fp) {
+            char name[255];
+            mem::zero(name);
+            int count = 0;
+            while (
+                file::exists(
+                    str::formatBuf(name, sizeof(name), "logs/log_%.3d.txt", count)
+                )
+            ) {
+                count++;
+            }
 
-    if (level == LogLevel::Fatal) {
+            logger.fp = fopen(name, "wb+");
+        }
+
+        fputs(level_strings[(int)level], logger.fp);
+        fprintf(logger.fp, "(%02d:%02d:%04d): ", minutes, seconds, millis);
+        fprintf(logger.fp, "%s\n", logger.buf.c_str() + start);
+    }
+
+    if (options.quit_on_fatal && level == LogLevel::Fatal) {
         str::tstr temp = str::formatV(fmt, vlist);
         MessageBox((HWND)win::hwnd, temp, TEXT("FATAL ERROR"), MB_OK);
         exit(1);
@@ -147,16 +153,16 @@ void Logger::draw() {
 
     static int filter = 0;
 
-    // Options menu
-    if (ImGui::BeginPopup("Options")) {
+    // LogOptions menu
+    if (ImGui::BeginPopup("LogOptions")) {
         ImGui::Checkbox("Auto-scroll", &auto_scrool);
         ImGui::Combo("Filter", &filter, "None\0Debug\0Info\0Warning\0Error");
         ImGui::EndPopup();
     }
 
     // Main window
-    if (ImGui::Button("Options"))
-        ImGui::OpenPopup("Options");
+    if (ImGui::Button("LogOptions"))
+        ImGui::OpenPopup("LogOptions");
     ImGui::SameLine();
     bool should_clear = ImGui::Button("Clear");
     ImGui::SameLine();

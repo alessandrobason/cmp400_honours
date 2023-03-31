@@ -9,10 +9,16 @@ void Options::load(const char *filename) {
 
 	ini::Doc doc(filename);
 	
-	const ini::Table &root = doc.root();
+	if (auto gfx = doc.get("gfx")) {
+		gfx->get("vsync").trySet(vsync);
+		gfx->get("lazy render").trySet(lazy_render);
+	}
 
-	root.get("vsync").trySet(vsync);
-	root.get("lazy render").trySet(lazy_render);
+	if (auto log = doc.get("log")) {
+		log->get("print to file").trySet(print_to_file);
+		log->get("print to console").trySet(print_to_console);
+		log->get("quit on fatal").trySet(quit_on_fatal);
+	}
 }
 
 void Options::update() {

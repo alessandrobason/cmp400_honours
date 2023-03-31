@@ -1,6 +1,6 @@
 #pragma once
 
-#include <math.h>
+#include <cmath>
 
 #pragma warning(push)
 #pragma warning(disable: 4201) // nonstandard extension used: nameless struct/union
@@ -56,7 +56,11 @@ struct vec2T {
 	constexpr T mag() const { return sqrt(mag2()); }
 	void norm() { T m = mag(); if (m) *this /= m; }
 	constexpr vec2T normalise() const { vec2T v = *this; v.norm(); return v; }
+<<<<<<< Updated upstream
 	constexpr T dot(const vec2T& o) const { return x * o.x + y * o.y; }
+=======
+	constexpr static T dot(const vec2T& a, const vec2T& b) { return a.x * b.x + a.y * b.y; }
+>>>>>>> Stashed changes
 };
 
 template<typename T>
@@ -112,14 +116,18 @@ struct vec3T {
 	constexpr T mag() const { return (T)sqrt(mag2()); }
 	void norm() { T m = mag(); if (m) *this /= m; }
 	constexpr vec3T normalise() const { vec3T o = *this; o.norm(); return o; }
-	static vec3T cross(const vec3T &a, const vec3T &b) {
+	constexpr static vec3T cross(const vec3T &a, const vec3T &b) {
 		return vec3T(
 			a.y * b.z - b.y * a.z,
 			a.z * b.x - b.z * a.x,
 			a.x * b.y - b.x * a.y
 		);
 	}
+<<<<<<< Updated upstream
 	constexpr T dot(const vec3T& o) const { return x * o.x + y * o.y + z * o.z; }
+=======
+	constexpr static T dot(const vec3T& a, const vec3T& b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
+>>>>>>> Stashed changes
 };
 
 template<typename T>
@@ -127,10 +135,9 @@ struct vec4T {
 	union {
 		T data[4];
 		struct { T x, y, z, w; };
-		struct { T x, y, w, h; };
 		struct { T r, g, b, a; };
 		struct { vec2T<T> pos, size; };
-		struct { vec3T<T> v; T w; };
+		struct { vec3T<T> v; T s; };
 	};
 
 	//constexpr vec4T() : x(0), y(0), z(0), w(0) {}
@@ -138,7 +145,7 @@ struct vec4T {
 	constexpr vec4T(T v) : x(v), y(v), z(v), w(v) {}
 	constexpr vec4T(T x, T y, T z, T w) : x(x), y(y), z(z), w(w) {}
 	constexpr vec4T(const vec2T<T> &pos, const vec2T<T> &size) : pos(pos), size(size) {}
-	constexpr vec4T(const vec3T<T> &v, T w) : v(v), w(w) {}
+	constexpr vec4T(const vec3T<T> &v, T s) : v(v), s(s) {}
 	template<typename Q>
 	constexpr vec4T(const vec4T<Q> &v) : x((T)v.x), y((T)v.y), z((T)v.z), w((T)v.w) {}
 
@@ -178,19 +185,24 @@ struct vec4T {
 	constexpr T mag() const { return sqrt(mag2()); }
 	void norm() { T m = mag(); if (m) *this /= m; }
 	constexpr vec4T normalise() const { vec4T o = *this; o.norm(); return o; }
+<<<<<<< Updated upstream
 	constexpr T dot(const vec4T& o) const { return x * o.x + y * o.y + z * o.z + w * o.w; }
+=======
+	constexpr static T dot(const vec4T& a, const vec4T& b) { return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w; }
+>>>>>>> Stashed changes
 };
 
 template<typename T>
-T norm(const T &val) {
+constexpr T norm(const T &val) {
 	return val.normalise();
 }
 
 template<typename T>
-vec3T<T> cross(const vec3T<T> &a, const vec3T<T> &b) {
+constexpr vec3T<T> cross(const vec3T<T> &a, const vec3T<T> &b) {
 	return vec3T<T>::cross(a, b);
 }
 
+<<<<<<< Updated upstream
 template<typename T> T dot(const vec2T<T>& v1, const vec2T<T>& v2) { return v1.dot(v2); }
 template<typename T> T dot(const vec3T<T>& v1, const vec3T<T>& v2) { return v1.dot(v2); }
 template<typename T> T dot(const vec4T<T>& v1, const vec4T<T>& v2) { return v1.dot(v2); }
@@ -198,10 +210,19 @@ template<typename T> T dot(const vec4T<T>& v1, const vec4T<T>& v2) { return v1.d
 inline bool any(const vec2T<bool> &v) { return v.x || v.y; }
 inline bool any(const vec3T<bool> &v) { return v.x || v.y || v.z; }
 inline bool any(const vec4T<bool> &v) { return v.x || v.y || v.z || v.w; }
+=======
+template<typename T> constexpr T dot(const vec2T<T>& v1, const vec2T<T>& v2) { return vec2T<T>::dot(v1, v2); }
+template<typename T> constexpr T dot(const vec3T<T>& v1, const vec3T<T>& v2) { return vec3T<T>::dot(v1, v2); }
+template<typename T> constexpr T dot(const vec4T<T>& v1, const vec4T<T>& v2) { return vec4T<T>::dot(v1, v2); }
+>>>>>>> Stashed changes
 
-inline bool all(const vec2T<bool> &v) { return v.x && v.y; }
-inline bool all(const vec3T<bool> &v) { return v.x && v.y && v.z; }
-inline bool all(const vec4T<bool> &v) { return v.x && v.y && v.z && v.w; }
+inline constexpr bool any(const vec2T<bool> &v) { return v.x || v.y; }
+inline constexpr bool any(const vec3T<bool> &v) { return v.x || v.y || v.z; }
+inline constexpr bool any(const vec4T<bool> &v) { return v.x || v.y || v.z || v.w; }
+
+inline constexpr bool all(const vec2T<bool> &v) { return v.x && v.y; }
+inline constexpr bool all(const vec3T<bool> &v) { return v.x && v.y && v.z; }
+inline constexpr bool all(const vec4T<bool> &v) { return v.x && v.y && v.z && v.w; }
 
 using vec2 = vec2T<float>;
 using vec3 = vec3T<float>;
