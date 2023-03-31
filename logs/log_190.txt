@@ -1,8 +1,0 @@
-[INFO] (00:00:0014): compiling base_vs.hlsl, type: vs
-[INFO] (00:00:0044): compiling base_ps.hlsl, type: ps
-[INFO] (00:00:0053): compiling brush_grid.hlsl, type: cs
-[INFO] (00:00:0063): compiling add_brush.hlsl, type: cs
-[INFO] (00:00:0076): compiling edit_cs.hlsl, type: cs
-[INFO] (00:00:0135): size: (34.1 34.1 17.1) tsize: (1024.0 1024.0 512.0)
-[INFO] (00:00:0135): [builder] time passed: 149.200000us
-[WARN] (00:00:0136): timers are not ready yet (start: not ready, end: not ready)

@@ -15,10 +15,10 @@ struct Camera {
 	//vec3 right = vec3(1, 0, 0);
 	//vec3 up    = vec3(0, 1, 0);
 
-	vec3 fwd = vec3(0, 0, 1);
-	vec3 right = vec3(-1, 0, 0);
+	vec3 fwd = vec3(0, 0, -1);
+	vec3 right = vec3(1, 0, 0);
 
-	vec3 pos = vec3(0, 0, -200);
+	vec3 pos = vec3(0, 0, 200);
 	vec3 target = vec3(0, 0, 0);
 	vec3 up = vec3(0, 1, 0);
 	matrix view;

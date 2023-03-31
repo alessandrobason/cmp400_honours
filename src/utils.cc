@@ -1,6 +1,7 @@
 #include "utils.h"
 
 #include <stdio.h>
+#include <math.h> // HUGE_VAL
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
@@ -84,6 +85,33 @@ namespace str {
 		memcpy(ptr.get(), cstr, len);
 		ptr[len] = '\0';
 		return ptr;
+	}
+
+	int toInt(const char* cstr) {
+		if (!cstr) return 0;
+		int out = strtol(cstr, NULL, 0);
+		if (out == LONG_MAX || out == LONG_MIN) {
+			out = 0;
+		}
+		return out;
+	}
+
+	unsigned int toUInt(const char* cstr) {
+		if (!cstr) return 0;
+		unsigned int out = strtoul(cstr, NULL, 0);
+		if (out == ULONG_MAX) {
+			out = 0;
+		}
+		return out;
+	}
+
+	double toNum(const char* cstr) {
+		if (!cstr) return 0;
+		double out = strtod(cstr, NULL);
+		if (out == HUGE_VAL || out == -HUGE_VAL) {
+			out = 0;
+		}
+		return out;
 	}
 
 	const char *format(const char *fmt, ...) {

@@ -50,6 +50,9 @@ namespace gfx {
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 	
+		ImGuiStyle &style = ImGui::GetStyle();
+		style.AntiAliasedLinesUseTex = false;
+
 		// Setup Dear ImGui style
 		ImGui::StyleColorsDark();
 
@@ -57,8 +60,8 @@ namespace gfx {
 		ImGui_ImplWin32_Init(win::hwnd);
 		ImGui_ImplDX11_Init(device, context);
 
-		bool rtv_success = main_rtv.create(1920, 1080);
-		//bool rtv_success = main_rtv.create(1000, 1000);
+		vec2u resolution = Options::get().resolution;
+		bool rtv_success = main_rtv.create(resolution.x, resolution.y);
 		if (!rtv_success) {
 			fatal("couldn't create main RTV");
 		}
@@ -283,7 +286,12 @@ namespace win {
 			fps = (fps + 1.f / dt) / 2.f;
 		}
 
-		Options::get().update();
+		if (Options::get().update()) {
+			vec2i resolution = (vec2i)Options::get().resolution;
+			if (any(gfx::main_rtv.size != resolution)) {
+				gfx::main_rtv.create(resolution.x, resolution.y);
+			}
+		}
 	}
 
 	void close() {
@@ -291,6 +299,8 @@ namespace win {
 	}
 
 	void create(const char *name, int width, int height) {
+		Options::get().load();
+
 		size = { width, height };
 		
 		hinstance = GetModuleHandle(NULL);
@@ -320,8 +330,6 @@ namespace win {
 
 		ShowWindow((HWND)hwnd, SW_SHOWDEFAULT);
 		UpdateWindow((HWND)hwnd);
-
-		Options::get().load();
 
 		stm_setup();
 		laptime = stm_now();

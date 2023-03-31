@@ -114,9 +114,9 @@ struct vec3T {
 	constexpr vec3T normalise() const { vec3T o = *this; o.norm(); return o; }
 	constexpr static vec3T cross(const vec3T& a, const vec3T& b) {
 		return vec3T(
-			a.y * b.z - b.y * a.z,
-			a.z * b.x - b.z * a.x,
-			a.x * b.y - b.x * a.y
+			a.y * b.z - a.z * b.y,
+			a.z * b.x - a.x * b.z,
+			a.x * b.y - a.y * b.x
 		);
 	}
 	constexpr static T dot(const vec3T& a, const vec3T& b) { return a.x * b.x + a.y * b.y + a.z * b.z; }

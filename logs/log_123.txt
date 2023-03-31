@@ -1,6 +1,0 @@
-[INFO] (00:00:0006): compiling base_vs.hlsl, type: vs
-[INFO] (00:00:0175): compiling base_ps.hlsl, type: ps
-[ERROR](00:00:0177): couldn't compile shader base_ps.hlsl
-[ERROR](00:00:0177): \\stuhomeodd\HomeDrive1$\1902881\cmp400_honours\Shader@0x000001A177962500(128,2-16): error X3017: cannot implicitly convert from 'float3' to 'float4'
-
-[INFO] (00:00:0181): compiling brush_grid.hlsl, type: cs

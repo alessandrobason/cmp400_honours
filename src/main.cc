@@ -47,7 +47,7 @@ ID3D11ShaderResourceView *gfx_buf1_srv = nullptr;
 ID3D11UnorderedAccessView *gfx_buf_res_uav = nullptr;
 #endif
 
-constexpr vec2u tex_size = { 1920, 1080 };
+//constexpr vec2u tex_size = { 1920, 1080 };
 
 bool is_dirty = true;
 constexpr vec3u maintex_size = 512;
@@ -283,14 +283,14 @@ int main() {
 
 				if (Buffer *buf = main_sh.shader.getBuffer(shader_data_ind)) {
 					if (PSShaderData *data = buf->map<PSShaderData>()) {
+						const vec2u resolution = Options::get().resolution;
+
 						data->cam_pos = cam.pos;
 						data->cam_fwd = cam.fwd;
 						data->cam_right = cam.right;
-						//data->cam_fwd = norm(cam.target - cam.pos); // cam.fwd;
-						//data->cam_right = norm(cross(data->cam_fwd, cam.up)); // cam.right;
 						data->cam_up = cam.up;
-						data->img_height = (float)tex_size.x;
-						data->img_width = (float)tex_size.y;
+						data->img_height = (float)resolution.x;
+						data->img_width = (float)resolution.y;
 						data->time = win::timeSinceStart();
 						buf->unmap();
 						buf->bind(ShaderType::Fragment);

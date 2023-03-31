@@ -1,3 +1,0 @@
-[INFO] (00:18:0524): saved screenshot as screenshots/screenshot_007.png
-[INFO] (00:21:0708): saved screenshot as screenshots/screenshot_008.png
-[INFO] (00:24:0314): saved screenshot as screenshots/screenshot_009.png

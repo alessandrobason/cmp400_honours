@@ -1,6 +1,0 @@
-[INFO] (00:35:0823): re-compiled shader base_ps.hlsl successfully
-[ERROR](00:42:0553): couldn't compile shader base_ps.hlsl
-[ERROR](00:42:0553): error X3501: 'main': entrypoint not found
-
-[INFO] (00:42:0602): re-compiled shader base_ps.hlsl successfully
-[INFO] (00:52:0273): re-compiled shader base_ps.hlsl successfully

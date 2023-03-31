@@ -1,6 +1,6 @@
 #include "ini.h"
 
-#include "utils.h"
+#include <ctype.h>
 
 struct StrStream {
 	const char *start;
@@ -19,39 +19,28 @@ static std::string_view trim(std::string_view view);
 
 namespace ini {
 	unsigned int Value::asUint() const {
-		if (value.empty()) return 0;
-		unsigned int out = strtoul(value.data(), NULL, 0);
-		if (out == ULONG_MAX) {
-			out = 0;
-		}
-		return out;
+		return str::toUInt(value.data());
 	}
 
 	int Value::asInt() const {
-		if (value.empty()) return 0;
-		int out = strtol(value.data(), NULL, 0);
-		if (out == LONG_MAX || out == LONG_MIN) {
-			out = 0;
-		}
-		return out;
+		return str::toInt(value.data());
 	}
 
 	double Value::asNum() const {
-		if (value.empty()) return 0;
-		double out = strtod(value.data(), NULL);
-		if (out == HUGE_VAL || out == -HUGE_VAL) {
-			out = 0;
-		}
-		return out;
+		return str::toNum(value.data());
 	}
 
 	bool Value::asBool() const {
 		return value == "true";
 	}
 
-	std::string Value::asStr() const {
-		return std::string{ trim(value) };
+	mem::ptr<char[]> Value::asStr() const {
+		return str::dup(value.data(), value.size());
 	}
+
+	//std::string Value::asStr() const {
+	//	return std::string{ trim(value) };
+	//}
 
 	size_t Value::toStr(char *buf, size_t buflen) const {
 		if (!buf || buflen == 0) {
@@ -107,11 +96,17 @@ namespace ini {
 		}
 	}
 
-	void Value::trySet(std::string &val) const {
+	void Value::trySet(mem::ptr<char[]> &val) const {
 		if (isValid()) {
 			val = asStr();
 		}
 	}
+
+	//void Value::trySet(std::string &val) const {
+	//	if (isValid()) {
+	//		val = asStr();
+	//	}
+	//}
 
 	void Value::trySet(arr<std::string_view> &val) const {
 		if (isValid()) {
@@ -196,6 +191,7 @@ namespace ini {
 				return;
 			case '#': case ';':
 				in.skipUntil('\n');
+				in.skip(); // skip \n
 				break;
 			default:
 				addValue(tab, in);
@@ -219,6 +215,7 @@ namespace ini {
 				break;
 			case '#': case ';':
 				in.skipUntil('\n');
+				in.skip(); // skip \n
 				break;
 			default:
 				addValue(tables[0], in);

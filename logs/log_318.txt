@@ -1,8 +1,0 @@
-[INFO] (00:00:0004): compiling base_vs.hlsl, type: vs
-[INFO] (00:00:0185): compiling base_ps.hlsl, type: ps
-[INFO] (00:00:0227): compiling sculpt_cs.hlsl, type: cs
-[INFO] (00:00:0251): compiling gen_brush_cs.hlsl, type: cs
-[INFO] (00:00:0260): compiling empty_texture_cs.hlsl, type: cs
-[ERROR](00:00:0261): couldn't compile shader empty_texture_cs.hlsl
-[ERROR](00:00:0262): \\StuHomeOdd\HomeDrive1$\1902881\cmp400_honours\Shader@0x00000200CBBA2C50(9,5-9): error X3004: undeclared identifier 'brush'
-

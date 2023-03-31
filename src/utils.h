@@ -249,6 +249,10 @@ namespace str {
 
 	mem::ptr<char[]> dup(const char *cstr, size_t len = 0);
 
+	int toInt(const char *cstr);
+	unsigned int toUInt(const char *cstr);
+	double toNum(const char *cstr);
+
 	// returns a formatted string, can generate maximum 16 strings at a time before reusing buffers
 	const char *format(const char *fmt, ...);
 	const char *formatV(const char *fmt, va_list args);

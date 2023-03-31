@@ -1,6 +1,0 @@
-[INFO] (00:03:0301): re-compiled shader brush_grid.hlsl successfully
-[INFO] (00:03:0311): >> finished running compute shader <<
-[INFO] (01:37:0492): re-compiled shader brush_grid.hlsl successfully
-[INFO] (01:37:0493): >> finished running compute shader <<
-[INFO] (03:16:0980): re-compiled shader brush_grid.hlsl successfully
-[INFO] (03:16:0981): >> finished running compute shader <<

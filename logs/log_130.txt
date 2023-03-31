@@ -1,6 +1,0 @@
-[INFO] (00:00:0002): compiling base_vs.hlsl, type: vs
-[INFO] (00:00:0014): compiling base_ps.hlsl, type: ps
-[INFO] (00:00:0020): compiling brush_grid.hlsl, type: cs
-[INFO] (00:00:0025): compiling add_brush.hlsl, type: cs
-[INFO] (00:00:0030): compiling edit_cs.hlsl, type: cs
-[ERROR](00:00:0548): ID3D11DeviceContext::Dispatch: The Shader Resource View in slot 0 of the Compute Shader unit has structure stride 4 while the shader expects a structure stride of 48. This mismatch is invalid if the shader actually uses the view (e.g. it is not skipped due to shader code branching).

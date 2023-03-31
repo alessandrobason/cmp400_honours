@@ -1,2 +1,0 @@
-[INFO] (00:02:0384): re-compiled shader brush_grid.hlsl successfully
-[INFO] (00:02:0394): [compute shader] time passed: 35.700000us

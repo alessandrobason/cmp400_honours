@@ -1,4 +1,0 @@
-[INFO] (00:18:0519): re-compiled shader base_ps.hlsl successfully
-[INFO] (00:24:0798): re-compiled shader base_ps.hlsl successfully
-[INFO] (00:31:0269): re-compiled shader base_ps.hlsl successfully
-[INFO] (00:42:0428): saved screenshot as screenshots/screenshot_010.png

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <string>
+//#include <string>
 #include <string_view>
 
 #include "utils.h"
@@ -20,14 +20,16 @@ namespace ini {
 		int asInt() const;
 		double asNum() const;
 		bool asBool() const;
-		std::string asStr() const;
+		//std::string asStr() const;
+		mem::ptr<char[]> asStr() const;
 		size_t toStr(char *buf, size_t buflen) const;
 		arr<std::string_view> asVec(char delim = ' ') const;
 
 		void trySet(int &value) const;
 		void trySet(double &value) const;
 		void trySet(bool &value) const;
-		void trySet(std::string &value) const;
+		//void trySet(std::string &value) const;
+		void trySet(mem::ptr<char[]> &value) const;
 		void trySet(arr<std::string_view> &value) const;
 	};
 

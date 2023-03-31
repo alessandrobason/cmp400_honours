@@ -99,8 +99,12 @@ mat4 lookAt(const vec3& eye, const vec3& centre, const vec3& up) {
 	return result;
 }
 
-#define VFMT "(%.3f %.3f %.3f)"
-#define V(v) (v).x, (v).y, (v).z
+#define V2FMT "(%.3f %.3f)"
+#define VFMT  "(%.3f %.3f %.3f)"
+#define V4FMT "(%.3f %.3f %.3f %.3f)"
+#define V2(v) (v).x, (v).y
+#define V(v)  (v).x, (v).y, (v).z
+#define V4(v) (v).x, (v).y, (v).z, (v).w
 
 /*
 https://github.com/MartinWeigel/Quaternion/blob/master/Quaternion.c
@@ -248,15 +252,72 @@ static quat computeRotation(vec2 cur_pos, vec2 start_pos) {
 	return quat::fromAxisAngle(axis, angle);
 }
 
+vec3 getArcVec(vec2 pos) {
+	float radius_squared = 1.f;
+
+	vec3 pt = vec3(pos - (vec2)win::getSize() / 2., 0.f);
+
+	float mag2 = pt.mag2();
+
+	if (mag2 < radius_squared) {
+		pt.z = sqrtf(radius_squared - mag2);
+	}
+	else {
+		pt.z = 0.f;
+	}
+
+	pt.z *= -1.f;
+	return pt;
+}
+
 void Camera::update() {
 	return;
 	static vec2 angle = 0;
+	static constexpr float sensitivity = 5.f;
+	static bool dragging = false;
+	static vec2 start = 0;
+	static vec2 end = 0;
 
+	if (!dragging) {
+		if (isMouseDown(MOUSE_LEFT)) {
+			dragging = true;
+			start = getMousePos();
+		}
+		else {
+			return;
+		}
+	}
+	
 	if (!isMouseDown(MOUSE_LEFT)) {
+		dragging = false;
 		return;
 	}
 
-	const vec2i mouse_delta = getMousePosRel();
+	end = getMousePos();
+
+	vec3 start_pt = getArcVec(start);
+	vec3 end_pt = getArcVec(end);
+
+	info("s " VFMT " e " VFMT, V(start_pt), V(end_pt));
+
+	quat act_rot = quat::identity;
+	vec3 axis = norm(cross(end_pt, start_pt));
+
+	if (axis.mag2() > 0.001f) {
+		float angle_cos = dot(end_pt, start_pt);
+		act_rot = quat(axis, angle_cos);
+	}
+
+	info("q " V4FMT, V4(act_rot));
+
+	fwd = norm(act_rot.rotate(fwd));
+	pos = target - fwd * 200.f;
+	right = norm(cross(fwd, vec3(0, 1, 0)));
+	up = norm(cross(right, fwd));
+
+#if 0
+
+	const vec2i mouse_delta = -getMousePosRel();
 	if (all(mouse_delta == 0)) {
 		return;
 	}
@@ -264,20 +325,79 @@ void Camera::update() {
 	// get rotation angle
 	const vec2i view_size = gfx::main_rtv.size;
 	const vec2 delta_angle = vec2(math::pi) / (vec2)view_size;
-	angle += (vec2)mouse_delta * delta_angle;
+	angle += (vec2)mouse_delta * delta_angle * sensitivity;
+
+	// Keep the Y angle in the range [-360, 360]
+	//if (angle.y >= math::torad(270.f))  angle.y -= math::pi2;
+	//if (angle.y <= math::torad(-270.f)) angle.y += math::pi2;
+	angle.y = math::clamp(angle.y, math::torad(-89.f), math::torad(89.f));
 
 	//fwd = norm(target - pos);
 	//right = norm(cross(fwd, vec3(0, 1, 0)));
+	const vec3 r2 = vec3(right.x, right.y, -right.z);
 
-	const quat rot_x = quat::fromAxisAngle(up, angle.x);
-	const quat rot_y = quat::fromAxisAngle(right, angle.y);
+#if 0
+	quat rot_x = quat::identity, rot_y = quat::identity;
 
-	const quat rot = rot_x/* * rot_y*/;
+	rot_x = quat::fromAxisAngle(vec3(0, 1, 0), angle.x);
 
-	pos = rot.rotate(vec3(0, 0, -200));
+	if (false) {
+		//rot_x = quat::fromAxisAngle(vec3(0, 1, 0), angle.x);
+	}
+	else {
+		rot_y = quat::fromAxisAngle(vec3(1, 0, 0), angle.y);
+	}
+#endif
+
+	quat rot_x = quat::fromAxisAngle(vec3(0, 1, 0), angle.x);
+	quat rot_y = quat::fromAxisAngle(vec3(1, 0, 0), angle.y);
+	vec3 forward = (rot_x * rot_y).rotate(vec3(0, 0, -1));
+	//vec3 axis = forward * vec3(angle.y, angle.x, 0.f);
+	//quat rot = quat::fromAxisAngle(axis.normalise(), axis.mag());
+
+	fwd = norm(forward);
+	pos = target - fwd * 200.f;
+	info("%.3f", pos.mag());
+	//pos = rot.rotate(vec3(0, 0, 200));
+	//fwd = norm(target - pos);
+	right = norm(cross(fwd, vec3(0, 1, 0)));
+	up = norm(cross(right, fwd));
+
+	info("f " VFMT, V(fwd));
+#endif
+#if 0
+	return;
+
+	//const quat rot_x = quat::fromAxisAngle(up, angle.x);
+	//const quat rot_x = quat::identity;
+	//const quat rot_y = quat::fromAxisAngle(right, angle.y);
+	//const quat rot_y = quat::identity;
+
+	const quat rot = rot_y * rot_x;
+
+	pos = rot.rotate(vec3(0, 0, 200));
 	fwd = norm(target - pos);
-	right = norm(rot.rotate(vec3(-1, 0, 0)));
-	up = norm(rot.rotate(vec3(0, 1, 0)));
+
+	//info("angle.y: %.2frad %.2fdeg, right: " VFMT, angle.y, math::todeg(angle.y), V(right));
+	info("p " VFMT ", f " VFMT ", r " VFMT ", u " VFMT, V(pos), V(fwd), V(right), V(up));
+	
+	right = norm(cross(fwd, vec3(0, 1, 0)));
+
+	if (angle.y > math::torad(-90.f) && angle.y < math::torad(90.f)) {
+		//right = -right;
+		//	right = norm(cross(fwd, vec3(0, 1, 0)));
+	}
+	else {
+		//right = right;
+		//	right = norm(cross(vec3(0, 1, 0), fwd));
+	}
+
+	//up = norm(cross(fwd, right));
+	up = norm(cross(right, fwd));
+#endif
+	
+	//right = norm(rot.rotate(fwd.z > 0 ? vec3(1, 0, 0) : vec3(-1, 0, 0)));
+	//up = norm(rot.rotate(vec3(0, 1, 0)));
 
 	// fwd2 = norm(rot_x.rotate(fwd2));
 	// fwd.y = fwd2.x;

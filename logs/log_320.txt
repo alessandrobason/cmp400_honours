@@ -1,5 +1,0 @@
-[INFO] (00:00:0004): compiling base_vs.hlsl, type: vs
-[INFO] (00:00:0523): compiling base_ps.hlsl, type: ps
-[INFO] (00:00:0554): compiling sculpt_cs.hlsl, type: cs
-[INFO] (00:00:0574): compiling gen_brush_cs.hlsl, type: cs
-[INFO] (00:00:0583): compiling empty_texture_cs.hlsl, type: cs

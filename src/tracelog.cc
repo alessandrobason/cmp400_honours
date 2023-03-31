@@ -43,7 +43,8 @@ struct Line {
 };
 
 struct Logger {
-    Logger() { SetConsoleOutputCP(CP_UTF8); clear(); if (fp) fclose(fp); }
+    Logger();
+    ~Logger();
 
     void clear();
     void endLine(LogLevel level, int minutes, int seconds, int millis);
@@ -98,27 +99,6 @@ void logMessageV(LogLevel level, const char *fmt, va_list vlist) {
         printf("%s\n", logger.buf.c_str() + start);
     }
 
-    if (options.print_to_file) {
-        if (!logger.fp) {
-            char name[255];
-            mem::zero(name);
-            int count = 0;
-            while (
-                file::exists(
-                    str::formatBuf(name, sizeof(name), "logs/log_%.3d.txt", count)
-                )
-            ) {
-                count++;
-            }
-
-            logger.fp = fopen(name, "wb+");
-        }
-
-        fputs(level_strings[(int)level], logger.fp);
-        fprintf(logger.fp, "(%02d:%02d:%04d): ", minutes, seconds, millis);
-        fprintf(logger.fp, "%s\n", logger.buf.c_str() + start);
-    }
-
     if (options.quit_on_fatal && level == LogLevel::Fatal) {
         str::tstr temp = str::formatV(fmt, vlist);
         MessageBox((HWND)win::hwnd, temp, TEXT("FATAL ERROR"), MB_OK);
@@ -131,6 +111,41 @@ void drawLogger() {
 }
 
 // == LOGGER FUNCTIONS ========================================================================================================
+
+Logger::Logger() {
+    SetConsoleOutputCP(CP_UTF8);
+    clear();
+}
+
+Logger::~Logger() {
+    if (Options::get().print_to_file) {
+        if (!fp) {
+            char name[255];
+            mem::zero(name);
+            int count = 0;
+            while (
+                file::exists(
+                    str::formatBuf(name, sizeof(name), "logs/log_%.3d.txt", count)
+                )
+                ) {
+                count++;
+            }
+
+            fp = fopen(name, "wb+");
+        }
+
+        int last_offset = 0;
+        const char* buf_beg = buf.begin();
+        for (Line &line : lines) {
+            const char* line_start = buf_beg + last_offset;
+            int line_len = line.offset - last_offset;
+            last_offset = line.offset;
+            fputs(level_strings[(int)line.level], fp);
+            fprintf(fp, "(%02d:%02d:%04d): ", line.minutes, line.seconds, line.millis);
+            fprintf(fp, "%.*s\n", line_len, line_start);
+        }
+    }
+}
 
 void Logger::clear() {
     buf.clear();

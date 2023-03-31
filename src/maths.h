@@ -4,7 +4,8 @@
 #undef max
 
 namespace math {
-	constexpr float pi = 3.14159265359f;
+	constexpr float pi  = 3.14159265359f;
+	constexpr float pi2 = 6.28318530718f;
 
 	template<typename T>
 	constexpr T torad(T deg) {

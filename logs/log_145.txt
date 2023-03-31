@@ -1,6 +1,0 @@
-[INFO] (00:00:0002): compiling base_vs.hlsl, type: vs
-[INFO] (00:00:0026): compiling base_ps.hlsl, type: ps
-[INFO] (00:00:0031): compiling brush_grid.hlsl, type: cs
-[INFO] (00:00:0036): compiling add_brush.hlsl, type: cs
-[INFO] (00:00:0041): compiling edit_cs.hlsl, type: cs
-[ERROR](00:02:0970): ID3D11Device::RemoveDevice: Device removal has been triggered for the following reason (DXGI_ERROR_DEVICE_HUNG: The Device took an unreasonable amount of time to execute its commands, or the hardware crashed/hung. As a result, the TDR (Timeout Detection and Recovery) mechanism has been triggered. The current Device Context was executing commands when the hang occurred. The application may want to respawn and fallback to less aggressive use of the display hardware).

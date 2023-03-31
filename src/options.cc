@@ -12,6 +12,13 @@ void Options::load(const char *filename) {
 	if (auto gfx = doc.get("gfx")) {
 		gfx->get("vsync").trySet(vsync);
 		gfx->get("lazy render").trySet(lazy_render);
+		if (ini::Value res = gfx->get("resolution")) {
+			arr<std::string_view> vec = res.asVec();
+			if (vec.size() == 2) {
+				resolution.x = str::toUInt(vec[0].data());
+				resolution.y = str::toUInt(vec[1].data());
+			}
+		}
 	}
 
 	if (auto log = doc.get("log")) {
@@ -21,16 +28,22 @@ void Options::load(const char *filename) {
 	}
 }
 
-void Options::update() {
+bool Options::update() {
 	watcher.update();
 
 	auto file = watcher.getChangedFiles();
+	if (!file) {
+		return false;
+	}
+
 	while (file) {
 		load(file->name.get());
 		info("reloading options");
 		file = watcher.getChangedFiles(file);
 		assert(!file);
 	}
+
+	return true;
 }
 
 void Options::cleanup() {

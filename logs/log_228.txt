@@ -1,7 +1,0 @@
-[INFO] (00:00:0006): compiling base_vs.hlsl, type: vs
-[INFO] (00:00:0297): compiling base_ps.hlsl, type: ps
-[INFO] (00:00:0306): compiling brush_grid.hlsl, type: cs
-[INFO] (00:00:0316): compiling sculpt_cs.hlsl, type: cs
-[INFO] (00:00:0333): compiling gen_brush_cs.hlsl, type: cs
-[INFO] (00:00:0342): compiling empty_texture_cs.hlsl, type: cs
-[ERROR](00:00:0530): couldn't get disjointed data

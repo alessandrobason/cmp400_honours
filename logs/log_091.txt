@@ -1,7 +1,0 @@
-[INFO] (00:00:0003): compiling base_vs.hlsl, type: vs
-[INFO] (00:00:0052): compiling base_ps.hlsl, type: ps
-[INFO] (00:00:0092): compiling brush_grid.hlsl, type: cs
-[INFO] (00:00:0101): compiling add_brush.hlsl, type: cs
-[ERROR](00:00:0104): couldn't compile shader add_brush.hlsl
-[ERROR](00:00:0105): \\StuHomeOdd\HomeDrive1$\1902881\cmp400_honours\Shader@0x00000273DCC044E0(64,9-51): error X3019: if statement conditional expressions must evaluate to a scalar
-

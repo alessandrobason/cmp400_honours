@@ -1,8 +1,0 @@
-[INFO] (00:00:0003): compiling base_vs.hlsl, type: vs
-[INFO] (00:00:0012): compiling base_ps.hlsl, type: ps
-[INFO] (00:00:0018): compiling brush_grid.hlsl, type: cs
-[INFO] (00:00:0023): compiling add_brush.hlsl, type: cs
-[INFO] (00:00:0029): compiling edit_cs.hlsl, type: cs
-[ERROR](00:00:0030): couldn't compile shader edit_cs.hlsl
-[ERROR](00:00:0030): C:\Users\ale55\Desktop\documents\uni\year-4\cmp400-honours\project\SDF_RayMarching\Shader@0x000001AA648800B0(237,18-19): error X3000: syntax error: unexpected token '-='
-
