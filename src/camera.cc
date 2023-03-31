@@ -33,14 +33,14 @@ struct mat4 {
 	static const mat4 identity;
 };
 
-const mat4 mat4::identity = { 
-	1, 0, 0, 0, 
-	0, 1, 0, 0, 
-	0, 0, 1, 0, 
-	0, 0, 0, 1, 
+const mat4 mat4::identity = {
+	1, 0, 0, 0,
+	0, 1, 0, 0,
+	0, 0, 1, 0,
+	0, 0, 0, 1,
 };
 
-mat4 rotate(const mat4 &mat, float angle, const vec3 &v) {
+mat4 rotate(const mat4& mat, float angle, const vec3& v) {
 	const float c = cosf(angle);
 	const float s = sinf(angle);
 
@@ -68,7 +68,7 @@ mat4 rotate(const mat4 &mat, float angle, const vec3 &v) {
 	return result;
 }
 
-mat4 lookAt(const vec3 &eye, const vec3 &centre, const vec3 &up) {
+mat4 lookAt(const vec3& eye, const vec3& centre, const vec3& up) {
 	// forward, right, and up
 	const vec3 f = norm(centre - eye);
 	const vec3 r = norm(cross(f, up));
@@ -99,9 +99,6 @@ mat4 lookAt(const vec3 &eye, const vec3 &centre, const vec3 &up) {
 	return result;
 }
 
-<<<<<<< Updated upstream
-void Camera::update() {
-=======
 #define VFMT "(%.3f %.3f %.3f)"
 #define V(v) (v).x, (v).y, (v).z
 
@@ -124,7 +121,7 @@ struct quat : vec4 {
 
 	static const quat identity;
 
-	static quat fromAxisAngle(const vec3 &axis, float angle) {
+	static quat fromAxisAngle(const vec3& axis, float angle) {
 		float s = sinf(angle / 2.f);
 		return quat(axis * s, cosf(angle / 2.f));
 	}
@@ -207,7 +204,7 @@ struct quat : vec4 {
 		out.x = ww * p.x + 2.f * yw * p.z - 2.f * zw * p.y + xx * p.x + 2.f * xy * p.y + 2.f * xz * p.z - zz * p.x - yy * p.x;
 		out.y = 2.f * xy * p.x + yy * p.y + 2.f * yz * p.z + 2.f * zw * p.x - zz * p.y + ww * p.y - 2.f * xw * p.z - xx * p.y;
 		out.z = 2.f * xz * p.x + 2.f * yz * p.y + zz * p.z - 2.f * yw * p.x - yy * p.z + 2.f * xw * p.y - xx * p.z + ww * p.z;
-		
+
 		return out;
 	}
 };
@@ -243,7 +240,7 @@ static quat computeRotation(vec2 cur_pos, vec2 start_pos) {
 	else {
 		end.z = sqrtf(1.f - length2);
 	}
-	
+
 	vec3 axis = norm(cross(start, end));
 
 	float angle = acosf(math::clamp(dot(start, end), -1.f, 1.f));
@@ -319,14 +316,14 @@ void Camera::update() {
 	//pos = vec3(0) - fwd * 200.f;
 	//right = norm(cross(fwd, vec3(0, 1, 0)));
 	//up = norm(cross(right, fwd));
-	
+
 	// mat4 current_rotation = compute_rot_mat(mouse_cur, mouse_start);
 
 	// getCurrentRot() = current_rotation * last_rotation;
 
 #if 0
-	static float pitch = math::torad(0.f), 
-				 yaw   = math::torad(90.f); 
+	static float pitch = math::torad(0.f),
+		yaw = math::torad(90.f);
 
 	if (isMouseDown(MOUSE_RIGHT) && false) {
 		constexpr float sensitivity = 1.f;
@@ -367,7 +364,6 @@ void Camera::update() {
 	//mat4 view = lookAt(pos, 0, vec3(0, 1, 0));
 #endif
 
->>>>>>> Stashed changes
 #if 0
 	constexpr float sensitivity = 15.1f;
 	static float yaw = 90.f, pitch = 0.f, zoom = 1.f;
@@ -395,24 +391,16 @@ void Camera::update() {
 			sinf(pr),
 			sinf(yr) * cosf(pr)
 		};
-		
+
 		fwd = norm(front);
 		right = norm(cross(up, fwd));
 		up = norm(cross(fwd, right));
-<<<<<<< Updated upstream
-		pos = vec3(0) - fwd * 100.0f * zoom;
-=======
 		pos = (vec3(0) - fwd) * 200.0f * zoom;
->>>>>>> Stashed changes
 		info("pos: %.3f %.3f %.3f, fwd: %.3f %.3f %.3f", pos.x, pos.y, pos.z, fwd.x, fwd.y, fwd.z);
 
 		target = fwd + pos;
 	}
-<<<<<<< Updated upstream
-#endif
-=======
 #elif 0
->>>>>>> Stashed changes
 
 	if (!isMouseDown(MOUSE_RIGHT)) {
 		return;
@@ -430,17 +418,7 @@ void Camera::update() {
 
 	fwd = norm(target - pos);
 	right = norm(cross(fwd, up));
-<<<<<<< Updated upstream
 
-	const mat4 rot_mat_x = rotate(mat4::identity, angle.x, vec3(0, 1, 0));
-	const mat4 rot_mat_y = rotate(mat4::identity, angle.y, right);
-
-	pos = (rot_mat_x * (pos - target)) + target;
-	vec3 final_pos = (rot_mat_y * (pos - target)) + target;
-
-	updateView(final_pos, target, up);
-=======
-	
 	const mat4 rot_mat_x = rotate(mat4::identity, angle.x, vec3(0, 1, 0));
 	// const mat4 rot_mat_y = rotate(mat4::identity, angle.y, right);
 	const mat4 rot_mat_y = rotate(mat4::identity, angle.y, vec3(1, 0, 0));
@@ -451,7 +429,6 @@ void Camera::update() {
 	info("pos: " VFMT ", fwd: " VFMT ", right: " VFMT, V(pos), V(fwd), V(right));
 	//updateView(pos, target, up);
 #endif
->>>>>>> Stashed changes
 
 #if 0
 	float wheel = getMouseWheel();
@@ -469,13 +446,8 @@ void Camera::update() {
 	const vec2 delta_angle = vec2(math::pi * 2.f, math::pi) / (vec2)view_size;
 	vec2 angle = (vec2)getMousePosRel() * delta_angle;
 
-<<<<<<< Updated upstream
-	const vec3 fwd = norm(target - pos);
-	const vec3 right = cross(fwd, up);
-=======
 	fwd = norm(target - pos);
 	right = cross(fwd, vec3(0, 1, 0));
->>>>>>> Stashed changes
 
 	// if the camera is exactly up
 	const float cos_angle = dot(fwd, up);
@@ -485,13 +457,6 @@ void Camera::update() {
 
 	const mat4 rot_mat_x = rotate(mat4::identity, angle.x, vec3(0, 1, 0));
 	const mat4 rot_mat_y = rotate(mat4::identity, angle.y, right);
-<<<<<<< Updated upstream
-
-	pos = (rot_mat_x * (pos - target)) + target;
-	const vec3 final_pos = (rot_mat_y * (pos - target)) + target;
-
-	updateView(final_pos, target, vec3(0, 1, 0));
-=======
 	//const mat4 rot_mat_y = rotate(mat4::identity, angle.y, vec3(1, 0, 0));
 
 	const auto update_vec = [&]() {
@@ -522,7 +487,6 @@ void Camera::update() {
 	//const vec3 final_pos = (rot_mat_y * (pos - target)) + target;
 
 	//updateView(pos, target, vec3(0, 1, 0));
->>>>>>> Stashed changes
 #endif
 }
 
@@ -534,10 +498,6 @@ void Camera::updateView(const vec3& eye, const vec3& lookat, const vec3& new_up)
 	//view = view_mat.data;
 
 	fwd = norm(target - pos);
-<<<<<<< Updated upstream
-	right = norm(cross(fwd, up));
-=======
 	right = norm(cross(fwd, vec3(0, 1, 0)));
 	up = norm(cross(right, fwd));
->>>>>>> Stashed changes
 }
