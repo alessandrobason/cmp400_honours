@@ -21,6 +21,11 @@ void Options::load(const char *filename) {
 		}
 	}
 
+	if (auto camera = doc.get("camera")) {
+		camera->get("zoom").trySet(zoom_sensitivity);
+		camera->get("look").trySet(look_sensitivity);
+	}
+
 	if (auto log = doc.get("log")) {
 		log->get("print to file").trySet(print_to_file);
 		log->get("print to console").trySet(print_to_console);

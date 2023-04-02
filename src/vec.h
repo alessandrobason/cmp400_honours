@@ -55,7 +55,7 @@ struct vec2T {
 	constexpr T mag2() const { return x * x + y * y; }
 	constexpr T mag() const { return sqrt(mag2()); }
 	void norm() { T m = mag(); if (m) *this /= m; }
-	constexpr vec2T normalise() const { vec2T v = *this; v.norm(); return v; }
+	constexpr vec2T normalised() const { vec2T v = *this; v.norm(); return v; }
 	constexpr static T dot(const vec2T& a, const vec2T& b) { return a.x * b.x + a.y * b.y; }
 };
 
@@ -111,7 +111,7 @@ struct vec3T {
 	constexpr T mag2() const { return x * x + y * y + z * z; }
 	constexpr T mag() const { return (T)sqrt(mag2()); }
 	void norm() { T m = mag(); if (m) *this /= m; }
-	constexpr vec3T normalise() const { vec3T o = *this; o.norm(); return o; }
+	constexpr vec3T normalised() const { vec3T o = *this; o.norm(); return o; }
 	constexpr static vec3T cross(const vec3T& a, const vec3T& b) {
 		return vec3T(
 			a.y * b.z - a.z * b.y,
@@ -176,13 +176,13 @@ struct vec4T {
 	constexpr T mag2() const { return x * x + y * y + z * z + w * w; }
 	constexpr T mag() const { return sqrt(mag2()); }
 	void norm() { T m = mag(); if (m) *this /= m; }
-	constexpr vec4T normalise() const { vec4T o = *this; o.norm(); return o; }
+	constexpr vec4T normalised() const { vec4T o = *this; o.norm(); return o; }
 	constexpr static T dot(const vec4T& a, const vec4T& b) { return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w; }
 };
 
 template<typename T>
 constexpr T norm(const T& val) {
-	return val.normalise();
+	return val.normalised();
 }
 
 template<typename T>

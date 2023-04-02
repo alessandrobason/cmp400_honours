@@ -84,6 +84,12 @@ namespace ini {
 		}
 	}
 
+	void Value::trySet(float &val) const {
+		if (isValid()) {
+			val = asNum();
+		}
+	}
+
 	void Value::trySet(double &val) const {
 		if (isValid()) {
 			val = asNum();

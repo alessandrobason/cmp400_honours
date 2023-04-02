@@ -9,6 +9,10 @@ struct Options {
 	bool lazy_render      = true;	// render only when something has changed
 	vec2u resolution = vec2u(1920, 1080);
 
+	// camera
+	float zoom_sensitivity = 20.f;
+	float look_sensitivity = 100.f;
+
 	// log
 	bool print_to_file    = true;
 	bool print_to_console = true;
