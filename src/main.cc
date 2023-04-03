@@ -289,7 +289,7 @@ int main() {
 						data->cam_fwd = cam.fwd;
 						data->cam_right = cam.right;
 						data->cam_up = cam.up;
-						data->cam_zoom = cam.zoom;
+						data->cam_zoom = cam.getZoom();
 						data->img_height = (float)resolution.x;
 						data->img_width = (float)resolution.y;
 						data->time = win::timeSinceStart();
@@ -316,7 +316,7 @@ int main() {
 			drawLogger();
 			
 			ImGui::Begin("New Shape");
-			static vec3 newpos = norm(vec3(0, 1, 0)) * 25.f;
+			static vec3 newpos = 0;
 			static int cur_op = 0;
 			static bool is_smooth = false;
 			static float smooth_amount = 0.5f;

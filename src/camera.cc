@@ -15,13 +15,10 @@ Camera::Camera() {
 void Camera::update() {
 	const Options &options = Options::get();
 
-	static float z = 1.f;
-
-	z += getMouseWheel() * win::dt * options.zoom_sensitivity;
-	if (z < -2.3f) z = -2.3f;
-	zoom = exp(z);
-
-	info("z: %.2f, zoom: %.2f", z, zoom);
+	if (float wheel = getMouseWheel()) {
+		zoom_exp += wheel * win::dt * options.zoom_sensitivity;
+		//zoom_exp = math::clamp(zoom_exp, -2.3f, 2.3f);
+	}
 
 	if (!isMouseDown(MOUSE_RIGHT)) {
 		return;
@@ -49,6 +46,10 @@ void Camera::updateVectors() {
 	fwd   = norm(aim - pos);
 	right = norm(cross(world_up, fwd));
 	up    = norm(cross(fwd, right));
+}
+
+float Camera::getZoom() const {
+	return zoom_exp;
 }
 
 #if 0
