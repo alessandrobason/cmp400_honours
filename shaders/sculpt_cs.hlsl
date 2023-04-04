@@ -13,6 +13,8 @@ cbuffer BrushData : register(b1) {
     uint operation;
     float3 brush_position;
     float smooth_amount;
+    float3 padding__1;
+    float scale;
 };
 
 #define SMOOTH_OP               (1 << 31)
@@ -23,8 +25,32 @@ cbuffer BrushData : register(b1) {
 #define OP_SMOOTH_SUBTRACTION   (SMOOTH_OP | OP_SUBTRACTION)
 // #define OP_SMOOTH_INTERSECTION  (SMOOTH_OP | OP_INTERSECTION)
 
+float trilinearInterpolation(float3 pos, float3 size) {
+    int3 start = max(min(int3(pos), int3(size) - 2), 0);
+    int3 end = start + 1;
+
+    float3 delta = pos - start;
+    float3 rem = 1 - delta;
+
+#define map(x, y, z) brush.Load(int4((x), (y), (z), 0))
+
+    float4 c = float4(
+        map(start.x, start.y, start.z) * rem.x + map(end.x, start.y, start.z) * delta.x,
+        map(start.x, end.y,   start.z) * rem.x + map(end.x, end.y,   start.z) * delta.x,
+        map(start.x, start.y, end.z)   * rem.x + map(end.x, start.y, end.z)   * delta.x,
+        map(start.x, end.y,   end.z)   * rem.x + map(end.x, end.y,   end.z)   * delta.x
+    );
+
+#undef map
+
+    float c0 = c.x * rem.y + c.y * delta.y;
+    float c1 = c.z * rem.y + c.w * delta.y;
+
+    return c0 * rem.z + c1 * delta.z;
+}
+
 float sampleBrush(float3 position) {
-    return brush.Load(int4(int3(position), 0));
+    return trilinearInterpolation(position / scale, brush_size);
 }
 
 float op_union(float d1, float d2) {
@@ -55,11 +81,10 @@ float op_smooth_subtraction(float d1, float d2, float k) {
 // }
 
 float3 worldToBrush(float3 pos) {
-    return pos - brush_position + brush_size / 2.;
+    return pos - brush_position + brush_size * scale * 0.5;
 }
 
-#define GROUP_SIZE 8.
-#define THREAD_SIZE 8
+#define GROUP_SIZE 8
 #define MAX_DIST 10000.
 
 void setVTSkipRead(uint3 id, float old_value, float new_value) {
@@ -80,49 +105,48 @@ void setVolumeTexture(uint3 id, float new_value) {
     setVTSkipRead(id, tex[id], new_value);
 }
 
-[numthreads(THREAD_SIZE, THREAD_SIZE, THREAD_SIZE)]
-void main(uint3 id : SV_DispatchThreadID, uint3 group_id : SV_GroupID) {
-    const int MAX_GROUP_COUNT = 5;
-    const int MAX_CELL_MOVE = 8;
-    int3 cur_group_id = group_id;
-    
-    const int3 group_start = group_id * THREAD_SIZE;
-    const int3 relative_id = id - group_start;
+// #define NO_EXTRA
 
-    const float3 group_centre = float3(group_id) * GROUP_SIZE + GROUP_SIZE * 0.5;
+[numthreads(8, 8, 8)]
+void main(uint3 id : SV_DispatchThreadID, uint3 group_id : SV_GroupID) {
+    const float3 group_centre = float3(group_id) * 8. + 4.;
     const float3 group_world = group_centre - volume_tex_size * 0.5;
     const float3 group_brush = worldToBrush(group_world);
 
     // if the group is outside the brush
-    if (!all(group_brush >= 0. && group_brush < brush_size)) {
+    if (!all(group_brush >= 0. && group_brush < brush_size * scale)) {
+#ifndef NO_EXTRA
         float distance = length(group_world - brush_position);
-        distance -= brush_size.x * 0.5;
+        distance -= brush_size.x * scale * 0.5;
         distance = abs(distance);
         // TODO remove this check, at least outside of the first run. otherwise it is 
         // very expensive (5ms -> 45ms!!!)
-        // const float old_value = tex[id];
         setVolumeTexture(id, distance);
+        // const float old_value = tex[id];
         //if (old_value >= MAX_DIST) {
         //    tex[id] = distance;
         //}
         //else if (distance < 100.) {
         //    setVTSkipRead(id, old_value, distance);
         //}
+#endif
         return;
     }
     
     // -- sample brush at current position
-    const float3 id_world = float3(id) - volume_tex_size / 2.;
+    const float3 id_world = float3(id) - volume_tex_size * 0.5;
     // move the position relative to where the brush is, then convert it to brush coordinates
     const float3 id_brush = worldToBrush(id_world);
     // if the cell is not inside the brush volume texture, return early
-    if (!all(id_brush >= 0 && id_brush < brush_size)) {
+    if (!all(id_brush >= 0 && id_brush < brush_size * scale)) {
+#ifndef NO_EXTRA
         float distance = length(id_world - brush_position);
-        distance -= brush_size.x * 0.5;
+        distance -= brush_size.x * scale * 0.5;
         distance = abs(distance);
         //if (distance < 10.) {
             setVolumeTexture(id, distance);
         //
+#endif
         return;
     }
     const float distance = sampleBrush(id_brush);

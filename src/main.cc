@@ -123,6 +123,8 @@ struct BrushData {
 	Operations operation;
 	vec3 brush_position;
 	float smooth_amount;
+	vec3 padding__0;
+	float scale;
 };
 
 #if 0
@@ -240,6 +242,7 @@ int main() {
 				data->brush_position = vec3(0);
 				data->brush_size = brush_size;
 				data->operation = Operations::Union;
+				data->scale = 1.f;
 				buf->unmap();
 			}
 		}
@@ -320,6 +323,7 @@ int main() {
 			static int cur_op = 0;
 			static bool is_smooth = false;
 			static float smooth_amount = 0.5f;
+			static float scale = 3.f;
 			// ImGui::Combo("Operation", &cur_op, "Union\0Subtraction\0Intersection\0Smooth Union\0Smooth Subtraction\0Smooth Intersection");
 			ImGui::Combo("Operation", &cur_op, "Union\0Subtraction");
 			ImGui::Checkbox("Is smooth", &is_smooth);
@@ -327,6 +331,7 @@ int main() {
 				ImGui::SliderFloat("Smooth Amount", &smooth_amount, 0.f, 1.f);
 			}
 			ImGui::DragFloat3("Position", newpos.data, 1.f, -(maintex_size.x / 2.f), maintex_size.x / 2.f);
+			ImGui::DragFloat("Scale", &scale, 0.1f, 0.01f, 10.f);
 
 			static bool once = true;
 
@@ -348,6 +353,7 @@ int main() {
 						data->operation = int_to_oper[cur_op];
 						if (is_smooth) data->operation |= Operations::Smooth;
 						data->smooth_amount = smooth_amount;
+						data->scale = scale;
 						buf->unmap();
 					}
 				}

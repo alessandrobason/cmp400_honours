@@ -30,8 +30,32 @@ float3 worldToTex(float3 world) {
 	return world - tex_position + tex_size / 2.;
 }
 
+float trilinearInterpolation(float3 pos, float3 size) {
+    int3 start = max(min(int3(pos), int3(size) - 2), 0);
+    int3 end = start + 1;
+
+    float3 delta = pos - start;
+    float3 rem = 1 - delta;
+
+#define map(x, y, z) vol_tex.Load(int4((x), (y), (z), 0))
+
+    float4 c = float4(
+        map(start.x, start.y, start.z) * rem.x + map(end.x, start.y, start.z) * delta.x,
+        map(start.x, end.y,   start.z) * rem.x + map(end.x, end.y,   start.z) * delta.x,
+        map(start.x, start.y, end.z)   * rem.x + map(end.x, start.y, end.z)   * delta.x,
+        map(start.x, end.y,   end.z)   * rem.x + map(end.x, end.y,   end.z)   * delta.x
+    );
+
+#undef map
+
+    float c0 = c.x * rem.y + c.y * delta.y;
+    float c1 = c.z * rem.y + c.w * delta.y;
+
+    return c0 * rem.z + c1 * delta.z;
+}
+
 float map(float3 coords) {
-	return vol_tex.Load(int4(coords, 0));
+	return trilinearInterpolation(coords, tex_size);
 }
 
 bool isInsideTexture(float3 pos) {
@@ -39,7 +63,6 @@ bool isInsideTexture(float3 pos) {
 }
 
 float3 calcNormal(float3 pos) {
-	const float3 small_step = float3(1, 0, 0);
 	const float step = 1;
 	const float2 k = float2(1, -1);
 
@@ -82,11 +105,10 @@ struct HitInfo {
 
 #define MAX_DIST 10000.
 
-// float3 rayMarch(float3 ray_origin, float3 ray_dir) {
-void rayMarch(float3 ray_origin, float3 ray_dir, out HitInfo info) {
+float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 	float distance_traveled = 0;
 	const int NUMBER_OF_STEPS = 300;
-	const float MIN_HIT_DISTANCE = 0.001;
+	const float MIN_HIT_DISTANCE = .005;
 	const float MAX_TRACE_DISTANCE = 1000;
 
 	const float3 light_pos = float3(100, 100, 0);
@@ -106,33 +128,27 @@ void rayMarch(float3 ray_origin, float3 ray_dir, out HitInfo info) {
 		}
 
 		if ((closest) < MIN_HIT_DISTANCE) {
-			info.albedo = float3(0.1, 0.2, 1.);
-			info.emissive = 0.;
-			info.distance = distance_traveled + closest;
-			info.normal = calcNormal(tex_pos);
-			return;
+			float3 normal = calcNormal(tex_pos);
+			float3 material = normal * .5 + .5;
+
+			const float3 light_pos = float3(sin(time) * 2, -5, cos(time) * 2) * 20.;
+			float3 dir_to_light = normalize(current_pos - light_pos);
+
+			float diffuse_intensity = max(0, dot(normal, dir_to_light));
+
+			return material * saturate(diffuse_intensity + 0.2);
 		}
 
 		if (distance_traveled > MAX_TRACE_DISTANCE) {
-			bool is_in_light = dot(light_dir, ray_dir) < 0;
-			info.albedo = float3(0.3, 0.7, 1.);
-			info.emissive = float3(1, .9, .7) * is_in_light;
-			info.distance = MAX_DIST * 2.;
 			break;
 		}
 
 		distance_traveled += closest;
 	}
 
-	bool is_in_light = dot(light_dir, ray_dir) < 0;
-	info.albedo = float3(0.3, 0.7, 1.);
-	info.emissive = float3(1, .9, .7) * is_in_light;
-	info.distance = MAX_DIST;
-
-	//return float3(1, 0, 0);
+	return float3(0.2, 0.5, 1.);
 
 #if 0
-
 	for (int i = 0; i < NUMBER_OF_STEPS; ++i) {
 		float3 current_pos = ray_origin + ray_dir * distance_traveled;
 
@@ -181,13 +197,60 @@ void rayMarch(float3 ray_origin, float3 ray_dir, out HitInfo info) {
 
 		distance_traveled += closest;
 	}
+
+	return float3(0.2, 0.5, 1.);
 #endif
-	
-	//return float3(1.0, 0.5, 0.1);
+}
+
+void rayMarch_trace(float3 ray_origin, float3 ray_dir, out HitInfo info) {
+	float distance_traveled = 0;
+	const int NUMBER_OF_STEPS = 300;
+	const float MIN_HIT_DISTANCE = 0.001;
+	const float MAX_TRACE_DISTANCE = 1000;
+
+	const float3 light_pos = float3(100, 100, 0);
+	const float3 light_dir = normalize(0. - light_pos);
+
+	for (int i = 0; i < NUMBER_OF_STEPS; ++i) {
+		float3 current_pos = ray_origin + ray_dir * distance_traveled;
+		float closest = 0;
+
+		float3 tex_pos = worldToTex(current_pos);
+		if (!all(tex_pos >= 0 && tex_pos < tex_size)) {
+			float distance = length(current_pos - tex_position) - tex_size.x * 0.5;
+			closest = max(abs(distance), 1);
+		}
+		else {
+			closest = map(tex_pos);
+		}
+
+		if ((closest) < MIN_HIT_DISTANCE) {
+			info.albedo = float3(0.1, 0.2, 1.);
+			info.emissive = 0.;
+			info.distance = distance_traveled + closest;
+			info.normal = calcNormal(tex_pos);
+			return;
+		}
+
+		if (distance_traveled > MAX_TRACE_DISTANCE) {
+			bool is_in_light = dot(light_dir, ray_dir) < 0;
+			info.albedo = float3(0.3, 0.7, 1.);
+			info.emissive = float3(1, .9, .7) * is_in_light;
+			info.distance = MAX_DIST * 2.;
+			break;
+		}
+
+		distance_traveled += closest;
+	}
+
+	bool is_in_light = dot(light_dir, ray_dir) < 0;
+	info.albedo = float3(0.3, 0.7, 1.);
+	info.emissive = float3(1, .9, .7) * is_in_light;
+	info.distance = MAX_DIST;
 }
 
 float3 rayTrace(float3 ray_pos, float3 ray_dir, inout uint rng_state) {
-	const int MAX_BOUNCES = 10;
+	const int MAX_BOUNCES = 2;
 
 	float3 colour = 1;
 	float3 light = 0.;
@@ -195,7 +258,7 @@ float3 rayTrace(float3 ray_pos, float3 ray_dir, inout uint rng_state) {
 	HitInfo info;
 
 	for (int bounce = 0; bounce < MAX_BOUNCES; ++bounce) {
-		rayMarch(ray_pos, ray_dir, info);
+		rayMarch_trace(ray_pos, ray_dir, info);
 
 		light += info.emissive * colour;
 		colour *= info.albedo;
@@ -227,8 +290,8 @@ float4 main(PixelInput input) : SV_TARGET {
 	// float3 ray_dir = normalize(cam_fwd * cam_zoom + cam_right * uv.x + cam_up * uv.y);
 	float3 ray_dir = normalize(cam_fwd + cam_right * uv.x + cam_up * uv.y);
 	float3 ray_origin = cam_pos + cam_fwd * cam_zoom;
-	// float3 colour = rayMarch(cam_pos, ray_dir);
-	float3 colour = rayTrace(ray_origin, ray_dir, rng_state);
+	float3 colour = rayMarch(ray_origin, ray_dir);
+	// float3 colour = rayTrace(ray_origin, ray_dir, rng_state);
 #else
 	float3 ray_ori = float3(0, 0, -100);
 	float3 ray_dir = float3(uv, .5);
