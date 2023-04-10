@@ -194,6 +194,7 @@
     <ClInclude Include="..\libs\ImGui\imstb_textedit.h" />
     <ClInclude Include="..\libs\ImGui\imstb_truetype.h" />
     <ClInclude Include="..\libs\sokol\sokol_time.h" />
+    <ClInclude Include="..\libs\stb\stb_image.h" />
     <ClInclude Include="..\libs\stb\stb_image_write.h" />
     <ClInclude Include="..\src\camera.h" />
     <ClInclude Include="..\src\d3d11_fwd.h" />

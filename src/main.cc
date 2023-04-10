@@ -12,6 +12,7 @@
 #include "gfx.h"
 #include "shape_builder.h"
 #include "camera.h"
+#include "matrix.h"
 
 #include <imgui.h>
 
@@ -72,6 +73,28 @@ struct PSShaderData {
 	float img_height;
 	vec3 cam_pos;
 	float cam_zoom;
+};
+
+struct BrushPositionData {
+	vec3 position;
+	float padding__0;
+	vec3 normal;
+	float padding__1;
+};
+
+struct FindData {
+	vec3 pos;
+	float mouse_dir_x;
+	vec3 right;
+	float mouse_dir_y;
+	vec3 up;
+	float mouse_dir_z;
+	vec3 fwd;
+	float padding__0;
+	//vec3 cam_pos;
+	//float padding__0;
+	//vec3 mouse_dir;
+	//float padding__1;
 };
 
 #if BRUSH_BUILDER
@@ -176,12 +199,33 @@ void gfxErrorExit() {
 Mesh makeFullScreenTriangle() {
 	Mesh::Vertex verts[] = {
 		{ vec3(-1, -1, 0), vec2(0, 0) },
-		{ vec3( 3, -1, 0), vec2(2, 0) },
 		{ vec3(-1,  3, 0), vec2(0, 2) },
+		{ vec3( 3, -1, 0), vec2(2, 0) },
 	};
 
 	Mesh::Index indices[] = {
-		0, 2, 1,
+		0, 1, 2,
+	};
+
+	Mesh m;
+	if (!m.create(verts, indices)) {
+		gfxErrorExit();
+	}
+
+	return m;
+}
+
+Mesh makeBillboard(const vec2 &tex_size) {
+	Mesh::Vertex verts[] = {
+		{ vec3(0,          0,          0), vec2(0, 0) },
+		{ vec3(0,          tex_size.y, 0), vec2(0, 1) },
+		{ vec3(tex_size.x, tex_size.y, 0), vec2(1, 1) },
+		{ vec3(tex_size.x,          0, 0), vec2(1, 0) },
+	};
+
+	Mesh::Index indices[] = {
+		0, 1, 2, 
+		2, 3, 0
 	};
 
 	Mesh m;
@@ -200,44 +244,92 @@ int main() {
 	{
 		Camera cam;
 		Texture3D main_texture, brush;
-		DynamicShader main_sh, sculpt, gen_brush, empty_texture;
+		Texture2D brush_tex;
+		DynamicShader sh_manager;
+		int main_ps_ind, main_vs_ind, sculpt_ind, gen_brush_ind, empty_texture_ind, find_brush_ind, brush_ps_ind, brush_vs_ind;
+		Shader *main_ps, *main_vs, *sculpt, *gen_brush, *empty_texture, *find_brush, *brush_ps, *brush_vs;
+		Buffer matrix_model_buf;
 
 		if (!main_texture.create(maintex_size)) gfxErrorExit();
 		if (!brush.create(brush_size))          gfxErrorExit();
 
-		if (!main_sh.init("base_vs", "base_ps", nullptr)) gfxErrorExit();
-		main_sh.shader.addSampler();
-		int shader_data_ind = main_sh.shader.addBuffer<PSShaderData>(Buffer::Usage::Dynamic);
-		int tex_data_ind = main_sh.shader.addBuffer<TexData>(Buffer::Usage::Dynamic);
+		main_vs_ind       = sh_manager.add("base_vs",          ShaderType::Vertex);
+		main_ps_ind       = sh_manager.add("base_ps",          ShaderType::Fragment);
+		sculpt_ind        = sh_manager.add("sculpt_cs",        ShaderType::Compute);
+		gen_brush_ind     = sh_manager.add("gen_brush_cs",     ShaderType::Compute);
+		empty_texture_ind = sh_manager.add("empty_texture_cs", ShaderType::Compute);
+		find_brush_ind    = sh_manager.add("find_brush_cs",    ShaderType::Compute);
+		brush_vs_ind      = sh_manager.add("brush_vs",         ShaderType::Vertex);
+		brush_ps_ind      = sh_manager.add("brush_ps",         ShaderType::Fragment);
 
-		if (!sculpt.init(nullptr, nullptr, "sculpt_cs")) gfxErrorExit();
+		main_vs       = sh_manager.get(main_vs_ind);
+		main_ps       = sh_manager.get(main_ps_ind);
+		sculpt        = sh_manager.get(sculpt_ind);
+		gen_brush     = sh_manager.get(gen_brush_ind);
+		empty_texture = sh_manager.get(empty_texture_ind);
+		find_brush    = sh_manager.get(find_brush_ind);
+		brush_vs      = sh_manager.get(brush_vs_ind);
+		brush_ps      = sh_manager.get(brush_ps_ind);
+
+		if (!main_vs)       gfxErrorExit();
+		if (!main_ps)       gfxErrorExit();
+		if (!sculpt)        gfxErrorExit();
+		if (!gen_brush)     gfxErrorExit();
+		if (!empty_texture) gfxErrorExit();
+		if (!find_brush)    gfxErrorExit();
+		if (!brush_vs)      gfxErrorExit();
+		if (!brush_ps)      gfxErrorExit();
+
+		main_ps->addSampler();
+
+		int shader_data_ind = main_ps->addBuffer<PSShaderData>(Buffer::Usage::Dynamic);
+		int tex_data_ind = main_ps->addBuffer<TexData>(Buffer::Usage::Dynamic);
+
 		VolumeTexData volume_tex_data{};
-		int volume_tex_data_ind = sculpt.shader.addBuffer<VolumeTexData>(Buffer::Usage::Immutable, &volume_tex_data);
-		int brush_data_ind = sculpt.shader.addBuffer<BrushData>(Buffer::Usage::Dynamic);
+		int volume_tex_data_ind = sculpt->addBuffer<VolumeTexData>(Buffer::Usage::Immutable, &volume_tex_data);
+		int brush_data_ind = sculpt->addBuffer<BrushData>(Buffer::Usage::Dynamic);
 
-		if (!gen_brush.init(nullptr, nullptr, "gen_brush_cs")) gfxErrorExit();
+		//int mouse_brush_ind = find_brush->addStructuredBuf<matrix>();
+		int find_data_ind = find_brush->addBuffer<FindData>(Buffer::Usage::Dynamic);
+		int find_tex_data_ind = find_brush->addBuffer<TexData>(Buffer::Usage::Dynamic);
 
-		if (!empty_texture.init(nullptr, nullptr, "empty_texture_cs")) gfxErrorExit();
+		//Buffer* brush_pos_data = find_brush->getBuffer(mouse_brush_ind);
 
-		Mesh triangle = makeFullScreenTriangle();
-
-		// generate brush
-		gen_brush.shader.dispatch(brush_size / 8, {}, {}, { brush.uav });
-
-		// fill texture
-		empty_texture.shader.dispatch(threads, {}, {}, { main_texture.uav });
-
-		GPUClock sculpt_clock("Sculpt");
-
-		if (Buffer *buf = main_sh.shader.getBuffer(tex_data_ind)) {
-			if (TexData *data = buf->map<TexData>(0)) {
-				data->tex_size = maintex_size;
+		if (Buffer* buf = find_brush->getBuffer(find_tex_data_ind)) {
+			if (TexData* data = buf->map<TexData>()) {
 				data->tex_position = 0;
+				data->tex_size = maintex_size;
 				buf->unmap();
 			}
 		}
 
-		if (Buffer *buf = sculpt.shader.getBuffer(brush_data_ind)) {
+		//int model_matrix_ind = brush_vs->addStructuredBuf<matrix>();
+
+		brush_ps->addSampler();
+		if (!brush_tex.load("assets/brush.png")) gfxErrorExit();
+
+		if (!matrix_model_buf.createStructured<matrix>()) gfxErrorExit();
+
+		Mesh triangle = makeFullScreenTriangle();
+		Mesh brush_mesh = makeBillboard(brush_tex.size);
+
+		// generate brush
+		gen_brush->dispatch(brush_size / 8, {}, {}, { brush.uav });
+
+		// fill texture
+		empty_texture->dispatch(threads, {}, {}, { main_texture.uav });
+
+		GPUClock sculpt_clock("Sculpt");
+
+		if (Buffer *buf = main_ps->getBuffer(tex_data_ind)) {
+			if (TexData *data = buf->map<TexData>(0)) {
+				data->tex_position = 0;
+				data->tex_size = maintex_size;
+				buf->unmap();
+			}
+		}
+
+		if (Buffer *buf = sculpt->getBuffer(brush_data_ind)) {
 			if (BrushData *data = buf->map<BrushData>(0)) {
 				data->brush_position = vec3(0);
 				data->brush_size = brush_size;
@@ -247,33 +339,41 @@ int main() {
 			}
 		}
 
-		// sculpt_clock.start();
-		// sculpt.shader.dispatch(threads, { volume_tex_data_ind, brush_data_ind }, { brush.srv }, { main_texture.uav });
-		// sculpt_clock.end();
-
 		while (win::isOpen()) {
-			main_sh.poll();
-			sculpt.poll();
-			gen_brush.poll();
+			sh_manager.poll();
 
 			if (sculpt_clock.isReady()) sculpt_clock.print();
 			if (isKeyPressed(KEY_ESCAPE)) win::close();
 
-			//cam.input();
 			cam.update();
 
-			if (main_sh.hasUpdated()) {
-				is_dirty = true;
-				if (main_sh.getChanged() & ShaderType::Compute) {
-					// TODO run compute
+			if (Buffer* buf = find_brush->getBuffer(find_data_ind)) {
+				if (FindData* data = buf->map<FindData>()) {
+					vec3 mouse_dir = cam.getMouseDir();
+
+					data->pos = cam.pos;
+					data->right = cam.right;
+					data->up = cam.up;
+					data->fwd = cam.fwd;
+					data->mouse_dir_x = mouse_dir.x;
+					data->mouse_dir_y = mouse_dir.y;
+					data->mouse_dir_z = mouse_dir.z;
+					// data->cam_pos = cam.pos;
+					// data->mouse_dir = cam.getMouseDir();
+					buf->unmap();
 				}
 			}
 
-			if (sculpt.hasUpdated()) {
+			find_brush->dispatch(1, { find_data_ind, find_tex_data_ind }, { main_texture.srv }, { matrix_model_buf.uav });
+
+			if (sh_manager.hasUpdated()) {
 				is_dirty = true;
-				empty_texture.shader.dispatch(threads, {}, {}, { main_texture.uav });
+			}
+
+			if (sh_manager.hasUpdated(sculpt_ind)) {
+				empty_texture->dispatch(threads, {}, {}, { main_texture.uav });
 				sculpt_clock.start();
-				sculpt.shader.dispatch(threads, { volume_tex_data_ind, brush_data_ind }, { brush.srv }, { main_texture.uav });
+				sculpt->dispatch(threads, { volume_tex_data_ind, brush_data_ind }, { brush.srv }, { main_texture.uav });
 				sculpt_clock.end();
 			}
 
@@ -284,9 +384,10 @@ int main() {
 					info("(Lazy Rendering) rendering scene again");
 				}
 
-				if (Buffer *buf = main_sh.shader.getBuffer(shader_data_ind)) {
+				if (Buffer *buf = main_ps->getBuffer(shader_data_ind)) {
 					if (PSShaderData *data = buf->map<PSShaderData>()) {
 						const vec2u resolution = Options::get().resolution;
+						is_dirty = true;
 
 						data->cam_pos = cam.pos;
 						data->cam_fwd = cam.fwd;
@@ -297,20 +398,32 @@ int main() {
 						data->img_width = (float)resolution.y;
 						data->time = win::timeSinceStart();
 						buf->unmap();
-						buf->bind(ShaderType::Fragment);
-						is_dirty = true;
+						buf->bindCBuffer(ShaderType::Fragment);
 					}
 				}
 
 				gfx::main_rtv.clear(Colour::dark_grey);
 				gfx::main_rtv.bind();
-				main_sh.shader.bind();
-				main_sh.shader.bindBuffers(ShaderType::Fragment, { shader_data_ind, tex_data_ind });
-				main_sh.shader.setSRV(ShaderType::Fragment, { main_texture.srv });
+				main_vs->bind();
+				main_ps->bind();
+				main_ps->bindCBuffers({ shader_data_ind, tex_data_ind });
+				main_ps->setSRV({ main_texture.srv });
 				triangle.render();
-				main_sh.shader.setSRV(ShaderType::Fragment, { nullptr });
-				main_sh.shader.unbindBuffers(ShaderType::Fragment, 2);
-				//main_sh.shader.unbind();
+				main_ps->setSRV({ nullptr });
+				main_ps->unbindCBuffers(2);
+			}
+
+			{
+				brush_vs->bind();
+				brush_ps->bind();
+
+				brush_vs->setSRV({ matrix_model_buf.srv });
+				brush_ps->setSRV({ brush_tex.srv });
+
+				brush_mesh.render();
+
+				brush_vs->setSRV({ nullptr });
+				brush_ps->setSRV({ nullptr });
 			}
 
 			gfx::imgui_rtv.bind();
@@ -324,7 +437,6 @@ int main() {
 			static bool is_smooth = false;
 			static float smooth_amount = 0.5f;
 			static float scale = 3.f;
-			// ImGui::Combo("Operation", &cur_op, "Union\0Subtraction\0Intersection\0Smooth Union\0Smooth Subtraction\0Smooth Intersection");
 			ImGui::Combo("Operation", &cur_op, "Union\0Subtraction");
 			ImGui::Checkbox("Is smooth", &is_smooth);
 			if (is_smooth) {
@@ -340,13 +452,9 @@ int main() {
 				static Operations int_to_oper[6] = {
 					Operations::Union,
 					Operations::Subtraction,
-					// Operations::Intersection,
-					// Operations::SmoothUnion,
-					// Operations::SmoothSubtraction,
-					// Operations::SmoothIntersection,
 				};
 
-				if (Buffer *buf = sculpt.shader.getBuffer(brush_data_ind)) {
+				if (Buffer *buf = sculpt->getBuffer(brush_data_ind)) {
 					if (BrushData *data = buf->map<BrushData>(0)) {
 						data->brush_position = newpos;
 						data->brush_size = brush_size;
@@ -359,7 +467,7 @@ int main() {
 				}
 
 				sculpt_clock.start();
-				sculpt.shader.dispatch(threads, { volume_tex_data_ind, brush_data_ind }, { brush.srv }, { main_texture.uav });
+				sculpt->dispatch(threads, { volume_tex_data_ind, brush_data_ind }, { brush.srv }, { main_texture.uav });
 				sculpt_clock.end();
 			}
 			

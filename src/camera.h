@@ -7,6 +7,7 @@ struct Camera {
 	void update();
 	void updateVectors();
 	float getZoom() const;
+	vec3 getMouseDir() const;
 
 	// no need to initialize them, they are generated from the angles below
 	vec3 pos;

@@ -52,6 +52,15 @@ float Camera::getZoom() const {
 	return zoom_exp;
 }
 
+// adapted from fragment shader
+vec3 Camera::getMouseDir() const {
+	vec2 uv = getMousePosNorm() * 2.f - 1.f;
+	vec2 win_size = win::getSize();
+	float aspect_ratio = win_size.x / win_size.y;
+	uv.y *= aspect_ratio;
+	return norm(fwd + right * uv.x + up * uv.y);
+}
+
 #if 0
 struct mat4 {
 	union {

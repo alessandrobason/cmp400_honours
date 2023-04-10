@@ -2,3 +2,4 @@
 **/x64/
 shaders/bin/
 logs/
+*.db

@@ -86,7 +86,7 @@ namespace ini {
 
 	void Value::trySet(float &val) const {
 		if (isValid()) {
-			val = asNum();
+			val = (float)asNum();
 		}
 	}
 

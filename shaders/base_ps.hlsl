@@ -24,55 +24,98 @@ cbuffer TexData : register(b1) {
 Texture3D<float> vol_tex : register(t0);
 sampler sampler_0;
 
+// bad but cheap normal calculation
+#define USE_SHITTY_NORMAL 0 
+
 // == scene functions ================================
 
 float3 worldToTex(float3 world) {
-	return world - tex_position + tex_size / 2.;
+	return world - tex_position + tex_size * 0.5;
 }
 
+#if USE_SHITTY_NORMAL
+float trilinearInterpolation(float3 pos, float3 size, out float3 normal) {
+#else
 float trilinearInterpolation(float3 pos, float3 size) {
-    int3 start = max(min(int3(pos), int3(size) - 2), 0);
-    int3 end = start + 1;
+#endif
 
-    float3 delta = pos - start;
-    float3 rem = 1 - delta;
+    const int3 start = max(min(int3(pos), int3(size) - 2), 0);
+    const int3 end = start + 1;
+
+    const float3 delta = pos - start;
+    const float3 rem = 1 - delta;
 
 #define map(x, y, z) vol_tex.Load(int4((x), (y), (z), 0))
 
-    float4 c = float4(
-        map(start.x, start.y, start.z) * rem.x + map(end.x, start.y, start.z) * delta.x,
-        map(start.x, end.y,   start.z) * rem.x + map(end.x, end.y,   start.z) * delta.x,
-        map(start.x, start.y, end.z)   * rem.x + map(end.x, start.y, end.z)   * delta.x,
-        map(start.x, end.y,   end.z)   * rem.x + map(end.x, end.y,   end.z)   * delta.x
-    );
+	const float4 map_start = float4(
+		map(start.x, start.y, start.z),
+		map(start.x, end.y,   start.z),
+		map(start.x, start.y, end.z),
+		map(start.x, end.y,   end.z)
+	);
+
+	const float4 map_end = float4(
+		map(end.x, start.y, start.z),
+		map(end.x, end.y,   start.z),
+		map(end.x, start.y, end.z),  
+		map(end.x, end.y,   end.z)  
+	);
+
+	const float4 c = map_start * rem.x + map_end * delta.x;
+
+#if USE_SHITTY_NORMAL
+	const float2 k = float2(1, -1) * delta.x;
+
+	normal = normalize(
+		k.xyy * map_end.x +
+		k.yyx * map_start.z +
+		k.yxy * map_start.y +
+		k.xxx * map_end.w
+	);
+#endif
 
 #undef map
 
-    float c0 = c.x * rem.y + c.y * delta.y;
-    float c1 = c.z * rem.y + c.w * delta.y;
+    const float c0 = c.x * rem.y + c.y * delta.y;
+    const float c1 = c.z * rem.y + c.w * delta.y;
 
     return c0 * rem.z + c1 * delta.z;
 }
 
-float map(float3 coords) {
+float preciseMap(float3 coords) {
 	return trilinearInterpolation(coords, tex_size);
 }
+
+#if USE_SHITTY_NORMAL
+float map(float3 coords, out float3 normal) {
+	//return vol_tex.Load(int4(coords, 0));
+	return trilinearInterpolation(coords, tex_size, normal);
+}
+#else
+float map(float3 coords) {
+	return vol_tex.Load(int4(coords, 0));
+	//return trilinearInterpolation(coords, tex_size);
+}
+#endif
 
 bool isInsideTexture(float3 pos) {
 	return all(pos >= 0 && pos < 512);
 }
 
+#if USE_SHITTY_NORMAL == 0
 float3 calcNormal(float3 pos) {
-	const float step = 1;
+	// const float step = (cos(time) * .5 + .5) * 100.;
+	const float step = 3.;
 	const float2 k = float2(1, -1);
 
 	return normalize(
-		k.xyy * map(pos + k.xyy * step) +
-		k.yyx * map(pos + k.yyx * step) +
-		k.yxy * map(pos + k.yxy * step) +
-		k.xxx * map(pos + k.xxx * step)
+		k.xyy * preciseMap(pos + k.xyy * step) +
+		k.yyx * preciseMap(pos + k.yyx * step) +
+		k.yxy * preciseMap(pos + k.yxy * step) +
+		k.xxx * preciseMap(pos + k.xxx * step)
 	);
 }
+#endif
 
 uint wang_hash(inout uint seed) {
     seed = uint(seed ^ uint(61)) ^ uint(seed >> uint(16));
@@ -108,6 +151,7 @@ struct HitInfo {
 float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 	float distance_traveled = 0;
 	const int NUMBER_OF_STEPS = 300;
+	const float ROUGH_MIN_HIT_DISTANCE = 1;
 	const float MIN_HIT_DISTANCE = .005;
 	const float MAX_TRACE_DISTANCE = 1000;
 
@@ -117,6 +161,12 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 	for (int i = 0; i < NUMBER_OF_STEPS; ++i) {
 		float3 current_pos = ray_origin + ray_dir * distance_traveled;
 		float closest = 0;
+		float3 normal = 0;
+
+		// first we use a rough check with a quick map function (does not use
+		// trilinear filtering) to see if we're close enough to a surface, if
+		// we are then we use a precise map function (with trilinear filtering,
+		// meaning 8 texture lookups)
 
 		float3 tex_pos = worldToTex(current_pos);
 		if (!all(tex_pos >= 0 && tex_pos < tex_size)) {
@@ -124,19 +174,29 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 			closest = max(abs(distance), 1);
 		}
 		else {
+#if USE_SHITTY_NORMAL
+			closest = map(tex_pos, normal);
+#else
 			closest = map(tex_pos);
+#endif
 		}
 
-		if ((closest) < MIN_HIT_DISTANCE) {
-			float3 normal = calcNormal(tex_pos);
-			float3 material = normal * .5 + .5;
+		if (closest < ROUGH_MIN_HIT_DISTANCE) {
+			closest = preciseMap(tex_pos);
 
-			const float3 light_pos = float3(sin(time) * 2, -5, cos(time) * 2) * 20.;
-			float3 dir_to_light = normalize(current_pos - light_pos);
+			if (closest < MIN_HIT_DISTANCE) {
+	#if USE_SHITTY_NORMAL == 0
+				normal = calcNormal(tex_pos);
+	#endif
+				float3 material = normal * .5 + .5;
 
-			float diffuse_intensity = max(0, dot(normal, dir_to_light));
+				const float3 light_pos = float3(sin(time) * 2, -5, cos(time) * 2) * 20.;
+				float3 dir_to_light = normalize(current_pos - light_pos);
 
-			return material * saturate(diffuse_intensity + 0.2);
+				float diffuse_intensity = max(0, dot(normal, dir_to_light));
+
+				return material * saturate(diffuse_intensity + 0.2);
+			}
 		}
 
 		if (distance_traveled > MAX_TRACE_DISTANCE) {
@@ -202,6 +262,7 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 #endif
 }
 
+#ifdef RAYTRACING
 void rayMarch_trace(float3 ray_origin, float3 ray_dir, out HitInfo info) {
 	float distance_traveled = 0;
 	const int NUMBER_OF_STEPS = 300;
@@ -221,7 +282,7 @@ void rayMarch_trace(float3 ray_origin, float3 ray_dir, out HitInfo info) {
 			closest = max(abs(distance), 1);
 		}
 		else {
-			closest = map(tex_pos);
+			//closest = map(tex_pos);
 		}
 
 		if ((closest) < MIN_HIT_DISTANCE) {
@@ -277,6 +338,7 @@ float3 rayTrace(float3 ray_pos, float3 ray_dir, inout uint rng_state) {
 
 	return light;
 }
+#endif
 
 float4 main(PixelInput input) : SV_TARGET {
 	// convert to range (-1, 1)

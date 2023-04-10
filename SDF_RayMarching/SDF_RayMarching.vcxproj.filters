@@ -191,6 +191,9 @@
     <ClInclude Include="..\src\camera.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\libs\stb\stb_image.h">
+      <Filter>stb</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="..\libs\ImGui\LICENSE.txt">

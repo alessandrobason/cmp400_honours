@@ -149,6 +149,12 @@ struct arr {
 		return buf[len++];
 	}
 
+	void fill(const T& value) {
+		for (size_t i = 0; i < len; ++i) {
+			buf[i] = value;
+		}
+	}
+
 	void reallocate(size_t newcap) {
 		if (newcap < cap) {
 			newcap = cap * 2;

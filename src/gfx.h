@@ -44,8 +44,14 @@ struct Buffer {
 		return create(sizeof(T), usage, can_write, can_read);
 	}
 
+	template<typename T>
+	bool createStructured(size_t count = 1, const void* initial_data = nullptr) {
+		return createStructured(sizeof(T), count, initial_data);
+	}
+
 	bool create(size_t type_size, Usage usage, bool can_write = true, bool can_read = false);
 	bool create(size_t type_size, Usage usage, const void *initial_data, size_t data_count = 1, bool can_write = true, bool can_read = false);
+	bool createStructured(size_t type_size, size_t count = 1, const void *initial_data = nullptr);
 	void cleanup();
 
 	template<typename T>
@@ -55,10 +61,21 @@ struct Buffer {
 
 	void *map(unsigned int subresource = 0);
 	void unmap(unsigned int subresource = 0);
-	void bind(ShaderType type, unsigned int slot = 0);
-	void unbind(ShaderType type, unsigned int slot = 0);
+
+	void bindCBuffer(ShaderType type, unsigned int slot = 0) { bindCBuffer(*this, type, slot); }
+	void bindSRV(ShaderType type, unsigned int slot = 0) { bindSRV(*this, type, slot); }
+	void bindUAV(unsigned int slot = 0) { bindUAV(*this, slot); }
+
+	static void bindCBuffer(Buffer &buf, ShaderType type, unsigned int slot = 0);
+	static void bindSRV(Buffer &buf, ShaderType type, unsigned int slot = 0);
+	static void bindUAV(Buffer &buf, unsigned int slot = 0);
+	static void unbindCBuffer(ShaderType type, unsigned int slot = 0, size_t count = 1);
+	static void unbindSRV(ShaderType type, unsigned int slot = 0, size_t count = 1);
+	static void unbindUAV(unsigned int slot = 0, size_t count = 1);
 
 	dxptr<ID3D11Buffer> buffer = nullptr;
+	dxptr<ID3D11UnorderedAccessView> uav = nullptr;
+	dxptr<ID3D11ShaderResourceView> srv = nullptr;
 };
 
 /* ==========================================
@@ -73,13 +90,15 @@ struct Shader {
 
 	Shader &operator=(Shader &&s);
 
-	bool loadVertex(const char *filename);
+	bool load(const char *filename, ShaderType type);
+
+	//bool loadVertex(const char *filename);
 	bool loadVertex(const void *data, size_t len);
-	bool loadFragment(const char *filename);
+	//bool loadFragment(const char *filename);
 	bool loadFragment(const void *data, size_t len);
-	bool loadCompute(const char *filename);
+	//bool loadCompute(const char *filename);
 	bool loadCompute(const void *data, size_t len);
-	bool load(const char *vertex, const char *fragment, const char *compute);
+	//bool load(const char *vertex, const char *fragment, const char *compute);
 
 	int addBuffer(size_t type_size, Buffer::Usage usage = Buffer::Usage::Default, bool can_write = true, bool can_read = false);
 	int addBuffer(size_t type_size, Buffer::Usage usage, const void *initial_data, size_t data_count = 1, bool can_write = true, bool can_read = false);
@@ -90,29 +109,42 @@ struct Shader {
 		return addBuffer(sizeof(T), usage, initial_data, data_count, can_write, can_read);
 	}
 
+	int addStructuredBuf(size_t type_size, size_t count = 1, const void* initial_data = nullptr);
+	template<typename T>
+	int addStructuredBuf(size_t count = 1, const void* initial_data = nullptr) {
+		return addStructuredBuf(sizeof(T), count, initial_data);
+	}
+
 	Buffer *getBuffer(int index);
 
 	bool addSampler();
-	void setSRV(ShaderType type, Slice<ID3D11ShaderResourceView *> textures);
+	void setSRV(Slice<ID3D11ShaderResourceView *> textures);
 
 	void cleanup();
 
 	//bool update(float time);
 	void bind();
 	//void unbind(int srv_count = 0, int buffer_count = 0);
-	void bindBuf(ShaderType type, int buffer, unsigned int slot = 0);
-	void bindBuffers(ShaderType type, Slice<int> cbuffers = {});
-	void unbindBuf(ShaderType type, int buffer, unsigned int slot = 0);
-	void unbindBuffers(ShaderType type, int count = 1);
+	void bindCBuf(int buffer, unsigned int slot = 0);
+	void bindCBuffers(Slice<int> cbuffers = {});
+	void unbindCBuf(unsigned int slot = 0);
+	void unbindCBuffers(int count = 1, unsigned int slot = 0);
 
 	void dispatch(const vec3u &threads, Slice<int> cbuffers = {}, Slice<ID3D11ShaderResourceView *> srvs = {}, Slice<ID3D11UnorderedAccessView *> uavs = {});
 
+	dxptr<ID3D11DeviceChild> shader = nullptr;
+	// either input layout (if VS) or sampler state (if PS)
+	dxptr<ID3D11DeviceChild> extra = nullptr;
+	arr<Buffer> buffers;
+	ShaderType shader_type = ShaderType::None;
+#if 0
 	dxptr<ID3D11VertexShader> vert_sh = nullptr;
 	dxptr<ID3D11PixelShader> pixel_sh = nullptr;
 	dxptr<ID3D11ComputeShader> compute_sh = nullptr;
 	dxptr<ID3D11InputLayout> layout = nullptr;
 	arr<Buffer> buffers;
 	dxptr<ID3D11SamplerState> sampler = nullptr;
+#endif
 };
 
 /* ==========================================
@@ -127,20 +159,30 @@ struct DynamicShader {
 
 	DynamicShader &operator=(DynamicShader &&s);
 
-	bool init(const char *vertex, const char *fragment, const char *compute);
+	//bool init(const char *vertex, const char *fragment, const char *compute);
+	int add(const char *name, ShaderType type);
 	void cleanup();
 
 	void poll();
-	bool hasUpdated() const { return updated != ShaderType::None; }
-	ShaderType getChanged() const { return updated; }
+	// bool hasUpdated() const { return updated != ShaderType::None; }
+	bool hasUpdated() const { return has_updated; }
+	bool hasUpdated(int index) const;
+	// ShaderType getChanged() const { return updated; }
+	//const Shader &getChanged() const { return shaders[updated]; }
 
-	Shader shader;
+	Shader *get(int index);
+
+	//Shader shader;
 
 private:
 	bool addFileWatch(const char *name, ShaderType type);
 
+	arr<Shader> shaders;
+	arr<bool> update_list;
 	file::Watcher watcher = "shaders/";
-	ShaderType updated = ShaderType::None;
+	//ShaderType updated = ShaderType::None;
+	bool has_updated = false;
+	//int updated = -1;
 };
 
 /* ==========================================
@@ -168,6 +210,25 @@ struct RenderTexture {
 	dxptr<ID3D11Texture2D> texture = nullptr;
 	dxptr<ID3D11RenderTargetView> view = nullptr;
 	dxptr<ID3D11ShaderResourceView> resource = nullptr;
+};
+
+/* ==========================================
+   =============== TEXTURE 2D ===============
+   ========================================== */
+
+struct Texture2D {
+	Texture2D() = default;
+	Texture2D(const Texture2D& rt) = delete;
+	Texture2D(Texture2D&& rt);
+	~Texture2D();
+	Texture2D& operator=(Texture2D&& rt);
+
+	bool load(const char *filename);
+	void cleanup();
+
+	vec2i size = 0;
+	dxptr<ID3D11Texture2D> texture = nullptr;
+	dxptr<ID3D11ShaderResourceView> srv = nullptr;
 };
 
 /* ==========================================

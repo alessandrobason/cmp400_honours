@@ -1,12 +1,17 @@
 #include "gfx.h"
 
 #include <d3d11.h>
+#include <stb_image.h>
 #include <stb_image_write.h>
 
 #include "system.h"
 #include "utils.h"
 #include "tracelog.h"
 #include "macros.h"
+
+/* ==========================================
+   ============= RENDER TEXTURE =============
+   ========================================== */
 
 RenderTexture::RenderTexture(RenderTexture &&rt) {
 	*this = mem::move(rt);
@@ -18,6 +23,7 @@ RenderTexture::~RenderTexture() {
 
 RenderTexture &RenderTexture::operator=(RenderTexture &&rt) {
 	if (this != &rt) {
+		cleanup();
 		mem::copy(*this, rt);
 		mem::zero(rt);
 	}
@@ -173,6 +179,82 @@ bool RenderTexture::takeScreenshot(const char* base_name) {
 	return success;
 }
 
+/* ==========================================
+   =============== TEXTURE 2D ===============
+   ========================================== */
+
+
+Texture2D::Texture2D(Texture2D&& rt) {
+	*this = mem::move(rt);
+}
+
+Texture2D::~Texture2D() {
+	cleanup();
+}
+
+Texture2D& Texture2D::operator=(Texture2D&& rt) {
+	if (this != &rt) {
+		cleanup();
+		mem::copy(*this, rt);
+		mem::zero(rt);
+	}
+	return *this;
+}
+
+bool Texture2D::load(const char* filename) {
+	int channels = 0;
+	unsigned char *data = stbi_load(filename, &size.x, &size.y, &channels, 4);
+	if (!data) {
+		return false;
+	}
+	
+	D3D11_TEXTURE2D_DESC desc;
+	mem::zero(desc);
+	desc.Width = size.x;
+	desc.Height = size.y;
+	desc.MipLevels = 1;
+	desc.ArraySize = 1;
+	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc.SampleDesc.Count = 1;
+	desc.Usage = D3D11_USAGE_IMMUTABLE;
+	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+	
+	D3D11_SUBRESOURCE_DATA data_desc;
+	mem::zero(data_desc);
+	data_desc.pSysMem = data;
+	data_desc.SysMemPitch = size.x * channels;
+
+	HRESULT hr = gfx::device->CreateTexture2D(&desc, &data_desc, &texture);
+	stbi_image_free(data);
+	if (FAILED(hr)) {
+		err("couldn't create 2D texture");
+		return false;
+	}
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc;
+	mem::zero(srv_desc);
+	srv_desc.Format = desc.Format;
+	srv_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	srv_desc.Texture2D.MipLevels = 1;
+
+	hr = gfx::device->CreateShaderResourceView(texture, &srv_desc, &srv);
+	if (FAILED(hr)) {
+		err("couldn't create 2D texture's SRV");
+		cleanup();
+		return false;
+	}
+	
+	return true;
+}
+
+void Texture2D::cleanup() {
+	texture.destroy();
+	srv.destroy();
+}
+
+/* ==========================================
+   =============== TEXTURE 3D ===============
+   ========================================== */
 
 Texture3D::Texture3D(Texture3D &&rt) {
 	*this = mem::move(rt);
@@ -184,6 +266,7 @@ Texture3D::~Texture3D() {
 
 Texture3D &Texture3D::operator=(Texture3D &&rt) {
 	if (this != &rt) {
+		cleanup();
 		mem::copy(*this, rt);
 		mem::zero(rt);
 	}

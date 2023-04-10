@@ -19,6 +19,7 @@ struct ID3D11UnorderedAccessView;
 struct ID3D11RasterizerState;
 struct ID3D11SamplerState;
 struct ID3D11Query;
+struct ID3D11DeviceChild;
 
 void safeRelease(IUnknown *ptr);
 
