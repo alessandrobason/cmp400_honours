@@ -1,15 +1,22 @@
 Texture3D<float> vol_tex : register(t0);
 
 cbuffer FindData : register(b0) {
-    float3 pos;
-    float mouse_dir_x;
-    float3 right;
-    float mouse_dir_y;
-    float3 up;
-    float mouse_dir_z;
-    float3 fwd;
-    float padding__0;
-    matrix proj_matrix;
+    //float3 pos;
+	//float padding__0;
+	// float3 dir;
+	// float padding__1;
+	float2 rtv_pos;
+	float2 rtv_size;
+	float3 pos;
+	float aspect_ratio;
+	float3 fwd;
+	float padding___0;
+	float3 right;
+	float padding___1;
+	float3 up;
+	float padding___2;
+	float2 mouse_pos;
+	float2 padding___3;
 };
 
 cbuffer TexData : register(b1) {
@@ -21,13 +28,12 @@ cbuffer TexData : register(b1) {
 
 struct BrushPosData {
 	float3 brush_pos;
-	float padding__3;
-	float3 brush_norm;
 	float padding__4;
+	float3 brush_norm;
+	float padding__5;
 };
 
 RWStructuredBuffer<BrushPosData> brush_data;
-// RWStructuredBuffer<matrix> model_matrix;
 
 float3 worldToTex(float3 world) {
 	return world - tex_position + tex_size / 2.;
@@ -137,19 +143,38 @@ void rayMarch(float3 ro, float3 rd, out float3 out_normal, out float3 out_pos) {
 
 [numthreads(1, 1, 1)]
 void main() {
+
+	float2 rel_pos = mouse_pos - rtv_pos;
+	float2 norm_pos = rel_pos / rtv_size;
+	float2 uv = norm_pos * 2. - 1.;
+	uv.y *= -aspect_ratio;
+
+	float3 ray_dir = normalize(fwd + right * uv.x + up * uv.y);
+	float3 ray_origin = pos;
+
+    rayMarch(
+        ray_origin, 
+        ray_dir, 
+        brush_data[0].brush_pos, 
+        brush_data[0].brush_norm
+    );
+	
+#if 0
     float3 position, normal;
 
-    float3 mouse_dir = normalize(float3(mouse_dir_x, mouse_dir_y, mouse_dir_z));
-	float3 ray_origin = pos + mouse_dir;
+	float3 ray_origin = pos + dir;
+	float3 ray_dir = dir;
     
     // raymarch in the direction until something is found
     rayMarch(
         ray_origin, 
-        normalize(mouse_dir), 
+        ray_dir, 
         brush_data[0].brush_pos, 
         brush_data[0].brush_norm
     );
 
     // brush_data[0].brush_pos.x = 80;
-    brush_data[0].brush_pos = pos;
+    brush_data[0].brush_pos = ray_origin;
+    brush_data[0].brush_norm = ray_dir;
+#endif
 }

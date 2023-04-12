@@ -83,15 +83,22 @@ struct BrushPositionData {
 };
 
 struct FindData {
+	//vec3 pos;
+	//float padding__0;
+	//vec3 dir;
+	//float padding__1;
+	vec2 rtv_pos;
+	vec2 rtv_size;
 	vec3 pos;
-	float mouse_dir_x;
-	vec3 right;
-	float mouse_dir_y;
-	vec3 up;
-	float mouse_dir_z;
+	float aspect_ratio;
 	vec3 fwd;
-	float padding__0;
-	matrix proj_matrix;
+	float padding___0;
+	vec3 right;
+	float padding___1;
+	vec3 up;
+	float padding___2;
+	vec2 mouse_pos;
+	vec2 padding___3;
 };
 
 #if BRUSH_BUILDER
@@ -351,20 +358,20 @@ int main() {
 			if (Buffer* buf = find_brush->getBuffer(find_data_ind)) {
 				if (FindData* data = buf->map<FindData>()) {
 					vec3 mouse_dir = cam.getMouseDir();
-					info("mouse_dir: %.2f %.2f %.2f", mouse_dir.x, mouse_dir.y, mouse_dir.z);
-					const vec2 &res = gfx::main_rtv.size;
 
-					data->pos = cam.pos;
-					data->right = cam.right;
-					data->up = cam.up;
-					data->fwd = cam.fwd;
-					data->mouse_dir_x = mouse_dir.x;
-					data->mouse_dir_y = mouse_dir.y;
-					data->mouse_dir_z = mouse_dir.z;
-					//data->proj_matrix = matrix::orthographic(0.f, res.x, 0.f, res.y, 0.01f, 1000.f).transpose();
-					data->proj_matrix = matrix::perspective(90.f, res.x / res.y, 0.01f, 1000.f).transpose();
-					// data->cam_pos = cam.pos;
-					// data->mouse_dir = cam.getMouseDir();
+					const vec4 &bounds = gfx::getMainRTVBounds();
+
+					data->rtv_pos      = bounds.pos;
+					data->rtv_size     = bounds.size;
+					data->pos          = cam.pos;
+					data->aspect_ratio = (float)gfx::main_rtv.size.x / (float)gfx::main_rtv.size.y;
+					data->fwd          = cam.fwd;
+					data->right        = cam.right;
+					data->up           = cam.up;
+					data->mouse_pos    = getMousePos();
+
+					// data->pos = cam.pos;
+					// data->dir = mouse_dir;
 					buf->unmap();
 				}
 			}

@@ -23,8 +23,8 @@ namespace gfx {
 	void createImGuiRTV();
 	void cleanupImGuiRTV();
 
-	vec2i getMainRTVPosition();
-	void setMainRTVPosition(const vec2i &newpos);
+	const vec4 &getMainRTVBounds();
+	void setMainRTVBounds(const vec4 &bounds);
 
 #ifndef NDEBUG
 	void logD3D11messages();

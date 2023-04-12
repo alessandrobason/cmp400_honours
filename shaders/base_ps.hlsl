@@ -273,6 +273,12 @@ float getMouseDist(float3 pos) {
 	return length(pos - brush_data[0].brush_pos) - radius;
 }
 
+float getMouseDirDist(float3 pos) {
+	const float radius = 32.;
+	const float3 brush_pos = brush_data[0].brush_pos + brush_data[0].brush_norm * 50.0;
+	return length(pos - brush_pos) - radius;
+}
+
 float3 calcMouseNormal(float3 pos) {
 	const float step = 0.1;
 	const float2 k = float2(1, -1);
@@ -296,6 +302,9 @@ float3 rayMarchWithMouse(float3 ray_origin, float3 ray_dir, inout uint rng_state
 
 	bool is_mouse = false;
 	const float3 mouse_colour = float3(.4, .4, .8);
+
+	bool is_mouse_dir = false;
+	const float3 mouse_dir_colour = float3(.8, .4, .4);
 
 	const float3 top_sky_colour = float3(1, 0.1, 0.1);
 	const float3 bottom_sky_colour = float3(0.1, 0.1, 1);
@@ -331,6 +340,12 @@ float3 rayMarchWithMouse(float3 ray_origin, float3 ray_dir, inout uint rng_state
 			// mouse brush doesn't have to be perfect, just has to give the idea of where the 
 			// new brush will be added so lets use ROUGH_MIN_HIT_DISTANCE
 			is_mouse = mouse_close < ROUGH_MIN_HIT_DISTANCE;
+			closest = min(mouse_close, closest);
+		}
+
+		if (!is_mouse_dir) {
+			float mouse_close = getMouseDirDist(current_pos);
+			is_mouse_dir = mouse_close < ROUGH_MIN_HIT_DISTANCE;
 			closest = min(mouse_close, closest);
 		}
 
@@ -371,6 +386,10 @@ float3 rayMarchWithMouse(float3 ray_origin, float3 ray_dir, inout uint rng_state
 
 	if (is_mouse) {
 		final_colour *= mouse_colour;
+	}
+
+	if (is_mouse_dir) {
+		final_colour *= mouse_dir_colour;
 	}
 
 	return final_colour;

@@ -59,7 +59,10 @@ void mainTargetWidget(vec2 size, ID3D11ShaderResourceView *srv) {
 		size.y *= dx;
 	}
 
-	ImGui::SetCursorPos((win_size - size) * 0.5f + win_padding);
+	vec2 position = (win_size - size) * 0.5f + win_padding;
+	gfx::setMainRTVBounds(vec4(position, size));
+
+	ImGui::SetCursorPos(position);
 	ImGui::Image((ImTextureID)srv, size);
 	ImGui::End();
 }
