@@ -13,7 +13,7 @@ StructuredBuffer<matrix> model_matrix;
 PixelInput main(VertexInput input) {
 	PixelInput output;
 	output.pos = mul(input.pos, model_matrix[0]);
-    output.pos.z = 0;
+	output.pos /= output.pos.w;
 	output.uv  = input.uv;
 	return output;
 }

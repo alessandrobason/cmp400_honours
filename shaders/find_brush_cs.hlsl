@@ -1,10 +1,6 @@
 Texture3D<float> vol_tex : register(t0);
 
 cbuffer FindData : register(b0) {
-    // float3 cam_pos;
-    // float padding__0;
-    // float3 mouse_dir;
-    // float padding__1;
     float3 pos;
     float mouse_dir_x;
     float3 right;
@@ -13,6 +9,7 @@ cbuffer FindData : register(b0) {
     float mouse_dir_z;
     float3 fwd;
     float padding__0;
+    matrix proj_matrix;
 };
 
 cbuffer TexData : register(b1) {
@@ -22,15 +19,15 @@ cbuffer TexData : register(b1) {
 	float padding__3;
 };
 
-struct BrushPositionData {
-    float3 position;
-    float padding__4;
-    float3 normal;
-    float padding__5;
+struct BrushPosData {
+	float3 brush_pos;
+	float padding__3;
+	float3 brush_norm;
+	float padding__4;
 };
 
-// RWStructuredBuffer<BrushPositionData> brush_data;
-RWStructuredBuffer<matrix> model_matrix;
+RWStructuredBuffer<BrushPosData> brush_data;
+// RWStructuredBuffer<matrix> model_matrix;
 
 float3 worldToTex(float3 world) {
 	return world - tex_position + tex_size / 2.;
@@ -69,8 +66,12 @@ float trilinearInterpolation(float3 pos, float3 size) {
     return c0 * rem.z + c1 * delta.z;
 }
 
-float map(float3 coords) {
+float preciseMap(float3 coords) {
 	return trilinearInterpolation(coords, tex_size);
+}
+
+float map(float3 coords) {
+	return vol_tex.Load(int4(coords, 0));
 }
 
 float3 calcNormal(float3 pos) {
@@ -85,69 +86,53 @@ float3 calcNormal(float3 pos) {
 	);
 }
 
-void rayMarch(float3 ro, float3 rd, out float3 normal, out float3 pos) {
-    float t = 0;
-    const int MAX_STEPS = 300;
-    const int MIN_DISTANCE = 0.005;
-    const int MAX_DISTANCE = 0.005;
+void rayMarch(float3 ro, float3 rd, out float3 out_normal, out float3 out_pos) {
+	float distance_traveled = 0;
+	const int NUMBER_OF_STEPS = 300;
+	const float ROUGH_MIN_HIT_DISTANCE = 1;
+	const float MIN_HIT_DISTANCE = .005;
+	const float MAX_TRACE_DISTANCE = 1000;
 
-    for (int i = 0; i < MAX_STEPS; ++i) {
-        float3 p = ro + rd * t;
-        float closest = 0;
+	const float3 light_pos = float3(100, 100, 0);
+	const float3 light_dir = normalize(0. - light_pos);
 
-        float3 tex_pos = worldToTex(p);
+	for (int i = 0; i < NUMBER_OF_STEPS; ++i) {
+		float3 current_pos = ro + rd * distance_traveled;
+		float closest = 0;
+
+		// first we use a rough check with a quick map function (does not use
+		// trilinear filtering) to see if we're close enough to a surface, if
+		// we are then we use a precise map function (with trilinear filtering,
+		// meaning 8 texture lookups)
+
+		float3 tex_pos = worldToTex(current_pos);
 		if (!all(tex_pos >= 0 && tex_pos < tex_size)) {
-			float distance = length(p - tex_position) - tex_size.x * 0.5;
+			float distance = length(current_pos - tex_position) - tex_size.x * 0.5;
 			closest = max(abs(distance), 1);
 		}
 		else {
 			closest = map(tex_pos);
 		}
 
-        if (closest < MIN_DISTANCE) {
-            normal = calcNormal(tex_pos);
-            pos = p;
-            return;
-        }
+		if (closest < ROUGH_MIN_HIT_DISTANCE) {
+			closest = preciseMap(tex_pos);
 
-        if (t > MAX_DISTANCE) {
-            break;
-        }
+			if (closest < MIN_HIT_DISTANCE) {
+				out_normal = calcNormal(tex_pos);
+                out_pos = current_pos;
+                return;
+			}
+		}
 
-        t += closest;
-    }
+		if (distance_traveled > MAX_TRACE_DISTANCE) {
+			break;
+		}
 
-    normal = 0;
-    pos = 0;
-}
+		distance_traveled += closest;
+	}
 
-matrix perspective(float fovy, float aspect, float near, float far) {
-    float f = 1 / tan(fovy * 0.5);
-    float fn = 1 / (near - far);
-
-    matrix dest = 0;
-    dest[0][0] = f / aspect;
-    dest[1][1] = f;
-    dest[2][2] = (near + far) * fn;
-    dest[2][3] = -1.0;
-    dest[3][2] = 2.0 * near * far * fn;
-    dest[3][3] = 1;
-    return dest;
-}
-
-matrix ortho(float left, float right, float bottom, float top, float near, float far) {
-    matrix dest = 0;
-   
-	dest[0][0] = 2.f / (right - left);
-	dest[1][1] = 2.0f / (top - bottom);
-	dest[2][2] = 2.0f / (near - far);
-	dest[3][3] = 1.0f;
-
-	dest[3][0] = (left + right) / (left - right);
-	dest[3][1] = (bottom + top) / (bottom - top);
-	dest[3][2] = (far + near) / (near - far); 
-
-    return dest;
+    out_normal = 0;
+    out_pos = 0;
 }
 
 [numthreads(1, 1, 1)]
@@ -155,22 +140,15 @@ void main() {
     float3 position, normal;
 
     float3 mouse_dir = float3(mouse_dir_x, mouse_dir_y, mouse_dir_z);
+	float3 ray_origin = pos + fwd;
+    
+    mouse_dir = fwd;
     
     // raymarch in the direction until something is found
-    rayMarch(pos, mouse_dir, normal, position);
-
-    position = float3(1920, 1080, 0) / 2.;
-
-    matrix result = matrix(
-        1.0, 0.0, 0.0, 0.0, // position.x,
-        0.0, 1.0, 0.0, 0.0, // position.y,
-        0.0, 0.0, 1.0, 0.0, // position.z,
-        // 0.0, 0.0, 0.0, 1.0
-        position.x, position.y, position.z, 1.0
+    rayMarch(
+        ray_origin, 
+        normalize(mouse_dir), 
+        brush_data[0].brush_pos, 
+        brush_data[0].brush_norm
     );
-
-    // matrix persp = perspective(3.14 / 2.5, 16/9, 0.1, 1000.0);
-    matrix persp = ortho(0, 1920, 0, 1080, 0.01, 1000.0);
-
-    model_matrix[0] = mul(persp, result);
 }

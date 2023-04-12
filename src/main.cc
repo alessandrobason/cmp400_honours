@@ -91,10 +91,7 @@ struct FindData {
 	float mouse_dir_z;
 	vec3 fwd;
 	float padding__0;
-	//vec3 cam_pos;
-	//float padding__0;
-	//vec3 mouse_dir;
-	//float padding__1;
+	matrix proj_matrix;
 };
 
 #if BRUSH_BUILDER
@@ -215,12 +212,13 @@ Mesh makeFullScreenTriangle() {
 	return m;
 }
 
-Mesh makeBillboard(const vec2 &tex_size) {
+Mesh makeBillboard(vec2 tex_size) {
+	tex_size = 1;
 	Mesh::Vertex verts[] = {
-		{ vec3(0,          0,          0), vec2(0, 0) },
-		{ vec3(0,          tex_size.y, 0), vec2(0, 1) },
-		{ vec3(tex_size.x, tex_size.y, 0), vec2(1, 1) },
-		{ vec3(tex_size.x,          0, 0), vec2(1, 0) },
+		{ vec3(0,          0,          0.1f), vec2(0, 0) },
+		{ vec3(0,          tex_size.y, 0.1f), vec2(0, 1) },
+		{ vec3(tex_size.x, tex_size.y, 0.1f), vec2(1, 1) },
+		{ vec3(tex_size.x,          0, 0.1f), vec2(1, 0) },
 	};
 
 	Mesh::Index indices[] = {
@@ -248,7 +246,8 @@ int main() {
 		DynamicShader sh_manager;
 		int main_ps_ind, main_vs_ind, sculpt_ind, gen_brush_ind, empty_texture_ind, find_brush_ind, brush_ps_ind, brush_vs_ind;
 		Shader *main_ps, *main_vs, *sculpt, *gen_brush, *empty_texture, *find_brush, *brush_ps, *brush_vs;
-		Buffer matrix_model_buf;
+		//Buffer matrix_model_buf;
+		Buffer brush_pos_data;
 
 		if (!main_texture.create(maintex_size)) gfxErrorExit();
 		if (!brush.create(brush_size))          gfxErrorExit();
@@ -284,6 +283,7 @@ int main() {
 
 		int shader_data_ind = main_ps->addBuffer<PSShaderData>(Buffer::Usage::Dynamic);
 		int tex_data_ind = main_ps->addBuffer<TexData>(Buffer::Usage::Dynamic);
+		//int brush_pos_data_ind = main_ps->addStructuredBuf<BrushPositionData>();
 
 		VolumeTexData volume_tex_data{};
 		int volume_tex_data_ind = sculpt->addBuffer<VolumeTexData>(Buffer::Usage::Immutable, &volume_tex_data);
@@ -308,7 +308,8 @@ int main() {
 		brush_ps->addSampler();
 		if (!brush_tex.load("assets/brush.png")) gfxErrorExit();
 
-		if (!matrix_model_buf.createStructured<matrix>()) gfxErrorExit();
+		if (!brush_pos_data.createStructured<BrushPositionData>()) gfxErrorExit();
+		//if (!matrix_model_buf.createStructured<matrix>()) gfxErrorExit();
 
 		Mesh triangle = makeFullScreenTriangle();
 		Mesh brush_mesh = makeBillboard(brush_tex.size);
@@ -350,6 +351,7 @@ int main() {
 			if (Buffer* buf = find_brush->getBuffer(find_data_ind)) {
 				if (FindData* data = buf->map<FindData>()) {
 					vec3 mouse_dir = cam.getMouseDir();
+					const vec2 &res = gfx::main_rtv.size;
 
 					data->pos = cam.pos;
 					data->right = cam.right;
@@ -358,13 +360,15 @@ int main() {
 					data->mouse_dir_x = mouse_dir.x;
 					data->mouse_dir_y = mouse_dir.y;
 					data->mouse_dir_z = mouse_dir.z;
+					//data->proj_matrix = matrix::orthographic(0.f, res.x, 0.f, res.y, 0.01f, 1000.f).transpose();
+					data->proj_matrix = matrix::perspective(90.f, res.x / res.y, 0.01f, 1000.f).transpose();
 					// data->cam_pos = cam.pos;
 					// data->mouse_dir = cam.getMouseDir();
 					buf->unmap();
 				}
 			}
 
-			find_brush->dispatch(1, { find_data_ind, find_tex_data_ind }, { main_texture.srv }, { matrix_model_buf.uav });
+			find_brush->dispatch(1, { find_data_ind, find_tex_data_ind }, { main_texture.srv }, { brush_pos_data.uav });
 
 			if (sh_manager.hasUpdated()) {
 				is_dirty = true;
@@ -398,7 +402,6 @@ int main() {
 						data->img_width = (float)resolution.y;
 						data->time = win::timeSinceStart();
 						buf->unmap();
-						buf->bindCBuffer(ShaderType::Fragment);
 					}
 				}
 
@@ -407,17 +410,17 @@ int main() {
 				main_vs->bind();
 				main_ps->bind();
 				main_ps->bindCBuffers({ shader_data_ind, tex_data_ind });
-				main_ps->setSRV({ main_texture.srv });
+				main_ps->setSRV({ main_texture.srv, brush_pos_data.srv });
 				triangle.render();
-				main_ps->setSRV({ nullptr });
+				main_ps->setSRV({ nullptr, nullptr });
 				main_ps->unbindCBuffers(2);
 			}
 
-			{
+			if (false) {
 				brush_vs->bind();
 				brush_ps->bind();
 
-				brush_vs->setSRV({ matrix_model_buf.srv });
+				//brush_vs->setSRV({ matrix_model_buf.srv });
 				brush_ps->setSRV({ brush_tex.srv });
 
 				brush_mesh.render();

@@ -11,7 +11,7 @@
 
 static bool keys_state[KEY__COUNT] = { 0 };
 static bool prev_keys_state[KEY__COUNT] = { 0 };
-static uint32_t mouse_buttons_down = 0;
+static uint32_t mouse_state = 0;
 static vec2i mouse_position;
 static vec2i mouse_relative;
 static float mouse_wheel = 0.f;
@@ -31,7 +31,7 @@ bool isKeyPressed(Keys key) {
 }
 
 bool isMouseDown(Mouse mouse) {
-	return mouse_buttons_down & (1 << (uint32_t)mouse);
+	return mouse_state & mouse;
 }
 
 bool isMouseUp(Mouse mouse) {
@@ -173,13 +173,7 @@ Keys win32ToKeys(uintptr_t virtual_key) {
 	case VK_SHIFT:		  return KEY_SHIFT;
 	case VK_CONTROL:	  return KEY_CTRL;
 	case VK_MENU:		  return KEY_ALT;
-	// case VK_LSHIFT:       return KEY_LSHIFT;
-	// case VK_LCONTROL:     return KEY_LCTRL;
-	// case VK_LMENU:        return KEY_LALT;
 	case VK_LWIN:         return KEY_LWIN;
-	// case VK_RSHIFT:       return KEY_RSHIFT;
-	// case VK_RCONTROL:     return KEY_RCTRL;
-	// case VK_RMENU:        return KEY_RALT;
 	case VK_RWIN:         return KEY_RWIN;
 	case VK_APPS:         return KEY_APPS;
 	}
@@ -202,12 +196,8 @@ void setMouseRelative(vec2i rel) {
 }
 
 void setMouseButtonState(Mouse button, bool is_down) {
-	if (is_down) {
-		mouse_buttons_down |= 1 << (uint32_t)button;
-	}
-	else {
-		mouse_buttons_down &= ~(1 << (uint32_t)button);
-	}
+	if (is_down) mouse_state |= button;
+	else         mouse_state ^= button;
 }
 
 void setMouseWheel(float value) {

@@ -21,7 +21,15 @@ cbuffer TexData : register(b1) {
 	float padding__2;
 };
 
+struct BrushPosData {
+	float3 brush_pos;
+	float padding__3;
+	float3 brush_norm;
+	float padding__4;
+};
+
 Texture3D<float> vol_tex : register(t0);
+StructuredBuffer<BrushPosData> brush_data : register(t1);
 sampler sampler_0;
 
 // bad but cheap normal calculation
@@ -155,9 +163,6 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 	const float MIN_HIT_DISTANCE = .005;
 	const float MAX_TRACE_DISTANCE = 1000;
 
-	const float3 light_pos = float3(100, 100, 0);
-	const float3 light_dir = normalize(0. - light_pos);
-
 	for (int i = 0; i < NUMBER_OF_STEPS; ++i) {
 		float3 current_pos = ray_origin + ray_dir * distance_traveled;
 		float closest = 0;
@@ -262,6 +267,73 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 #endif
 }
 
+float getMouseDist(float3 pos) {
+	const float radius = 1.;
+	return length(pos - brush_data[0].brush_pos) - radius;
+}
+
+float3 rayMarchWithMouse(float3 ray_origin, float3 ray_dir) {
+	float distance_traveled = 0;
+	const int NUMBER_OF_STEPS = 300;
+	const float ROUGH_MIN_HIT_DISTANCE = 1;
+	const float MIN_HIT_DISTANCE = .005;
+	const float MAX_TRACE_DISTANCE = 1000;
+
+	for (int i = 0; i < NUMBER_OF_STEPS; ++i) {
+		float3 current_pos = ray_origin + ray_dir * distance_traveled;
+		float closest = 0;
+
+		// first we use a rough check with a quick map function (does not use
+		// trilinear filtering) to see if we're close enough to a surface, if
+		// we are then we use a precise map function (with trilinear filtering,
+		// meaning 8 texture lookups)
+
+		float3 tex_pos = worldToTex(current_pos);
+		if (!all(tex_pos >= 0 && tex_pos < tex_size)) {
+			float distance = length(current_pos - tex_position) - tex_size.x * 0.5;
+			closest = max(abs(distance), 1);
+		}
+		else {
+			closest = map(tex_pos);
+		}
+
+		float mouse_close = getMouseDist(current_pos);
+
+		if (mouse_close < closest) {
+			if (mouse_close < MIN_HIT_DISTANCE) {
+				return float3(1, 0, 1);
+			}
+			closest = mouse_close;
+		}
+		else {
+			if (closest < ROUGH_MIN_HIT_DISTANCE) {
+				closest = preciseMap(tex_pos);
+
+				if (closest < MIN_HIT_DISTANCE) {
+					float3 normal = calcNormal(tex_pos);
+					float3 material = normal * .5 + .5;
+
+					const float3 light_pos = float3(sin(time) * 2, -5, cos(time) * 2) * 20.;
+					float3 dir_to_light = normalize(current_pos - light_pos);
+
+					float diffuse_intensity = max(0, dot(normal, dir_to_light));
+
+					return material * saturate(diffuse_intensity + 0.2);
+				}
+			}
+		}
+
+
+		if (distance_traveled > MAX_TRACE_DISTANCE) {
+			break;
+		}
+
+		distance_traveled += closest;
+	}
+
+	return float3(0.2, 0.5, 1.);
+}
+
 #ifdef RAYTRACING
 void rayMarch_trace(float3 ray_origin, float3 ray_dir, out HitInfo info) {
 	float distance_traveled = 0;
@@ -348,17 +420,21 @@ float4 main(PixelInput input) : SV_TARGET {
 
 	uint rng_state = uint(uint(input.uv.x) * uint(1973) + uint(input.uv.y) * uint(9277)) | uint(1);
 
-#if 1
-	// float3 ray_dir = normalize(cam_fwd * cam_zoom + cam_right * uv.x + cam_up * uv.y);
 	float3 ray_dir = normalize(cam_fwd + cam_right * uv.x + cam_up * uv.y);
 	float3 ray_origin = cam_pos + cam_fwd * cam_zoom;
-	float3 colour = rayMarch(ray_origin, ray_dir);
+
+	float3 colour;
+
+	if (all(brush_data[0].brush_norm == 0)) {
+		colour = rayMarch(ray_origin, ray_dir);
+	}
+	else {
+		colour = rayMarchWithMouse(ray_origin, ray_dir);
+	}
+
 	// float3 colour = rayTrace(ray_origin, ray_dir, rng_state);
-#else
-	float3 ray_ori = float3(0, 0, -100);
-	float3 ray_dir = float3(uv, .5);
-	float3 colour = rayMarch(ray_ori, normalize(ray_dir));
-#endif
+	
+	// brush_data[0].brush_norm
 
 	return float4(sqrt(colour), 1.0);
 }

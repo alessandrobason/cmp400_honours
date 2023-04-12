@@ -61,10 +61,10 @@ matrix matrix::orthographic(float left, float right, float bottom, float top, fl
 	return out;
 }
 
-matrix matrix::perspective(float fov, float aspect_ratio, float near, float far) {
+matrix matrix::perspective(float fov_rad, float aspect_ratio, float near, float far) {
 	matrix out = matrix::zero;
 
-	float cotangent = 1.0f / tanf(fov * (math::pi / 360.0f));
+	float cotangent = 1.0f / tanf(fov_rad * 0.5f);
 
 	out[0][0] = cotangent / aspect_ratio;
 	out[1][1] = cotangent;

@@ -17,10 +17,9 @@ void Camera::update() {
 
 	if (float wheel = getMouseWheel()) {
 		zoom_exp += wheel * win::dt * options.zoom_sensitivity;
-		//zoom_exp = math::clamp(zoom_exp, -2.3f, 2.3f);
 	}
 
-	if (!isMouseDown(MOUSE_RIGHT)) {
+	if (!isMouseDown(MOUSE_LEFT | MOUSE_RIGHT)) {
 		return;
 	}
 
@@ -54,9 +53,9 @@ float Camera::getZoom() const {
 
 // adapted from fragment shader
 vec3 Camera::getMouseDir() const {
+	const vec2 &win_size = gfx::main_rtv.size;
+	const float aspect_ratio = win_size.x / win_size.y;
 	vec2 uv = getMousePosNorm() * 2.f - 1.f;
-	vec2 win_size = win::getSize();
-	float aspect_ratio = win_size.x / win_size.y;
 	uv.y *= aspect_ratio;
 	return norm(fwd + right * uv.x + up * uv.y);
 }

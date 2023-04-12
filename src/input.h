@@ -1,14 +1,17 @@
 #pragma once
 
 #include <stddef.h>
+#include <stdint.h>
 
 #include "vec.h"
 
-enum Mouse {
-	MOUSE_NONE,
-	MOUSE_LEFT,
-	MOUSE_RIGHT,
-	MOUSE_MIDDLE,
+using Mouse = uint32_t;
+
+enum : uint32_t {
+	MOUSE_NONE   = 0,
+	MOUSE_LEFT   = 1 << 0,
+	MOUSE_RIGHT  = 1 << 1,
+	MOUSE_MIDDLE = 1 << 2,
 };
 
 enum Keys {
