@@ -351,6 +351,7 @@ int main() {
 			if (Buffer* buf = find_brush->getBuffer(find_data_ind)) {
 				if (FindData* data = buf->map<FindData>()) {
 					vec3 mouse_dir = cam.getMouseDir();
+					info("mouse_dir: %.2f %.2f %.2f", mouse_dir.x, mouse_dir.y, mouse_dir.z);
 					const vec2 &res = gfx::main_rtv.size;
 
 					data->pos = cam.pos;
@@ -432,6 +433,7 @@ int main() {
 			gfx::imgui_rtv.bind();
 			fpsWidget();
 			mainTargetWidget();
+			messagesWidget();
 			drawLogger();
 			
 			ImGui::Begin("New Shape");

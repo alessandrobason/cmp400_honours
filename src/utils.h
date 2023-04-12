@@ -182,6 +182,19 @@ struct arr {
 		}
 	}
 
+	void remove(size_t index) {
+		if (index >= len) return;
+		buf[index] = mem::move(buf[--len]);
+	}
+
+	void removeSlow(size_t index) {
+		if (index >= len) return;
+		const size_t arr_end = --len;
+		for (size_t i = index; i < arr_end; ++i) {
+			buf[i] = mem::move(buf[i + 1]);
+		}
+	}
+
 	arr &operator=(const arr &a) {
 		clear();
 		reserve(a.len);

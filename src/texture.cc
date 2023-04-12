@@ -129,6 +129,8 @@ void RenderTexture::clear(Colour colour, ID3D11DepthStencilView *dsv) {
 	}
 }
 
+extern void addMessageToWidget(LogLevel severity, const char* message);
+
 bool RenderTexture::takeScreenshot(const char* base_name) {
 	// create a temporary texture that we can read from
 	D3D11_TEXTURE2D_DESC td;
@@ -172,6 +174,7 @@ bool RenderTexture::takeScreenshot(const char* base_name) {
 
 	if (success) {
 		info("saved screenshot as %s", name);
+		addMessageToWidget(LogLevel::Info, str::format("saved screenshot as %s", name));
 	}
 
 	gfx::context->Unmap(temp, 0);

@@ -19,6 +19,10 @@ void Camera::update() {
 		zoom_exp += wheel * win::dt * options.zoom_sensitivity;
 	}
 
+	if (isKeyPressed(KEY_Z)) {
+		zoom_exp = 1.f;
+	}
+
 	if (!isMouseDown(MOUSE_LEFT | MOUSE_RIGHT)) {
 		return;
 	}

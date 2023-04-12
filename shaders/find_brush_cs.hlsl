@@ -139,10 +139,8 @@ void rayMarch(float3 ro, float3 rd, out float3 out_normal, out float3 out_pos) {
 void main() {
     float3 position, normal;
 
-    float3 mouse_dir = float3(mouse_dir_x, mouse_dir_y, mouse_dir_z);
-	float3 ray_origin = pos + fwd;
-    
-    mouse_dir = fwd;
+    float3 mouse_dir = normalize(float3(mouse_dir_x, mouse_dir_y, mouse_dir_z));
+	float3 ray_origin = pos + mouse_dir;
     
     // raymarch in the direction until something is found
     rayMarch(
@@ -151,4 +149,7 @@ void main() {
         brush_data[0].brush_pos, 
         brush_data[0].brush_norm
     );
+
+    // brush_data[0].brush_pos.x = 80;
+    brush_data[0].brush_pos = pos;
 }

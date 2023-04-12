@@ -68,3 +68,76 @@ bool imInputUint3(const char *label, unsigned int v[3], int flags) {
 	static unsigned int step = 1;
 	return ImGui::InputScalarN(label, ImGuiDataType_U32, v, 3, &step, nullptr, "%u", flags);
 }
+
+// how long will the message be shown for
+constexpr float show_time = 3.f;
+// how long before the messagge starts disappearing
+constexpr float falloff_time = 2.f;
+
+static const ImColor level_to_colour[(int)LogLevel::Count] = {
+    ImColor(  0,   0,   0), // None
+    ImColor( 26, 102, 191), // Debug
+    ImColor( 30, 149,  96), // Info
+    ImColor(230, 179,   0), // Warning
+    ImColor(251,  35,  78), // Error
+    ImColor(255,   0,   0), // Fatal
+};
+
+struct Message {
+	Message() = default;
+	Message(LogLevel l, mem::ptr<char[]>&& m) : severity(l), message(mem::move(m)) {}
+	LogLevel severity;
+	mem::ptr<char[]> message;
+	float timer = show_time;
+};
+
+static arr<Message> messages;
+static char window_title[64] = "Message##";
+static const size_t title_beg = strlen(window_title);
+
+void messagesWidget() {
+	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove;
+
+	const float PAD = 10.0f;
+	const ImGuiViewport* viewport = ImGui::GetMainViewport();
+	const vec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
+	const vec2 work_size = viewport->WorkSize;
+	vec2 window_pos = work_pos + PAD;
+	const vec2 window_pos_pivot = 0.f;
+	float y_size = 0.f;
+
+	for (size_t i = 0; i < messages.size(); ++i) {
+		Message &msg = messages[i];
+		
+		const float alpha = msg.timer / (show_time - falloff_time);
+		ImVec4 border_colour = ImGui::GetStyleColorVec4(ImGuiCol_Border);
+		border_colour.w = alpha;
+
+		ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, vec2(0.f));
+		//ImGui::SetNextWindowViewport(viewport->ID);
+		ImGui::SetNextWindowBgAlpha(alpha);
+		ImGui::PushStyleColor(ImGuiCol_Border, border_colour);
+
+		str::formatBuf(window_title + title_beg, sizeof(window_title) - title_beg, "%zu", i);
+		
+		ImGui::Begin(window_title, nullptr, window_flags);
+			ImColor col = level_to_colour[(int)msg.severity];
+			col.Value.w = alpha;
+			ImGui::TextColored(col, msg.message.get());
+			y_size = ImGui::GetWindowSize().y;
+		ImGui::End();
+
+		ImGui::PopStyleColor();
+
+		msg.timer -= win::dt;
+		if (msg.timer <= 0.f) {
+			messages.removeSlow(i--);
+		}
+
+		window_pos.y += y_size + PAD;
+	}
+}
+
+void addMessageToWidget(LogLevel severity, const char* message) {
+	messages.emplace_back(severity, str::dup(message));
+}

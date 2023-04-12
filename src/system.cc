@@ -35,6 +35,7 @@ namespace gfx {
 
 	RenderTexture imgui_rtv;
 	RenderTexture main_rtv;
+	static vec2i main_rtv_pos = 0;
 
 	void init() {
 		if (!createDevice()) {
@@ -211,6 +212,14 @@ namespace gfx {
 
 	void cleanupImGuiRTV() {
 		imgui_rtv.cleanup();
+	}
+
+	vec2i getMainRTVPosition() {
+		return main_rtv_pos;
+	}
+
+	void setMainRTVPosition(const vec2i& newpos) {
+		main_rtv_pos = newpos;
 	}
 
 #ifndef NDEBUG

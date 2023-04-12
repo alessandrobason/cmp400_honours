@@ -346,6 +346,8 @@ void DynamicShader::cleanup() {
 	shaders.clear();
 }
 
+extern void addMessageToWidget(LogLevel severity, const char* message);
+
 void DynamicShader::poll() {
 	update_list.fill(false);
 	has_updated = false;
@@ -359,6 +361,7 @@ void DynamicShader::poll() {
 
 		if (dxptr<ID3DBlob> blob = compileShader(file->name.get(), shader.shader_type)) {
 			info("re-compiled shader %s successfully", file->name.get());
+			addMessageToWidget(LogLevel::Info, str::format("re-compiled shader %s successfully", file->name.get()));
 
 			void *data = blob->GetBufferPointer();
 			size_t len = blob->GetBufferSize();
@@ -424,6 +427,7 @@ static dxptr<ID3DBlob> compileShader(const char *filename, ShaderType type) {
 
 	if (FAILED(hr)) {
 		err("couldn't compile shader %s", filename);
+		addMessageToWidget(LogLevel::Error, str::format("Couldn't compile shader %s", filename));
 		if (err_blob) {
 			err((const char *)err_blob->GetBufferPointer());
 		}
