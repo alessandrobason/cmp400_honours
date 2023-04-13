@@ -83,22 +83,24 @@ struct BrushPositionData {
 };
 
 struct FindData {
-	//vec3 pos;
-	//float padding__0;
-	//vec3 dir;
-	//float padding__1;
+	vec3 pos;
+	float padding__0;
+	vec3 dir;
+	float padding__1;
+#if 0
 	vec2 rtv_pos;
 	vec2 rtv_size;
 	vec3 pos;
 	float aspect_ratio;
 	vec3 fwd;
-	float padding___0;
+	float zoom;
 	vec3 right;
 	float padding___1;
 	vec3 up;
 	float padding___2;
 	vec2 mouse_pos;
 	vec2 padding___3;
+#endif
 };
 
 #if BRUSH_BUILDER
@@ -357,21 +359,8 @@ int main() {
 
 			if (Buffer* buf = find_brush->getBuffer(find_data_ind)) {
 				if (FindData* data = buf->map<FindData>()) {
-					vec3 mouse_dir = cam.getMouseDir();
-
-					const vec4 &bounds = gfx::getMainRTVBounds();
-
-					data->rtv_pos      = bounds.pos;
-					data->rtv_size     = bounds.size;
-					data->pos          = cam.pos;
-					data->aspect_ratio = (float)gfx::main_rtv.size.x / (float)gfx::main_rtv.size.y;
-					data->fwd          = cam.fwd;
-					data->right        = cam.right;
-					data->up           = cam.up;
-					data->mouse_pos    = getMousePos();
-
-					// data->pos = cam.pos;
-					// data->dir = mouse_dir;
+					data->pos = cam.pos + cam.fwd * cam.getZoom();
+					data->dir = cam.getMouseDir();
 					buf->unmap();
 				}
 			}

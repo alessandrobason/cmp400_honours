@@ -57,22 +57,17 @@ float Camera::getZoom() const {
 
 // adapted from fragment shader
 vec3 Camera::getMouseDir() const {
-	//const vec2 &win_size = gfx::main_rtv.size;
-	//const float aspect_ratio = win_size.x / win_size.y;
-	//const vec2 &rtv_pos = gfx::getMainRTVPosition();
-	//const vec2 &rtv_size = gfx::main_rtv.size;
-	//const vec2 &mouse_pos = getMousePos();
-	//const vec2 rel_pos = mouse_pos - rtv_pos;
-	//const vec2 norm_pos = rel_pos / rtv_size;
-	//vec2 uv = norm_pos * 2.f - 1.f;
-	//uv.y *= aspect_ratio;
-	//return norm(fwd + right * uv.x + up * uv.y);
-	
-	
-	// vec2 uv = getMousePosNorm() * 2.f - 1.f;
-	// uv.y *= aspect_ratio;
-	//return norm(fwd + right * uv.x + up * uv.y);
-	return 0;
+	const vec4 &bounds = gfx::getMainRTVBounds();
+	const vec2 &mouse_pos = getMousePos();
+	const vec2 &win_size = gfx::main_rtv.size;
+	const float aspect_ratio = win_size.x / win_size.y;
+
+	const vec2 rel_pos = mouse_pos - bounds.pos;
+	const vec2 norm_pos = rel_pos / bounds.size;
+	vec2 uv = norm_pos * 2.f - 1.f;
+	uv.y /= -aspect_ratio;
+
+	return norm(fwd + right * uv.x + up * uv.y);
 }
 
 #if 0
