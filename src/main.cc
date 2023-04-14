@@ -150,10 +150,11 @@ struct TexData {
 struct BrushData {
 	vec3 brush_size;
 	Operations operation;
-	vec3 brush_position;
+	//vec3 brush_position;
 	float smooth_amount;
-	vec3 padding__0;
+	//vec3 padding__0;
 	float scale;
+	vec2 padding__0;
 };
 
 #if 0
@@ -340,14 +341,16 @@ int main() {
 		}
 
 		if (Buffer *buf = sculpt->getBuffer(brush_data_ind)) {
-			if (BrushData *data = buf->map<BrushData>(0)) {
-				data->brush_position = vec3(0);
+			if (BrushData *data = buf->map<BrushData>()) {
 				data->brush_size = brush_size;
 				data->operation = Operations::Union;
+				data->smooth_amount = 0.f;
 				data->scale = 1.f;
 				buf->unmap();
 			}
 		}
+
+		sculpt->dispatch(threads, { volume_tex_data_ind, brush_data_ind }, { brush.srv, brush_pos_data.srv }, { main_texture.uav });
 
 		while (win::isOpen()) {
 			sh_manager.poll();
@@ -367,16 +370,20 @@ int main() {
 
 			find_brush->dispatch(1, { find_data_ind, find_tex_data_ind }, { main_texture.srv }, { brush_pos_data.uav });
 
+			if (isKeyPressed(KEY_R)) {
+				sculpt->dispatch(threads, { volume_tex_data_ind, brush_data_ind }, { brush.srv, brush_pos_data.srv }, { main_texture.uav });
+			}
+
 			if (sh_manager.hasUpdated()) {
 				is_dirty = true;
 			}
 
-			if (sh_manager.hasUpdated(sculpt_ind)) {
-				empty_texture->dispatch(threads, {}, {}, { main_texture.uav });
-				sculpt_clock.start();
-				sculpt->dispatch(threads, { volume_tex_data_ind, brush_data_ind }, { brush.srv }, { main_texture.uav });
-				sculpt_clock.end();
-			}
+			// if (sh_manager.hasUpdated(sculpt_ind)) {
+			// 	empty_texture->dispatch(threads, {}, {}, { main_texture.uav });
+			// 	sculpt_clock.start();
+			// 	sculpt->dispatch(threads, { volume_tex_data_ind, brush_data_ind }, { brush.srv }, { main_texture.uav });
+			// 	sculpt_clock.end();
+			// }
 
 			gfx::begin();
 
@@ -413,18 +420,18 @@ int main() {
 				main_ps->unbindCBuffers(2);
 			}
 
-			if (false) {
-				brush_vs->bind();
-				brush_ps->bind();
-
-				//brush_vs->setSRV({ matrix_model_buf.srv });
-				brush_ps->setSRV({ brush_tex.srv });
-
-				brush_mesh.render();
-
-				brush_vs->setSRV({ nullptr });
-				brush_ps->setSRV({ nullptr });
-			}
+			// if (false) {
+			// 	brush_vs->bind();
+			// 	brush_ps->bind();
+			// 
+			// 	//brush_vs->setSRV({ matrix_model_buf.srv });
+			// 	brush_ps->setSRV({ brush_tex.srv });
+			// 
+			// 	brush_mesh.render();
+			// 
+			// 	brush_vs->setSRV({ nullptr });
+			// 	brush_ps->setSRV({ nullptr });
+			// }
 
 			gfx::imgui_rtv.bind();
 			fpsWidget();
@@ -432,6 +439,7 @@ int main() {
 			messagesWidget();
 			drawLogger();
 			
+#if 0
 			ImGui::Begin("New Shape");
 			static vec3 newpos = 0;
 			static int cur_op = 0;
@@ -457,7 +465,7 @@ int main() {
 
 				if (Buffer *buf = sculpt->getBuffer(brush_data_ind)) {
 					if (BrushData *data = buf->map<BrushData>(0)) {
-						data->brush_position = newpos;
+						//data->brush_position = newpos;
 						data->brush_size = brush_size;
 						data->operation = int_to_oper[cur_op];
 						if (is_smooth) data->operation |= Operations::Smooth;
@@ -473,6 +481,7 @@ int main() {
 			}
 			
 			ImGui::End();
+#endif
 
 			gfx::end();
 

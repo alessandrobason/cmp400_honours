@@ -1,8 +1,3 @@
-// input
-Texture3D<float> brush : register(t0);
-// output
-RWTexture3D<float> tex : register(u0);
-
 cbuffer VolumeTexData : register(b0) {
     float3 volume_tex_size;
     int padding__0;
@@ -11,11 +6,25 @@ cbuffer VolumeTexData : register(b0) {
 cbuffer BrushData : register(b1) {
     float3 brush_size;
     uint operation;
-    float3 brush_position;
+    //float3 brush_position;
     float smooth_amount;
-    float3 padding__1;
+    //float3 padding__1;
     float scale;
+    float2 padding__1;
 };
+
+struct BrushPosData {
+	float3 brush_pos;
+	float padding__0;
+	float3 brush_norm;
+	float padding__1;
+};
+
+// input
+Texture3D<float> brush : register(t0);
+StructuredBuffer<BrushPosData> brush_data : register(t1);
+// output
+RWTexture3D<float> tex : register(u0);
 
 #define SMOOTH_OP               (1 << 31)
 #define OP_UNION                (1 << 1)
@@ -81,7 +90,8 @@ float op_smooth_subtraction(float d1, float d2, float k) {
 // }
 
 float3 worldToBrush(float3 pos) {
-    return pos - brush_position + brush_size * scale * 0.5;
+    // return pos - brush_position + brush_size * scale * 0.5;
+    return pos - brush_data[0].brush_pos + brush_size * scale * 0.5;
 }
 
 #define GROUP_SIZE 8
@@ -116,7 +126,7 @@ void main(uint3 id : SV_DispatchThreadID, uint3 group_id : SV_GroupID) {
     // if the group is outside the brush
     if (!all(group_brush >= 0. && group_brush < brush_size * scale)) {
 #ifndef NO_EXTRA
-        float distance = length(group_world - brush_position);
+        float distance = length(group_world - brush_data[0].brush_pos);
         distance -= brush_size.x * scale * 0.5;
         distance = abs(distance);
         // TODO remove this check, at least outside of the first run. otherwise it is 
@@ -140,7 +150,7 @@ void main(uint3 id : SV_DispatchThreadID, uint3 group_id : SV_GroupID) {
     // if the cell is not inside the brush volume texture, return early
     if (!all(id_brush >= 0 && id_brush < brush_size * scale)) {
 #ifndef NO_EXTRA
-        float distance = length(id_world - brush_position);
+        float distance = length(id_world - brush_data[0].brush_pos);
         distance -= brush_size.x * scale * 0.5;
         distance = abs(distance);
         //if (distance < 10.) {

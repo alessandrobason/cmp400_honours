@@ -268,7 +268,7 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 }
 
 float getMouseDist(float3 pos) {
-	const float radius = 32.;
+	const float radius = 10.;
 	const float3 brush_pos = float3(50, 0, 0);
 	return length(pos - brush_data[0].brush_pos) - radius;
 }
@@ -297,7 +297,7 @@ float3 rayMarchWithMouse(float3 ray_origin, float3 ray_dir, inout uint rng_state
 	const float ROUGH_MIN_HIT_DISTANCE = 1;
 	const float MIN_HIT_DISTANCE = .005;
 	const float MAX_TRACE_DISTANCE = 1000;
-	const int MAX_BOUNCES = 0;
+	const int MAX_BOUNCES = 1;
 	float3 current_pos;
 
 	bool is_mouse = false;
