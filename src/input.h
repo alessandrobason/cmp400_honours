@@ -141,6 +141,7 @@ bool isKeyUp(Keys key);
 bool isKeyPressed(Keys key);
 bool isMouseDown(Mouse mouse);
 bool isMouseUp(Mouse mouse);
+bool isMousePressed(Mouse mouse);
 vec2i getMousePos();
 vec2 getMousePosNorm();
 vec2i getMousePosRel();

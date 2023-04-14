@@ -91,6 +91,7 @@ float trilinearInterpolation(float3 pos, float3 size) {
 }
 
 float preciseMap(float3 coords) {
+	//return vol_tex.Load(int4(coords, 0));
 	return trilinearInterpolation(coords, tex_size);
 }
 
@@ -268,27 +269,8 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 }
 
 float getMouseDist(float3 pos) {
-	const float radius = 10.;
-	const float3 brush_pos = float3(50, 0, 0);
+	const float radius = 18.;
 	return length(pos - brush_data[0].brush_pos) - radius;
-}
-
-float getMouseDirDist(float3 pos) {
-	const float radius = 32.;
-	const float3 brush_pos = brush_data[0].brush_pos + brush_data[0].brush_norm * 50.0;
-	return length(pos - brush_pos) - radius;
-}
-
-float3 calcMouseNormal(float3 pos) {
-	const float step = 0.1;
-	const float2 k = float2(1, -1);
-
-	return normalize(
-		k.xyy * getMouseDist(pos + k.xyy * step) +
-		k.yyx * getMouseDist(pos + k.yyx * step) +
-		k.yxy * getMouseDist(pos + k.yxy * step) +
-		k.xxx * getMouseDist(pos + k.xxx * step)
-	);
 }
 
 float3 rayMarchWithMouse(float3 ray_origin, float3 ray_dir, inout uint rng_state) {
@@ -297,7 +279,7 @@ float3 rayMarchWithMouse(float3 ray_origin, float3 ray_dir, inout uint rng_state
 	const float ROUGH_MIN_HIT_DISTANCE = 1;
 	const float MIN_HIT_DISTANCE = .005;
 	const float MAX_TRACE_DISTANCE = 1000;
-	const int MAX_BOUNCES = 1;
+	const int MAX_BOUNCES = 0;
 	float3 current_pos;
 
 	bool is_mouse = false;
@@ -306,7 +288,6 @@ float3 rayMarchWithMouse(float3 ray_origin, float3 ray_dir, inout uint rng_state
 	const float3 top_sky_colour = float3(1, 0.1, 0.1);
 	const float3 bottom_sky_colour = float3(0.1, 0.1, 1);
 
-	// float3 final_colour = lerp(top_sky_colour, bottom_sky_colour, ray_dir.y * .5 + .5);
 	float3 final_colour = 1;
 	const float3 light_pos = float3(sin(time) * 2, -5, cos(time) * 2) * 20.;
 	const float3 light_dir = normalize(0 - light_pos);
@@ -344,11 +325,12 @@ float3 rayMarchWithMouse(float3 ray_origin, float3 ray_dir, inout uint rng_state
 			closest = preciseMap(tex_pos);
 
 			if (closest < MIN_HIT_DISTANCE) {
-				float3 normal = calcNormal(tex_pos);
-				float3 material = normal * .5 + .5;
+				const float3 normal = calcNormal(tex_pos);
+				const float3 material = pow(normal * .5 + .5, 4.) * 0. + 1.;
 
 				float diffuse_intensity = max(0, dot(normal, light_dir));
 				final_colour *= material * saturate(diffuse_intensity + 0.2);
+				// final_colour *= pow(material, 4);
 
 				if (bounce_count >= MAX_BOUNCES) {
 					break;
@@ -356,7 +338,6 @@ float3 rayMarchWithMouse(float3 ray_origin, float3 ray_dir, inout uint rng_state
 
 				// reset values for ray_tracing
 				bounce_count++;
-				//ray_dir = normalize(normal + randomUnitVector(rng_state) * 0.9);
 				ray_dir = normalize(normal);
 				ray_origin = current_pos + ray_dir;
 				distance_traveled = 0;
@@ -472,18 +453,8 @@ float4 main(PixelInput input) : SV_TARGET {
 	float3 ray_dir = normalize(cam_fwd + cam_right * uv.x + cam_up * uv.y);
 	float3 ray_origin = cam_pos + cam_fwd * cam_zoom;
 
-	float3 colour;
-
-	//if (all(brush_data[0].brush_norm == 0)) {
-	//	colour = rayMarch(ray_origin, ray_dir);
-	//}
-	//else {
-		colour = rayMarchWithMouse(ray_origin, ray_dir, rng_state);
-	//}
-
+	float3 colour = rayMarchWithMouse(ray_origin, ray_dir, rng_state);
 	// float3 colour = rayTrace(ray_origin, ray_dir, rng_state);
 	
-	// brush_data[0].brush_norm
-
 	return float4(sqrt(colour), 1.0);
 }

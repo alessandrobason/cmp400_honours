@@ -8,12 +8,19 @@
 constexpr float y_max_angle = 90.f;
 constexpr float radius = 270.f;
 
+static bool isMouseInsideRTV() {
+	return gfx::getMainRTVBounds().contains(getMousePos());
+}
+
 Camera::Camera() {
 	updateVectors();
 }
 
 void Camera::update() {
 	const Options &options = Options::get();
+	static bool is_dragging = false;
+
+	// Zoom stuff
 
 	if (float wheel = getMouseWheel()) {
 		zoom_exp += wheel * win::dt * options.zoom_sensitivity;
@@ -23,9 +30,22 @@ void Camera::update() {
 		zoom_exp = 1.f;
 	}
 
-	if (!isMouseDown(MOUSE_LEFT | MOUSE_RIGHT)) {
+	// Input stuff to check that the user has started the rotation with the mouse inside the render target
+
+	if (!isMouseDown(MOUSE_RIGHT)) {
+		is_dragging = false;
 		return;
 	}
+
+	if (isMousePressed(MOUSE_RIGHT)) {
+		is_dragging = isMouseInsideRTV();
+	}
+
+	if (!is_dragging) {
+		return;
+	}
+
+	// Calculate how much to rotate
 
 	const vec2 offset = (vec2)getMousePosRel() * win::dt * options.look_sensitivity;
 	angle.x -= offset.x;

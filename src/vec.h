@@ -141,6 +141,8 @@ struct vec4T {
 	template<typename Q>
 	constexpr vec4T(const vec4T<Q>& v) : x((T)v.x), y((T)v.y), z((T)v.z), w((T)v.w) {}
 
+	bool contains(const vec2T<T> &p) const { return p.x >= x && p.x <= (x + size.x) && p.y >= y && p.y <= (y + size.y); };
+
 	constexpr vec4T operator-() const { return { -x, -y, -z, -w }; }
 
 	constexpr vec4T operator+(const vec4T& o) const { return { x + o.x, y + o.y, z + o.z, w + o.w }; }

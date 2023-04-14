@@ -1,9 +1,12 @@
 #include "widgets.h"
 
 #include <imgui.h>
+#include <imgui_internal.h>
+#include <d3d11.h>
 
 #include "system.h"
 #include "tracelog.h"
+#include "maths.h"
 
 void fpsWidget() {
 	constexpr float PAD = 10.0f;
@@ -60,7 +63,8 @@ void mainTargetWidget(vec2 size, ID3D11ShaderResourceView *srv) {
 	}
 
 	vec2 position = (win_size - size) * 0.5f + win_padding;
-	gfx::setMainRTVBounds(vec4(position, size));
+	vec2 win_pos = ImGui::GetWindowPos();
+	gfx::setMainRTVBounds(vec4(position + win_pos, size));
 
 	ImGui::SetCursorPos(position);
 	ImGui::Image((ImTextureID)srv, size);
@@ -143,4 +147,196 @@ void messagesWidget() {
 
 void addMessageToWidget(LogLevel severity, const char* message) {
 	messages.emplace_back(severity, str::dup(message));
+}
+
+static bool once = true;
+
+enum class BrushState {
+	Brush, Eraser
+};
+
+struct Brush {
+	void init() {
+		if (!brush.load("assets/brush_icon.png")) {
+			fatal("couldn't load brush icon");
+		}
+
+		if (!eraser.load("assets/eraser_icon.png")) {
+			fatal("couldn't load eraser icon");
+		}
+	}
+
+	ImTextureID getBrushIcon() { return (ImTextureID)brush.srv.get(); }
+	ImTextureID getEraserIcon() { return (ImTextureID)eraser.srv.get(); }
+
+	Texture2D brush;
+	Texture2D eraser;
+	float size = 1.f;
+	float depth = 1.f;
+	bool is_single_click = true;
+
+	BrushState state = BrushState::Brush;
+} data;
+
+void brushWidget() {
+	if (once) {
+		once = false;
+		data.init();
+	}
+
+	static bool brush_open = false;
+	if (!ImGui::Begin("Brush", &brush_open)) {
+		ImGui::End();
+		return;
+	}
+
+	// use a table so the two buttons are centred
+
+	ImGuiTableFlags table_flags = 0;
+	constexpr vec2 brush_size = 24;
+	ImGuiStyle &style = ImGui::GetStyle();
+	const vec2 &btn_padding = ImGui::GetStyle().FramePadding;
+	const vec4 &btn_active_col = ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive);;
+	const vec4 &btn_base_col = ImGui::GetStyleColorVec4(ImGuiCol_Button);;
+
+	const auto &centreButton = [](float width, float padding) {
+		const float cursor_pos = ImGui::GetCursorPosX();
+		const float column_width = ImGui::GetContentRegionAvail().x;
+		const float brush_width = width + padding * 2.f;
+		const float offset_x = (column_width - brush_width) * 0.5f;
+
+		ImGui::SetCursorPosX(cursor_pos + offset_x);
+	};
+
+	ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, vec2(0));
+
+	if (ImGui::BeginTable("brush and eraser", 2, table_flags)) {
+		ImGui::TableNextRow();
+
+		ImGui::TableSetColumnIndex(0);
+
+		centreButton(brush_size.x, btn_padding.x);
+
+		style.Colors[ImGuiCol_Button] = data.state == BrushState::Brush ? btn_active_col : btn_base_col;
+
+		if (ImGui::ImageButton(data.getBrushIcon(), brush_size)) {
+			data.state = BrushState::Brush;
+		}
+
+		ImGui::TableSetColumnIndex(1);
+
+		centreButton(brush_size.x, btn_padding.x);
+
+		style.Colors[ImGuiCol_Button] = data.state == BrushState::Eraser ? btn_active_col : btn_base_col;
+
+		if (ImGui::ImageButton(data.getEraserIcon(), brush_size)) {
+			data.state = BrushState::Eraser;
+		}
+
+		style.Colors[ImGuiCol_Button] = btn_base_col;
+
+		ImGui::EndTable();
+	}
+
+	ImGui::Text("Size");
+	filledSlider("##Size", &data.size, 1.f, 5.f, "%.1f");
+	ImGui::Text("Depth");
+	filledSlider("##Depth", &data.depth, -1.f, 1.f);
+	ImGui::Text("Single click");
+	ImGui::Checkbox("##Single click", &data.is_single_click);
+
+	ImGui::PopStyleVar();
+
+	ImGui::End();
+
+	ImGui::ShowDemoWindow();
+}
+
+bool filledSlider(const char *str_id, float *p_data, float vmin, float vmax, const char *fmt) {
+	const ImGuiDataType data_type = ImGuiDataType_Float;
+	const ImGuiSliderFlags flags = 0;
+	float *p_min = &vmin;
+	float *p_max = &vmax;
+
+	ImGuiWindow *window = ImGui::GetCurrentWindow();
+	if (window->SkipItems)
+		return false;
+
+	ImGuiContext &g = *GImGui;
+	const ImGuiStyle &style = g.Style;
+	const ImGuiID id = window->GetID(str_id);
+	const float w = ImGui::GetContentRegionAvail().x;
+
+	const ImVec2 label_size = ImGui::CalcTextSize(str_id, NULL, true);
+	const ImRect frame_bb(window->DC.CursorPos, vec2(w, label_size.y + style.FramePadding.y * 2.0f) + window->DC.CursorPos);
+	const ImRect total_bb(frame_bb.Min, frame_bb.Max);
+
+	const bool temp_input_allowed = true;
+	ImGui::ItemSize(total_bb, style.FramePadding.y);
+	if (!ImGui::ItemAdd(total_bb, id, &frame_bb, temp_input_allowed ? ImGuiItemFlags_Inputable : 0))
+		return false;
+
+	// Default format string when passing NULL
+	if (fmt == NULL)
+		fmt = ImGui::DataTypeGetInfo(data_type)->PrintFmt;
+
+	const bool hovered = ImGui::ItemHoverable(frame_bb, id);
+	bool temp_input_is_active = temp_input_allowed && ImGui::TempInputIsActive(id);
+	if (!temp_input_is_active)
+	{
+		// Tabbing or CTRL-clicking on Slider turns it into an input box
+		const bool input_requested_by_tabbing = temp_input_allowed && (g.LastItemData.StatusFlags & ImGuiItemStatusFlags_FocusedByTabbing) != 0;
+		const bool clicked = (hovered && g.IO.MouseClicked[0]);
+		const bool make_active = (input_requested_by_tabbing || clicked || g.NavActivateId == id || g.NavActivateInputId == id);
+		if (make_active && temp_input_allowed)
+			if (input_requested_by_tabbing || (clicked && g.IO.KeyCtrl) || g.NavActivateInputId == id)
+				temp_input_is_active = true;
+
+		if (make_active && !temp_input_is_active)
+		{
+			ImGui::SetActiveID(id, window);
+			ImGui::SetFocusID(id, window);
+			ImGui::FocusWindow(window);
+			g.ActiveIdUsingNavDirMask |= (1 << ImGuiDir_Left) | (1 << ImGuiDir_Right);
+		}
+	}
+
+	if (temp_input_is_active)
+	{
+		// Only clamp CTRL+Click input when ImGuiSliderFlags_AlwaysClamp is set
+		const bool is_clamp_input = (flags & ImGuiSliderFlags_AlwaysClamp) != 0;
+		return ImGui::TempInputScalar(frame_bb, id, str_id, data_type, p_data, fmt, is_clamp_input ? p_min : NULL, is_clamp_input ? p_max : NULL);
+	}
+
+	// Draw frame
+	const ImU32 frame_col = ImGui::GetColorU32(g.ActiveId == id ? ImGuiCol_FrameBgActive : hovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg);
+	ImGui::RenderNavHighlight(frame_bb, id);
+	ImGui::RenderFrame(frame_bb.Min, frame_bb.Max, frame_col, true, g.Style.FrameRounding);
+
+	// Slider behavior
+	ImRect grab_bb;
+	const bool value_changed = ImGui::SliderBehavior(frame_bb, id, data_type, p_data, p_min, p_max, fmt, flags, &grab_bb);
+	if (value_changed)
+		ImGui::MarkItemEdited(id);
+
+	constexpr float grab_padding = 2.f;
+	const float value_width = vmax - vmin;
+	const float value_norm = ((*p_data) - vmin) / value_width;
+	const float frame_width = frame_bb.GetWidth() - grab_padding * 2.f;
+	const float grab_width = math::max(value_norm * frame_width, 1.f);
+
+	grab_bb.Min.x = window->DC.CursorPos.x + grab_padding;
+	grab_bb.Max.x = grab_bb.Min.x + grab_width;
+
+	// Render grab
+	if (grab_bb.Max.x > grab_bb.Min.x)
+		window->DrawList->AddRectFilled(grab_bb.Min, grab_bb.Max, ImGui::GetColorU32(g.ActiveId == id ? ImGuiCol_SliderGrabActive : ImGuiCol_SliderGrab), style.GrabRounding);
+
+	// Display value using user-provided display format so user can add prefix/suffix/decorations to the value.
+	char value_buf[64];
+	const char *value_buf_end = value_buf + ImGui::DataTypeFormatString(value_buf, IM_ARRAYSIZE(value_buf), data_type, p_data, fmt);
+	ImGui::RenderTextClipped(frame_bb.Min, frame_bb.Max, value_buf, value_buf_end, NULL, ImVec2(0.5f, 0.5f));
+
+	IMGUI_TEST_ENGINE_ITEM_INFO(id, label, g.LastItemData.StatusFlags);
+	return value_changed;
 }

@@ -252,7 +252,6 @@ int main() {
 	{
 		Camera cam;
 		Texture3D main_texture, brush;
-		Texture2D brush_tex;
 		DynamicShader sh_manager;
 		int main_ps_ind, main_vs_ind, sculpt_ind, gen_brush_ind, empty_texture_ind, find_brush_ind, brush_ps_ind, brush_vs_ind;
 		Shader *main_ps, *main_vs, *sculpt, *gen_brush, *empty_texture, *find_brush, *brush_ps, *brush_vs;
@@ -316,13 +315,11 @@ int main() {
 		//int model_matrix_ind = brush_vs->addStructuredBuf<matrix>();
 
 		brush_ps->addSampler();
-		if (!brush_tex.load("assets/brush.png")) gfxErrorExit();
 
 		if (!brush_pos_data.createStructured<BrushPositionData>()) gfxErrorExit();
 		//if (!matrix_model_buf.createStructured<matrix>()) gfxErrorExit();
 
 		Mesh triangle = makeFullScreenTriangle();
-		Mesh brush_mesh = makeBillboard(brush_tex.size);
 
 		// generate brush
 		gen_brush->dispatch(brush_size / 8, {}, {}, { brush.uav });
@@ -349,7 +346,7 @@ int main() {
 				buf->unmap();
 			}
 		}
-
+		
 		sculpt->dispatch(threads, { volume_tex_data_ind, brush_data_ind }, { brush.srv, brush_pos_data.srv }, { main_texture.uav });
 
 		while (win::isOpen()) {
@@ -370,20 +367,13 @@ int main() {
 
 			find_brush->dispatch(1, { find_data_ind, find_tex_data_ind }, { main_texture.srv }, { brush_pos_data.uav });
 
-			if (isKeyPressed(KEY_R)) {
+			if (isMousePressed(MOUSE_LEFT)) {
 				sculpt->dispatch(threads, { volume_tex_data_ind, brush_data_ind }, { brush.srv, brush_pos_data.srv }, { main_texture.uav });
 			}
 
 			if (sh_manager.hasUpdated()) {
 				is_dirty = true;
 			}
-
-			// if (sh_manager.hasUpdated(sculpt_ind)) {
-			// 	empty_texture->dispatch(threads, {}, {}, { main_texture.uav });
-			// 	sculpt_clock.start();
-			// 	sculpt->dispatch(threads, { volume_tex_data_ind, brush_data_ind }, { brush.srv }, { main_texture.uav });
-			// 	sculpt_clock.end();
-			// }
 
 			gfx::begin();
 
@@ -438,6 +428,7 @@ int main() {
 			mainTargetWidget();
 			messagesWidget();
 			drawLogger();
+			brushWidget();
 			
 #if 0
 			ImGui::Begin("New Shape");

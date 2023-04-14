@@ -83,7 +83,7 @@ bool Buffer::createStructured(size_t type_size, size_t count, const void* initia
     desc.ByteWidth = (UINT)(type_size * count);
     desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
     desc.StructureByteStride = (UINT)type_size;
-
+    
     HRESULT hr = E_FAIL;
 
     if (initial_data) {

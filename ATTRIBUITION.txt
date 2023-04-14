@@ -1,0 +1,2 @@
+eraser icon = eraser by b farias
+brush icon = Brush by jngll

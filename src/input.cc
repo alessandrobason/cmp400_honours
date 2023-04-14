@@ -12,6 +12,7 @@
 static bool keys_state[KEY__COUNT] = { 0 };
 static bool prev_keys_state[KEY__COUNT] = { 0 };
 static uint32_t mouse_state = 0;
+static uint32_t prev_mouse_state = 0;
 static vec2i mouse_position;
 static vec2i mouse_relative;
 static float mouse_wheel = 0.f;
@@ -36,6 +37,13 @@ bool isMouseDown(Mouse mouse) {
 
 bool isMouseUp(Mouse mouse) {
 	return !isMouseDown(mouse);
+}
+
+bool isMousePressed(Mouse mouse) {
+	bool was_not_down = !(prev_mouse_state & mouse);
+	bool is_down = mouse_state & mouse;
+	prev_mouse_state = mouse_state;
+	return is_down && was_not_down;
 }
 
 vec2i getMousePos() {
@@ -196,6 +204,7 @@ void setMouseRelative(vec2i rel) {
 }
 
 void setMouseButtonState(Mouse button, bool is_down) {
+	prev_mouse_state = mouse_state;
 	if (is_down) mouse_state |= button;
 	else         mouse_state ^= button;
 }

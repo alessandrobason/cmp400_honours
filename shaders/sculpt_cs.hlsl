@@ -34,14 +34,14 @@ RWTexture3D<float> tex : register(u0);
 #define OP_SMOOTH_SUBTRACTION   (SMOOTH_OP | OP_SUBTRACTION)
 // #define OP_SMOOTH_INTERSECTION  (SMOOTH_OP | OP_INTERSECTION)
 
-float trilinearInterpolation(float3 pos, float3 size) {
+float trilinearInterpolation(float3 pos, float3 size, Texture3D<float> tex_to_sample) {
     int3 start = max(min(int3(pos), int3(size) - 2), 0);
     int3 end = start + 1;
 
     float3 delta = pos - start;
     float3 rem = 1 - delta;
 
-#define map(x, y, z) brush.Load(int4((x), (y), (z), 0))
+#define map(x, y, z) tex_to_sample.Load(int4((x), (y), (z), 0))
 
     float4 c = float4(
         map(start.x, start.y, start.z) * rem.x + map(end.x, start.y, start.z) * delta.x,
@@ -58,8 +58,42 @@ float trilinearInterpolation(float3 pos, float3 size) {
     return c0 * rem.z + c1 * delta.z;
 }
 
+#if 0
+float trilinearInterpolationRW(float3 pos, float3 size, RWTexture3D<float> tex_to_sample) {
+    int3 start = max(min(int3(pos), int3(size) - 2), 0);
+    int3 end = start + 1;
+
+    float3 delta = pos - start;
+    float3 rem = 1 - delta;
+
+#define map(x, y, z) \
+    tex_to_sample.Load(int4(\
+        clamp(int3((x), (y), (z)), 0, size), \
+        0))
+
+    float4 c = float4(
+        map(start.x, start.y, start.z) * rem.x + map(end.x, start.y, start.z) * delta.x,
+        map(start.x, end.y,   start.z) * rem.x + map(end.x, end.y,   start.z) * delta.x,
+        map(start.x, start.y, end.z)   * rem.x + map(end.x, start.y, end.z)   * delta.x,
+        map(start.x, end.y,   end.z)   * rem.x + map(end.x, end.y,   end.z)   * delta.x
+    );
+
+#undef map
+
+    float c0 = c.x * rem.y + c.y * delta.y;
+    float c1 = c.z * rem.y + c.w * delta.y;
+
+    return c0 * rem.z + c1 * delta.z;
+}
+#endif
+
 float sampleBrush(float3 position) {
-    return trilinearInterpolation(position / scale, brush_size);
+    return trilinearInterpolation(position / scale, brush_size, brush);
+}
+
+float sampleWorld(float3 position) {
+    //return trilinearInterpolationRW(position, volume_tex_size, tex);
+    return tex[position];
 }
 
 float op_union(float d1, float d2) {
@@ -90,7 +124,6 @@ float op_smooth_subtraction(float d1, float d2, float k) {
 // }
 
 float3 worldToBrush(float3 pos) {
-    // return pos - brush_position + brush_size * scale * 0.5;
     return pos - brush_data[0].brush_pos + brush_size * scale * 0.5;
 }
 
@@ -112,10 +145,27 @@ void setVTSkipRead(uint3 id, float old_value, float new_value) {
 }
 
 void setVolumeTexture(uint3 id, float new_value) {
-    setVTSkipRead(id, tex[id], new_value);
+    const float old_value = sampleWorld(id);
+    setVTSkipRead(id, old_value, new_value);
 }
 
-// #define NO_EXTRA
+void writeApproximateDistance(float3 id_brush, uint3 id) {
+    // clamp the position to the bounds, this way we get a point inside the rect 
+    // in the same rough direction as the point
+    const float3 sample_pos = clamp(id_brush, 0, brush_size * scale);
+    // get the brush value at this edge
+    float distance = sampleBrush(sample_pos);
+    // then add the distance from this edge to the actual point
+    distance += length(id_brush - sample_pos);
+    // make the distance slightly smaller, this is to avoid the distance from being
+    // way too large and skipping the actual shape. it will slightly lower performance
+    // but not by much (hopefully lol)
+    distance *= 0.7;
+    
+    setVolumeTexture(id, distance);
+}
+
+//#define NO_EXTRA
 
 [numthreads(8, 8, 8)]
 void main(uint3 id : SV_DispatchThreadID, uint3 group_id : SV_GroupID) {
@@ -123,144 +173,27 @@ void main(uint3 id : SV_DispatchThreadID, uint3 group_id : SV_GroupID) {
     const float3 group_world = group_centre - volume_tex_size * 0.5;
     const float3 group_brush = worldToBrush(group_world);
 
-    // if the group is outside the brush
-    if (!all(group_brush >= 0. && group_brush < brush_size * scale)) {
-#ifndef NO_EXTRA
-        float distance = length(group_world - brush_data[0].brush_pos);
-        distance -= brush_size.x * scale * 0.5;
-        distance = abs(distance);
-        // TODO remove this check, at least outside of the first run. otherwise it is 
-        // very expensive (5ms -> 45ms!!!)
-        setVolumeTexture(id, distance);
-        // const float old_value = tex[id];
-        //if (old_value >= MAX_DIST) {
-        //    tex[id] = distance;
-        //}
-        //else if (distance < 100.) {
-        //    setVTSkipRead(id, old_value, distance);
-        //}
-#endif
-        return;
-    }
-    
     // -- sample brush at current position
     const float3 id_world = float3(id) - volume_tex_size * 0.5;
     // move the position relative to where the brush is, then convert it to brush coordinates
     const float3 id_brush = worldToBrush(id_world);
+
+    // if the group is outside the brush
+    if (!all(group_brush >= 0. && group_brush < brush_size * scale)) {
+#ifndef NO_EXTRA
+        writeApproximateDistance(id_brush, id);
+#endif
+        return;
+    }
+
     // if the cell is not inside the brush volume texture, return early
     if (!all(id_brush >= 0 && id_brush < brush_size * scale)) {
 #ifndef NO_EXTRA
-        float distance = length(id_world - brush_data[0].brush_pos);
-        distance -= brush_size.x * scale * 0.5;
-        distance = abs(distance);
-        //if (distance < 10.) {
-            setVolumeTexture(id, distance);
-        //
+        writeApproximateDistance(id_brush, id);
 #endif
         return;
     }
+
     const float distance = sampleBrush(id_brush);
     setVolumeTexture(id, distance);
-
-#if 0
-    for (int i = 0; i < MAX_GROUP_COUNT; ++i) {
-        const float3 group_centre = float3(cur_group_id) * GROUP_SIZE + GROUP_SIZE * 0.5;
-        const float3 group_world = group_centre - volume_tex_size * 0.5;
-        const float3 group_brush = worldToBrush(group_world);
-        if (!all(group_brush >= 0. && group_brush < brush_size)) {
-            // move along group
-            float3 dir = normalize(brush_position - group_world);
-            int3 int_dir = round(dir);
-            cur_group_id += int_dir;
-            continue;
-        }
-
-        if (i > 0) {
-            return;
-            // ------------------------------------------------------
-            // int3 cur_id = cur_group_id * GROUP_SIZE + relative_id;
-            // for (int c = 0; c < MAX_CELL_MOVE; ++c) {
-            //     // -- sample brush at current position
-            //     const float3 id_world = float3(cur_id) - volume_tex_size / 2.;
-            //     // move the position relative to where the brush is, then convert it to brush coordinates
-            //     const float3 id_brush = worldToBrush(id_world);
-            //     // if the cell is not inside the brush volume texture, return early
-            //     if (!all(id_brush >= 0 && id_brush < brush_size)) {
-            //         float3 dir = normalize(brush_position - id_world);
-            //         int3 int_dir = round(dir);
-            //         cur_id += int_dir;
-            //         continue;
-            //     }
-            //     const float group_distance = length(float3(cur_group_id - group_id)) * GROUP_SIZE;
-            //     const float distance = sampleBrush(id_brush) + group_distance;
-            //     if (c > 0) {
-            //         tex[id] = length(float3(cur_id - id)) + distance;
-            //     }
-            //     else {
-            //         tex[id] = distance;
-            //     }
-            // }
-            // ------------------------------------------------------
-        }
-        else {
-            // this is the same cell as the beginning
-            int3 cur_id = id;
-            for (int c = 0; c < MAX_CELL_MOVE; ++c) {
-                // -- sample brush at current position
-                const float3 id_world = float3(cur_id) - volume_tex_size / 2.;
-                // move the position relative to where the brush is, then convert it to brush coordinates
-                const float3 id_brush = worldToBrush(id_world);
-                // if the cell is not inside the brush volume texture, return early
-                if (!all(id_brush >= 0 && id_brush < brush_size)) {
-                    float3 dir = normalize(brush_position - id_world);
-                    int3 int_dir = int3(dir);
-                    cur_id += int_dir;
-                    continue;
-                }
-                const float distance = sampleBrush(id_brush);
-                if (c > 0) {
-                    tex[id] = length(float3(cur_id - id)) + distance;
-                }
-                else {
-                    tex[id] = distance;
-                }
-            }
-        }
-    }
-#endif
-
-#if 0
-    // -- first check if the brush is in the tile, otherwise cull
-    const float3 group_centre = float3(group_id) * 8. + 4.;
-    const float3 group_world = group_centre - volume_tex_size / 2.;
-    // convert group position to be in brush coordinates
-    const float3 group_brush = worldToBrush(group_world);
-    // if the tile is not inside the brush volume texture, return early
-    if (!all(group_brush >= 0 && group_brush < brush_size)) {
-        // if (length(group_brush) > 12.);
-        return;
-    }
-
-    // -- sample brush at current position
-    const float3 id_world = float3(id) - volume_tex_size / 2.;
-    // move the position relative to where the brush is, then convert it to brush coordinates
-    const float3 id_brush = worldToBrush(id_world);
-    // if the cell is not inside the brush volume texture, return early
-    if (!all(id_brush >= 0 && id_brush < brush_size)) {
-        tex[id] = length(id_brush);
-        return;
-    }
-    const float distance = sampleBrush(id_brush);
-
-    // -- do <operation> on the current pixel
-    switch (operation) {
-        case OP_UNION:               tex[id] = op_union(tex[id], distance);                             break;              
-        case OP_SUBTRACTION:         tex[id] = op_subtraction(tex[id], distance);                       break;        
-        case OP_SMOOTH_UNION:        tex[id] = op_smooth_union(tex[id], distance, smooth_amount);       break;       
-        case OP_SMOOTH_SUBTRACTION:  tex[id] = op_smooth_subtraction(tex[id], distance, smooth_amount); break; 
-
-        // case OP_INTERSECTION:        tex[id] = op_intersection(tex[id], distance);             break;       
-        // case OP_SMOOTH_INTERSECTION: tex[id] = op_smooth_intersection(tex[id], distance, 0.5); break;
-    }
-#endif
 }
