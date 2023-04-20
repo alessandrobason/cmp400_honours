@@ -26,18 +26,15 @@ namespace gfx {
 	const vec4 &getMainRTVBounds();
 	void setMainRTVBounds(const vec4 &bounds);
 
-#ifndef NDEBUG
-	void logD3D11messages();
-#endif	
+	bool isMainRTVActive();
+	void setMainRTVActive(bool is_active);
 
+	void logD3D11messages();
 } // namespace gfx
 
 namespace win {
 	extern win32_handle_t hwnd;
-	//extern HWND hwnd;
 	extern win32_handle_t hinstance;
-	//extern HINSTANCE hinstance;
-	extern const TCHAR *windows_class_name;
 	extern float dt;
 	extern float fps;
 

@@ -4,6 +4,21 @@
 #include "tracelog.h"
 #include "d3d11_fwd.h"
 
+void timerInit();
+uint64_t timerNow();
+uint64_t timerSince(uint64_t ticks);
+uint64_t timerLaptime(uint64_t &last_time);
+double timerToSec(uint64_t ticks);
+double timerToMilli(uint64_t ticks);
+double timerToMicro(uint64_t ticks);
+double timerToNano(uint64_t ticks);
+
+void gpuTimerInit();
+void gpuTimerCleanup();
+void gpuTimerBeginFrame();
+void gpuTimerEndFrame();
+void gpuTimerPoll();
+
 // Used to run an action only once
 struct OnceClock {
 	OnceClock();
@@ -42,9 +57,3 @@ struct GPUClock{
 	size_t start_timer = 0;
 	size_t end_timer = 0;
 };
-
-void gpuTimerInit();
-void gpuTimerCleanup();
-void gpuTimerBeginFrame();
-void gpuTimerEndFrame();
-void gpuTimerPoll();

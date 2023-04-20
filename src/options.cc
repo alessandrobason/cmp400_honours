@@ -11,7 +11,6 @@ void Options::load(const char *filename) {
 	
 	if (auto gfx = doc.get("gfx")) {
 		gfx->get("vsync").trySet(vsync);
-		gfx->get("lazy render").trySet(lazy_render);
 		if (ini::Value res = gfx->get("resolution")) {
 			arr<std::string_view> vec = res.asVec();
 			if (vec.size() == 2) {

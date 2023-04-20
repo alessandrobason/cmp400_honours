@@ -66,14 +66,14 @@ namespace ini {
 			if (value[i] == delim) {
 				std::string_view arr_val = trim(value.substr(start, i - start));
 				if (!arr_val.empty()) {
-					out.emplace_back(arr_val);
+					out.push(arr_val);
 				}
 				start = i + 1;
 			}
 		}
 		std::string_view last = trim(value.substr(start));
 		if (!last.empty()) {
-			out.emplace_back(last);
+			out.push(last);
 		}
 		return out;
 	}
@@ -177,7 +177,7 @@ namespace ini {
 		// value might be until EOF, in that case no use in skipping
 		if (!in.isFinished()) in.skip(); // ignore \n
 
-		table.values.emplace_back(key, val);
+		table.values.push(key, val);
 	}
 
 	static void addTable(Doc &out, StrStream &in) {
@@ -187,7 +187,7 @@ namespace ini {
 
 		if (name.empty()) return;
 
-		Table &tab = out.tables.emplace_back(name);
+		Table &tab = out.tables.push(name);
 		in.skipUntil('\n');
 		in.skip(); // skip \n
 
@@ -211,7 +211,7 @@ namespace ini {
 		if (!text.data) return;
 
 		tables.clear();
-		tables.emplace_back("root");
+		tables.push("root");
 		StrStream in = text;
 
 		while (!in.isFinished()) {

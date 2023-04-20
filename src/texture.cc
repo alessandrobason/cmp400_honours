@@ -259,6 +259,17 @@ void Texture2D::cleanup() {
    =============== TEXTURE 3D ===============
    ========================================== */
 
+static DXGI_FORMAT to_dx_format[(int)Texture3D::Type::count] = {
+	DXGI_FORMAT_R8_UINT,   // uint8
+	DXGI_FORMAT_R16_UINT,  // uint16
+	DXGI_FORMAT_R32_UINT,  // uint32
+	DXGI_FORMAT_R8_SINT,   // sint8
+	DXGI_FORMAT_R16_SINT,  // sint16
+	DXGI_FORMAT_R32_SINT,  // sint32
+	DXGI_FORMAT_R16_FLOAT, // float16
+	DXGI_FORMAT_R32_FLOAT, // float32
+};
+
 Texture3D::Texture3D(Texture3D &&rt) {
 	*this = mem::move(rt);
 }
@@ -277,15 +288,14 @@ Texture3D &Texture3D::operator=(Texture3D &&rt) {
 	return *this;
 }
 
-bool Texture3D::create(int width, int height, int depth) {
+bool Texture3D::create(int width, int height, int depth, Type type) {
 	D3D11_TEXTURE3D_DESC desc;
 	mem::zero(desc);
 	desc.Width  = (UINT)width;
 	desc.Height = (UINT)height;
 	desc.Depth  = (UINT)depth;
 	desc.MipLevels = 1;
-	// desc.Format = DXGI_FORMAT_R8_SINT;
-	desc.Format = DXGI_FORMAT_R32_FLOAT;
+	desc.Format = to_dx_format[(int)type];
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
 	desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;

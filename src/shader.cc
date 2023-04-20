@@ -25,7 +25,7 @@ Shader &Shader::operator=(Shader &&s) {
 	if (this != &s) {
 		mem::swap(shader, s.shader);
 		mem::swap(extra, s.extra);
-		mem::swap(buffers, s.buffers);
+		// mem::swap(buffers, s.buffers);
 		mem::swap(shader_type, s.shader_type);
 	}
 	return *this;
@@ -105,6 +105,7 @@ bool Shader::loadCompute(const void *data, size_t len) {
 	return true;
 }
 
+#if 0
 int Shader::addBuffer(size_t type_size, Buffer::Usage usage, bool can_write, bool can_read) {
 	Buffer newbuf;
 	if (!newbuf.create(type_size, usage, can_write, can_read)) {
@@ -112,7 +113,7 @@ int Shader::addBuffer(size_t type_size, Buffer::Usage usage, bool can_write, boo
 		return -1;
 	}
 	int index = (int)buffers.size();
-	buffers.emplace_back(mem::move(newbuf));
+	buffers.push(mem::move(newbuf));
 	return index;
 }
 
@@ -123,7 +124,7 @@ int Shader::addBuffer(size_t type_size, Buffer::Usage usage, const void *initial
 		return -1;
 	}
 	int index = (int)buffers.size();
-	buffers.emplace_back(mem::move(newbuf));
+	buffers.push(mem::move(newbuf));
 	return index;
 }
 
@@ -134,7 +135,7 @@ int Shader::addStructuredBuf(size_t type_size, size_t count, const void* initial
 		return -1;
 	}
 	int index = (int)buffers.size();
-	buffers.emplace_back(mem::move(newbuf));
+	buffers.push(mem::move(newbuf));
 	return index;
 }
 
@@ -144,6 +145,7 @@ Buffer *Shader::getBuffer(int index) {
 	}
 	return &buffers[index];
 }
+#endif
 
 bool Shader::addSampler() {
 	assert(shader_type == ShaderType::Fragment);
@@ -177,8 +179,8 @@ void Shader::setSRV(Slice<ID3D11ShaderResourceView *> textures) {
 void Shader::cleanup() {
 	shader.destroy();
 	extra.destroy();
-	for (Buffer &buf : buffers) buf.cleanup();
-	buffers.clear();
+	// for (Buffer &buf : buffers) buf.cleanup();
+	// buffers.clear();
 }
 
 void Shader::bind() {
@@ -197,6 +199,30 @@ void Shader::bind() {
 	}
 }
 
+void Shader::bindCBuf(Handle<Buffer> handle, unsigned int slot) {
+	if (Buffer *buf = handle.get()) {
+		buf->bindCBuffer(shader_type, slot);
+	}
+}
+
+void Shader::bindCBuffers(Slice<Handle<Buffer>> handles) {
+	int slot = 0;
+	for (Handle<Buffer> handle : handles) {
+		if (Buffer *buf = handle.get()) {
+			buf->bindCBuffer(shader_type, slot++);
+		}
+	}
+}
+
+void Shader::unbindCBuf(unsigned int slot) {
+	Buffer::unbindCBuffer(shader_type, slot);
+}
+
+void Shader::unbindCBuffers(int count, unsigned int slot) {
+	Buffer::unbindCBuffer(shader_type, slot, count);
+}
+
+#if 0
 void Shader::bindCBuf(int buffer, unsigned int slot) {
 	if (Buffer *buf = getBuffer(buffer)) {
 		buf->bindCBuffer(shader_type, slot);
@@ -220,8 +246,10 @@ void Shader::unbindCBuffers(int count, unsigned int slot) {
 	if (count >= (int)buffers.size()) count = (int)buffers.size() - 1;
 	Buffer::unbindCBuffer(shader_type, slot, count);
 }
+#endif
 
-void Shader::dispatch(const vec3u &threads, Slice<int> cbuffers, Slice<ID3D11ShaderResourceView *> srvs, Slice<ID3D11UnorderedAccessView *> uavs) {
+//void Shader::dispatch(const vec3u &threads, Slice<int> cbuffers, Slice<ID3D11ShaderResourceView *> srvs, Slice<ID3D11UnorderedAccessView *> uavs) {
+void Shader::dispatch(const vec3u &threads, Slice<Handle<Buffer>> cbuffers, Slice<ID3D11ShaderResourceView *> srvs, Slice<ID3D11UnorderedAccessView *> uavs) {
 	if (!shader) return;
 
 	gfx::context->CSSetShader((ID3D11ComputeShader *)shader.get(), nullptr, 0);
@@ -229,11 +257,16 @@ void Shader::dispatch(const vec3u &threads, Slice<int> cbuffers, Slice<ID3D11Sha
 		UINT cbuffers_count = 0;
 
 		if (!cbuffers.empty()) {
-			for (int ind : cbuffers) {
-				if (Buffer *buf = getBuffer(ind)) {
+			for (Handle<Buffer> handle : cbuffers) {
+				if (Buffer *buf = handle.get()) {
 					buf->bindCBuffer(ShaderType::Compute, cbuffers_count++);
 				}
 			}
+			// for (int ind : cbuffers) {
+			// 	if (Buffer *buf = getBuffer(ind)) {
+			// 		buf->bindCBuffer(ShaderType::Compute, cbuffers_count++);
+			// 	}
+			// }
 		}
 		if (!srvs.empty()) gfx::context->CSSetShaderResources(0, (UINT)srvs.len, srvs.data);
 		if (!uavs.empty()) gfx::context->CSSetUnorderedAccessViews(0, (UINT)uavs.len, uavs.data, nullptr);
@@ -283,28 +316,28 @@ Shader* DynamicShader::get(int index) {
 bool DynamicShader::addFileWatch(const char *name, ShaderType type) {
 	const char *filename = str::format("%s.hlsl", name);
 	watcher.watchFile(filename, (void *)shaders.size());
-	update_list.emplace_back(false);
+	update_list.push(false);
+
+	Shader new_shader;
 
 #ifdef NDEBUG
 	if (file::exists(str::format("shaders/bin/%s.cso", name))) {
-		bool success = false;
-		switch (type) {
-		case ShaderType::Vertex:   success = shader.loadVertex(name); break;
-		case ShaderType::Fragment: success = shader.loadFragment(name); break;
-		case ShaderType::Compute:  success = shader.loadCompute(name); break;
-		}
-		if (!success) {
+		if (!new_shader.load(name, type)) {
 			err("couldn't load shader %s from file", name);
 			return false;
 		}
 	}
 	else if (dxptr<ID3DBlob> blob = compileShader(filename, type)) {
 		bool success = false;
+		void *data = blob->GetBufferPointer();
+		size_t len = blob->GetBufferSize();
+
 		switch (type) {
-		case ShaderType::Vertex:   success = shader.loadVertex(blob->GetBufferPointer(), blob->GetBufferSize()); break;
-		case ShaderType::Fragment: success = shader.loadFragment(blob->GetBufferPointer(), blob->GetBufferSize()); break;
-		case ShaderType::Compute:  success = shader.loadCompute(blob->GetBufferPointer(), blob->GetBufferSize()); break;
+			case ShaderType::Vertex:   success = new_shader.loadVertex(data, len);   break;
+			case ShaderType::Fragment: success = new_shader.loadFragment(data, len); break;
+			case ShaderType::Compute:  success = new_shader.loadCompute(data, len);  break;
 		}
+
 		if (!success) {
 			err("couldn't load shader %s from file", name);
 			return false;
@@ -316,7 +349,6 @@ bool DynamicShader::addFileWatch(const char *name, ShaderType type) {
 #else
 	if (dxptr<ID3DBlob> blob = compileShader(filename, type)) {
 		bool success = false;
-		Shader new_shader;
 		void *data = blob->GetBufferPointer();
 		size_t len = blob->GetBufferSize();
 
@@ -330,14 +362,13 @@ bool DynamicShader::addFileWatch(const char *name, ShaderType type) {
 			err("couldn't load shader %s from file", name);
 			return false;
 		}
-
-		shaders.emplace_back(mem::move(new_shader));
 	}
 	else {
 		return false;
 	}
 #endif
 
+	shaders.push(mem::move(new_shader));
 	return true;
 }
 

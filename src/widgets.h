@@ -11,7 +11,7 @@ void mainTargetWidget(vec2 size, ID3D11ShaderResourceView *srv);
 void messagesWidget();
 void addMessageToWidget(LogLevel severity, const char *message);
 
-void brushWidget();
+//void brushWidget();
 
 bool filledSlider(const char *str_id, float *data, float vmin, float vmax, const char *fmt = "%.3f");
 

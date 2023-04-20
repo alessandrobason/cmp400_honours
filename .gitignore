@@ -3,3 +3,4 @@
 shaders/bin/
 logs/
 *.db
+compileData.*

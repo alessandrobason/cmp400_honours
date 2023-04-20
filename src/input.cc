@@ -17,6 +17,40 @@ static vec2i mouse_position;
 static vec2i mouse_relative;
 static float mouse_wheel = 0.f;
 
+static Keys actions[(int)Action::Count] = {
+	KEY_Z,      // ResetZoom
+	KEY_ESCAPE, // CloseProgram
+	KEY_P,      // TakeScreenshot
+	KEY_L,      // OpenLogger
+	KEY_LEFT,   // RotateCameraHorPos
+	KEY_RIGHT,  // RotateCameraHorNeg
+	KEY_UP,     // RotateCameraVerPos
+	KEY_DOWN,   // RotateCameraVerNeg
+	KEY_X,      // ZoomIn
+	KEY_C,      // ZoomOut
+};
+
+bool isActionDown(Action action) {
+	assert((int)action < (int)Action::Count);
+	return isKeyDown(actions[(int)action]);
+}
+
+bool isActionUp(Action action) {
+	assert((int)action < (int)Action::Count);
+	return isKeyUp(actions[(int)action]);
+}
+
+bool isActionPressed(Action action) {
+	assert((int)action < (int)Action::Count);
+	return isKeyPressed(actions[(int)action]);
+}
+
+void setActionKey(Action action, Keys key) {
+	assert((int)action < (int)Action::Count);
+	actions[(int)action] = key;
+}
+
+
 bool isKeyDown(Keys key) {
 	return keys_state[key];
 }

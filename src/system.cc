@@ -10,7 +10,6 @@
 #include <imgui_internal.h>
 #include <backends/imgui_impl_dx11.h>
 #include <backends/imgui_impl_win32.h>
-#include <sokol_time.h>
 
 //#include <tracy/Tracy.hpp>
 //#include <tracy/TracyD3D11.hpp>
@@ -21,14 +20,17 @@
 #include "maths.h"
 #include "input.h"
 #include "macros.h"
+#include "timer.h"
 
 static LRESULT wndProc(HWND, UINT, WPARAM, LPARAM);
 
 namespace gfx {
 	dxptr<ID3D11Device> device = nullptr;
 	dxptr<ID3D11DeviceContext> context = nullptr;
+#ifndef NDEBUG
 	dxptr<ID3D11Debug> debugdev = nullptr;
 	dxptr<ID3D11InfoQueue> infodev = nullptr;
+#endif
 	dxptr<IDXGISwapChain> swapchain = nullptr;
 	dxptr<ID3D11DepthStencilState> depth_stencil_state = nullptr;
 	//TracyD3D11Ctx tracy_ctx = nullptr;
@@ -36,6 +38,7 @@ namespace gfx {
 	RenderTexture imgui_rtv;
 	RenderTexture main_rtv;
 	static vec4 main_rtv_bounds = 0;
+	static bool is_main_rtv_active = false;
 
 	void init() {
 		if (!createDevice()) {
@@ -69,6 +72,7 @@ namespace gfx {
 	}
 
 	void cleanup() {
+		Buffer::cleanAll();
 		gpuTimerCleanup();
 		
 		// Cleanup ImGui
@@ -152,15 +156,6 @@ namespace gfx {
 		assert(SUCCEEDED(hr));
 		hr = device->QueryInterface(__uuidof(ID3D11InfoQueue), (void **)&infodev);
 		assert(SUCCEEDED(hr));
-
-		// D3D11_MESSAGE_CATEGORY categories[] = {
-		// 	D3D11_MESSAGE_CATEGORY_STATE_CREATION,
-		// };
-		// D3D11_INFO_QUEUE_FILTER filter;
-		// mem::zero(filter);
-		// filter.DenyList.NumCategories = ARRLEN(categories);
-		// filter.DenyList.pCategoryList = categories;
-		// infodev->PushStorageFilter(&filter);
 #endif
 
 		D3D11_DEPTH_STENCIL_DESC dd;
@@ -222,8 +217,16 @@ namespace gfx {
 		main_rtv_bounds = bounds;
 	}
 
-#ifndef NDEBUG
+	bool isMainRTVActive() {
+		return is_main_rtv_active;
+	}
+
+	void setMainRTVActive(bool is_active) {
+		is_main_rtv_active = is_active;
+	}
+
 	void gfx::logD3D11messages() {
+#ifndef NDEBUG
 		UINT64 message_count = infodev->GetNumStoredMessages();
 
 		D3D11_MESSAGE* msg = nullptr;
@@ -254,8 +257,8 @@ namespace gfx {
 
 		free(msg);
 		infodev->ClearStoredMessages();
-	}
 #endif
+	}
 } // namespace gfx
 
 namespace win {
@@ -290,7 +293,7 @@ namespace win {
 			}
 		}
 
-		dt = (float)stm_sec(stm_laptime(&laptime));
+		dt = (float)timerToSec(timerLaptime(laptime));
 		if (dt) {
 			fps = (fps + 1.f / dt) / 2.f;
 		}
@@ -340,8 +343,8 @@ namespace win {
 		ShowWindow((HWND)hwnd, SW_SHOWDEFAULT);
 		UpdateWindow((HWND)hwnd);
 
-		stm_setup();
-		laptime = stm_now();
+		timerInit();
+		laptime = timerNow();
 	}
 
 	void cleanup() {
@@ -353,10 +356,11 @@ namespace win {
 		hinstance = nullptr;
 
 		Options::get().cleanup();
+		info("All cleaned up. See you soon!");
 	}
 
 	float timeSinceStart() {
-		return (float)stm_sec(stm_since(0));
+		return (float)timerToSec(timerSince(0));
 	}
 
 	vec2i getSize() {

@@ -130,7 +130,7 @@ namespace str {
 		va_copy(vtemp, args);
 		char *str = formatBufv(static_buf[cur_buf], sizeof(static_buf[cur_buf]), fmt, vtemp);
 		va_end(vtemp);
-		if ((++cur_buf) >= sizeof(static_buf)) cur_buf = 0;
+		if ((++cur_buf) >= ARRLEN(static_buf)) cur_buf = 0;
 		return str;
 	}
 
@@ -387,7 +387,7 @@ namespace file {
 				return;
 			}
 		}
-		watched.emplace_back(str::dup(name), custom_data);
+		watched.push(str::dup(name), custom_data);
 	}
 
 	void Watcher::update() {
@@ -484,7 +484,7 @@ namespace file {
 			}
 		}
 
-		changed.emplace_back(index);
+		changed.push(index);
 	}
 
 	Watcher::WatchedFile *Watcher::getNextChanged() {

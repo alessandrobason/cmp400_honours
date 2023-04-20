@@ -6,7 +6,6 @@
 struct Options {
 	// gfx
 	bool vsync            = true;
-	bool lazy_render      = true;	// render only when something has changed
 	vec2u resolution = vec2u(1920, 1080);
 
 	// camera

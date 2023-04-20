@@ -1,7 +1,14 @@
 [X] Mouse input texture
 [ ] Object material
 [ ] Save to / Load from file
-[ ] antialiasing
+[ ] Antialiasing
 [ ] Make normal map 3d texture, so the normal calculation
     becomes only 8 texture lookups instead of 32 (jesus christ)
 [ ] Brush UI
+[ ] Key remapping
+[ ] Background image
+
+-- Options ideas --
+* texture format (either f16 or f32)
+* volume tex size
+* brush tex size

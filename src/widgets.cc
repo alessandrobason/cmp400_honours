@@ -33,22 +33,18 @@ void mainTargetWidget() {
 }
 
 void mainTargetWidget(vec2 size, ID3D11ShaderResourceView *srv) {
-	ImGui::Begin("Game");
+	if (!ImGui::Begin("Game")) {
+		ImGui::End();
+		gfx::setMainRTVActive(false);
+		return;
+	}
 
-	//vec2 img_size = gfx::main_rtv.size;
-	//vec2 img_size = { 512, 512 };
+	gfx::setMainRTVActive(true);
+
 	vec2 win_size = ImGui::GetWindowContentRegionMax();
 	vec2 win_padding = ImGui::GetWindowContentRegionMin();
 
 	win_size -= win_padding;
-
-#if RESIZE_RENDER_TARGET
-	vec2 size_diff = size - win_size;
-	if (fabsf(size_diff.x) > 0.1f || fabsf(size_diff.y) > 0.1f) {
-		info("resize");
-		main_rtv.resize((int)win_size.x, (int)win_size.y);
-	}
-#endif
 
 	float dx = win_size.x / size.x;
 	float dy = win_size.y / size.y;
@@ -146,110 +142,7 @@ void messagesWidget() {
 }
 
 void addMessageToWidget(LogLevel severity, const char* message) {
-	messages.emplace_back(severity, str::dup(message));
-}
-
-static bool once = true;
-
-enum class BrushState {
-	Brush, Eraser
-};
-
-struct Brush {
-	void init() {
-		if (!brush.load("assets/brush_icon.png")) {
-			fatal("couldn't load brush icon");
-		}
-
-		if (!eraser.load("assets/eraser_icon.png")) {
-			fatal("couldn't load eraser icon");
-		}
-	}
-
-	ImTextureID getBrushIcon() { return (ImTextureID)brush.srv.get(); }
-	ImTextureID getEraserIcon() { return (ImTextureID)eraser.srv.get(); }
-
-	Texture2D brush;
-	Texture2D eraser;
-	float size = 1.f;
-	float depth = 1.f;
-	bool is_single_click = true;
-
-	BrushState state = BrushState::Brush;
-} data;
-
-void brushWidget() {
-	if (once) {
-		once = false;
-		data.init();
-	}
-
-	static bool brush_open = false;
-	if (!ImGui::Begin("Brush", &brush_open)) {
-		ImGui::End();
-		return;
-	}
-
-	// use a table so the two buttons are centred
-
-	ImGuiTableFlags table_flags = 0;
-	constexpr vec2 brush_size = 24;
-	ImGuiStyle &style = ImGui::GetStyle();
-	const vec2 &btn_padding = ImGui::GetStyle().FramePadding;
-	const vec4 &btn_active_col = ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive);;
-	const vec4 &btn_base_col = ImGui::GetStyleColorVec4(ImGuiCol_Button);;
-
-	const auto &centreButton = [](float width, float padding) {
-		const float cursor_pos = ImGui::GetCursorPosX();
-		const float column_width = ImGui::GetContentRegionAvail().x;
-		const float brush_width = width + padding * 2.f;
-		const float offset_x = (column_width - brush_width) * 0.5f;
-
-		ImGui::SetCursorPosX(cursor_pos + offset_x);
-	};
-
-	ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, vec2(0));
-
-	if (ImGui::BeginTable("brush and eraser", 2, table_flags)) {
-		ImGui::TableNextRow();
-
-		ImGui::TableSetColumnIndex(0);
-
-		centreButton(brush_size.x, btn_padding.x);
-
-		style.Colors[ImGuiCol_Button] = data.state == BrushState::Brush ? btn_active_col : btn_base_col;
-
-		if (ImGui::ImageButton(data.getBrushIcon(), brush_size)) {
-			data.state = BrushState::Brush;
-		}
-
-		ImGui::TableSetColumnIndex(1);
-
-		centreButton(brush_size.x, btn_padding.x);
-
-		style.Colors[ImGuiCol_Button] = data.state == BrushState::Eraser ? btn_active_col : btn_base_col;
-
-		if (ImGui::ImageButton(data.getEraserIcon(), brush_size)) {
-			data.state = BrushState::Eraser;
-		}
-
-		style.Colors[ImGuiCol_Button] = btn_base_col;
-
-		ImGui::EndTable();
-	}
-
-	ImGui::Text("Size");
-	filledSlider("##Size", &data.size, 1.f, 5.f, "%.1f");
-	ImGui::Text("Depth");
-	filledSlider("##Depth", &data.depth, -1.f, 1.f);
-	ImGui::Text("Single click");
-	ImGui::Checkbox("##Single click", &data.is_single_click);
-
-	ImGui::PopStyleVar();
-
-	ImGui::End();
-
-	ImGui::ShowDemoWindow();
+	messages.push(severity, str::dup(message));
 }
 
 bool filledSlider(const char *str_id, float *p_data, float vmin, float vmax, const char *fmt) {

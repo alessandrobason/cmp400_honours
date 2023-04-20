@@ -7,6 +7,8 @@
 #include "macros.h"
 #include "tracelog.h"
 
+static arr<Buffer> buffers;
+
 static D3D11_USAGE usage_to_d3d11[(size_t)Buffer::Usage::Count] = {
     D3D11_USAGE_DEFAULT,
     D3D11_USAGE_IMMUTABLE,
@@ -25,30 +27,161 @@ Buffer::~Buffer() {
 Buffer &Buffer::operator=(Buffer &&buf) {
     if (this != &buf) {
         mem::swap(buffer, buf.buffer);
+        mem::swap(srv, buf.srv);
+        mem::swap(uav, buf.uav);
     }
 
     return *this;
 }
 
-bool Buffer::create(size_t type_size, Usage usage, bool can_write, bool can_read) {
+Handle<Buffer> Buffer::make() {
+    Handle<Buffer> handle = buffers.size();
+    Buffer newbuf{};
+    buffers.push(mem::move(newbuf));
+    return handle;
+}
+
+Handle<Buffer> Buffer::makeConstant(
+    size_t type_size, 
+    Usage usage, 
+    bool can_write, 
+    bool can_read, 
+    const void *initial_data, 
+    size_t data_count
+) {
+    Handle<Buffer> handle = buffers.size();
+    Buffer newbuf{};
+
     D3D11_BUFFER_DESC bd;
     mem::zero(bd);
     bd.Usage = usage_to_d3d11[(size_t)usage];
     bd.StructureByteStride = (UINT)type_size;
-    bd.ByteWidth = (UINT)type_size;
+    bd.ByteWidth = (UINT)(type_size * data_count);
     bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-    if (can_write) {
-        bd.CPUAccessFlags |= D3D11_CPU_ACCESS_WRITE;
+    if (usage != Usage::Immutable) {
+        if (can_write) {
+            bd.CPUAccessFlags |= D3D11_CPU_ACCESS_WRITE;
+        }
+        if (can_read) {
+            bd.CPUAccessFlags |= D3D11_CPU_ACCESS_READ;
+        }
     }
-    if (can_read) {
-        bd.CPUAccessFlags |= D3D11_CPU_ACCESS_READ;
+
+    HRESULT hr = E_FAIL;
+
+    if (initial_data) {
+        D3D11_SUBRESOURCE_DATA dd;
+        mem::zero(dd);
+        dd.pSysMem = initial_data;
+        hr = gfx::device->CreateBuffer(&bd, &dd, &newbuf.buffer);
     }
-    
-    HRESULT hr = gfx::device->CreateBuffer(&bd, nullptr, &buffer);
-    return SUCCEEDED(hr);
+    else {
+        hr = gfx::device->CreateBuffer(&bd, nullptr, &newbuf.buffer);
+    }
+
+    if (FAILED(hr)) {
+        err("couldn't create buffer");
+        return invalid_handle;
+    }
+
+    buffers.push(mem::move(newbuf));
+    return handle;
 }
 
-bool Buffer::create(size_t type_size, Usage usage, const void *initial_data, size_t data_count, bool can_write, bool can_read) {
+Handle<Buffer> Buffer::makeStructured(
+    size_t type_size, 
+    size_t count, 
+    const void *initial_data
+) {
+    Handle<Buffer> handle = buffers.size();
+    Buffer newbuf{};
+
+    D3D11_BUFFER_DESC desc;
+    mem::zero(desc);
+    desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
+    desc.ByteWidth = (UINT)(type_size * count);
+    desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+    desc.StructureByteStride = (UINT)type_size;
+
+    HRESULT hr = E_FAIL;
+
+    if (initial_data) {
+        D3D11_SUBRESOURCE_DATA init_data;
+        mem::zero(init_data);
+        init_data.pSysMem = initial_data;
+        hr = gfx::device->CreateBuffer(&desc, &init_data, &newbuf.buffer);
+    }
+    else {
+        hr = gfx::device->CreateBuffer(&desc, nullptr, &newbuf.buffer);
+    }
+
+    if (FAILED(hr)) {
+        err("couldn't create structured buffer");
+        return false;
+    }
+
+    D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc;
+    mem::zero(srv_desc);
+    srv_desc.ViewDimension = D3D11_SRV_DIMENSION_BUFFEREX;
+    srv_desc.Format = DXGI_FORMAT_UNKNOWN;
+    srv_desc.BufferEx.NumElements = (UINT)count;
+
+    hr = gfx::device->CreateShaderResourceView(newbuf.buffer, &srv_desc, &newbuf.srv);
+
+    if (FAILED(hr)) {
+        err("couldn't create structured buffer's SRV");
+        return invalid_handle;
+    }
+
+    D3D11_UNORDERED_ACCESS_VIEW_DESC uav_desc;
+    mem::zero(uav_desc);
+    uav_desc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
+    uav_desc.Format = DXGI_FORMAT_UNKNOWN;
+    uav_desc.Buffer.NumElements = (UINT)count;
+
+    hr = gfx::device->CreateUnorderedAccessView(newbuf.buffer, &uav_desc, &newbuf.uav);
+
+    if (FAILED(hr)) {
+        err("couldn't create structured buffer's UAV");
+        return invalid_handle;
+    }
+
+    buffers.push(mem::move(newbuf));
+    return handle;
+}
+
+Buffer *Buffer::get(Handle<Buffer> handle) {
+    return handle.isValid() ? &buffers[handle.index] : nullptr;
+}
+
+bool Buffer::isHandleValid(Handle<Buffer> handle) {
+    return handle.index < buffers.size();
+}
+
+void Buffer::cleanAll() {
+    buffers.clear();
+}
+
+// bool Buffer::create(size_t type_size, Usage usage, bool can_write, bool can_read) {
+//     D3D11_BUFFER_DESC bd;
+//     mem::zero(bd);
+//     bd.Usage = usage_to_d3d11[(size_t)usage];
+//     bd.StructureByteStride = (UINT)type_size;
+//     bd.ByteWidth = (UINT)type_size;
+//     bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+//     if (can_write) {
+//         bd.CPUAccessFlags |= D3D11_CPU_ACCESS_WRITE;
+//     }
+//     if (can_read) {
+//         bd.CPUAccessFlags |= D3D11_CPU_ACCESS_READ;
+//     }
+//     
+//     HRESULT hr = gfx::device->CreateBuffer(&bd, nullptr, &buffer);
+//     return SUCCEEDED(hr);
+// }
+
+#if 0
+bool Buffer::create(size_t type_size, Usage usage, bool can_write, bool can_read, const void *initial_data, size_t data_count) {
     D3D11_BUFFER_DESC bd;
     mem::zero(bd);
     bd.Usage = usage_to_d3d11[(size_t)usage];
@@ -131,6 +264,7 @@ bool Buffer::createStructured(size_t type_size, size_t count, const void* initia
 
     return true;
 }
+#endif
 
 void Buffer::cleanup() {
     buffer.destroy();

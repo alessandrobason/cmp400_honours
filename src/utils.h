@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <limits.h>
 
 #include <initializer_list>
 
@@ -123,7 +124,7 @@ struct arr {
 	arr(arr &&a) { *this = mem::move(a); }
 	arr(std::initializer_list<T> list) {
 		reserve(list.size());
-		for (auto &&v : list) emplace_back(v);
+		for (auto &&v : list) push(v);
 	}
 	~arr() { destroy(); }
 
@@ -143,7 +144,7 @@ struct arr {
 	}
 
 	template<typename ...TArgs>
-	T &emplace_back(TArgs &&...args) {
+	T &push(TArgs &&...args) {
 		reserve(len + 1);
 		mem::placementNew<T>(buf + len, mem::move(args)...);
 		return buf[len++];
@@ -199,7 +200,7 @@ struct arr {
 		clear();
 		reserve(a.len);
 		for (size_t i = 0; i < a.len; ++i) {
-			emplace_back(a[i]);
+			push(a[i]);
 		}
 		return *this;
 	}
@@ -213,7 +214,7 @@ struct arr {
 
 	bool empty() const { return len == 0; }
 	size_t size() const { return len; }
-	size_t capacity() const { return len; }
+	size_t capacity() const { return cap; }
 	T *data() { return buf; }
 	T &operator[](size_t index) { assert(index < len); return buf[index]; }
 	T *begin() { return buf; }
@@ -233,6 +234,51 @@ struct arr {
 	size_t cap = 0;
 };
 
+// == slice implementation ========================================
+
+template<typename T>
+struct Slice {
+	Slice() = default;
+	Slice(const T *data, size_t len) : data(data), len(len) {}
+	template<size_t size>
+	Slice(const T(&data)[size]) : data(data), len(size) {}
+	Slice(std::initializer_list<T> list) : data(list.begin()), len(list.size()) {}
+
+	bool empty() const {
+		return len == 0;
+	}
+
+	size_t byteSize() const {
+		return len * sizeof(T);
+	}
+
+	Slice sub(size_t start, size_t end = SIZE_MAX) {
+		if (empty() || start >= len) return Slice();
+		if (end >= len) end = len - 1;
+		return Slice(data + start, end - start);
+	}
+
+	const T &operator[](size_t i) const {
+		assert(i < len);
+		return data[i];
+	}
+
+	bool operator==(const Slice &s) const {
+		if (len != s.len) return false;
+		for (size_t i = 0; i < len; ++i) {
+			if (data[i] != s[i]) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	const T *begin() const { return data; }
+	const T *end() const { return data + len; }
+
+	const T *data = nullptr;
+	size_t len = 0;
+};
 
 // == string utils ================================================
 

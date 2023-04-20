@@ -1,11 +1,70 @@
 #include "timer.h"
 
 #include <string.h>
-#include <sokol_time.h>
 #include <d3d11.h>
 
 #include "system.h"
 #include "utils.h"
+
+// == TIMER STUFF =======================================================================================
+
+struct TimerData {
+	LARGE_INTEGER freq;
+	LARGE_INTEGER start;
+} tm_data;
+
+// prevent 64-bit overflow when computing relative timestamp
+// see https://gist.github.com/jspohr/3dc4f00033d79ec5bdaf67bc46c813e3
+static int64_t timerInt64MulDiv(int64_t value, int64_t numer, int64_t denom) {
+	int64_t q = value / denom;
+	int64_t r = value % denom;
+	return q * numer + r * numer / denom;
+}
+
+void timerInit() {
+	QueryPerformanceFrequency(&tm_data.freq);
+	QueryPerformanceCounter(&tm_data.start);
+}
+
+uint64_t timerNow() {
+	LARGE_INTEGER timer_now;
+	QueryPerformanceCounter(&timer_now);
+	const uint64_t now = (uint64_t)timerInt64MulDiv(timer_now.QuadPart - tm_data.start.QuadPart, 1000000000, tm_data.freq.QuadPart);
+	return now;
+}
+
+uint64_t timerSince(uint64_t ticks) {
+	const uint64_t now = timerNow();
+	return now > ticks ? now - ticks : 1;
+}
+
+uint64_t timerLaptime(uint64_t &last_time) {
+	uint64_t dt = 0;
+	uint64_t now = timerNow();
+	if (last_time != 0) {
+		dt = now > last_time ? now - last_time : 1;
+	}
+	last_time = now;
+	return dt;
+}
+
+double timerToSec(uint64_t ticks) {
+	return (double)ticks / 1000000000.0;
+}
+
+double timerToMilli(uint64_t ticks) {
+	return (double)ticks / 1000000.0;
+}
+
+double timerToMicro(uint64_t ticks) {
+	return (double)ticks / 1000.0;
+}
+
+double timerToNano(uint64_t ticks) {
+	return (double)ticks;
+}
+
+// == GPU TIMER =========================================================================================
 
 struct GpuTimer {
 	dxptr<ID3D11Query> query = nullptr;
@@ -18,6 +77,7 @@ struct GpuTimer {
 static size_t gpuTimerAdd(const char *name);
 static void gpuTimerRemove(size_t index);
 static GpuTimer *gpuTimerGet(size_t index);
+static bool gpuTimerPollOne(size_t index);
 static void gpuTimerCapture(size_t index);
 static bool gpuTimerIsReady(size_t index);
 static bool gpuTimerIsReady(GpuTimer &timer);
@@ -28,7 +88,7 @@ static double gpuTimerUs(uint64_t time);
 // == ONCE CLOCK ========================================================================================
 
 OnceClock::OnceClock() {
-	start = stm_now();
+	start = timerNow();
 }
 
 bool OnceClock::after(float seconds) {
@@ -36,7 +96,7 @@ bool OnceClock::after(float seconds) {
 		return false;
 	}
 
-	finished = stm_since(start) >= seconds;
+	finished = timerSince(start) >= seconds;
 	return finished;
 }
 
@@ -52,7 +112,7 @@ bool OnceClock::once() {
 
 CPUClock::CPUClock(const char *name) {
 	setName(name);
-	start = stm_now();
+	start = timerNow();
 }
 
 void CPUClock::setName(const char *name) {
@@ -60,38 +120,38 @@ void CPUClock::setName(const char *name) {
 }
 
 uint64_t CPUClock::getTime() {
-	return stm_since(start);
+	return timerSince(start);
 }
 
 double CPUClock::getNanoseconds() {
-	return stm_ns(stm_since(start));
+	return timerToNano(timerSince(start));
 }
 
 double CPUClock::getMilliseconds() {
-	return stm_ms(stm_since(start));
+	return timerToMilli(timerSince(start));
 }
 
 double CPUClock::getMicroseconds() {
-	return stm_us(stm_since(start));
+	return timerToMicro(timerSince(start));
 }
 
 double CPUClock::getSeconds() {
-	return stm_sec(stm_since(start));
+	return timerToSec(timerSince(start));
 }
 
 void CPUClock::print(LogLevel level) {
-	uint64_t time_passed = stm_since(start);
-	if (stm_sec(time_passed) >= 1.0) {
-		logMessage(level, "[%s] time passed: %.3fsec", debug_name, stm_sec(time_passed));
+	uint64_t time_passed = timerSince(start);
+	if (timerToSec(time_passed) >= 1.0) {
+		logMessage(level, "[%s] time passed: %.3fsec", debug_name, timerToSec(time_passed));
 	}
-	else if (stm_ms(time_passed) >= 1.0) {
-		logMessage(level, "[%s] time passed: %.3fms", debug_name, stm_ms(time_passed));
+	else if (timerToMilli(time_passed) >= 1.0) {
+		logMessage(level, "[%s] time passed: %.3fms", debug_name, timerToMilli(time_passed));
 	}
-	else if (stm_us(time_passed) >= 1.0) {
-		logMessage(level, "[%s] time passed: %.3fus", debug_name, stm_us(time_passed));
+	else if (timerToMicro(time_passed) >= 1.0) {
+		logMessage(level, "[%s] time passed: %.3fus", debug_name, timerToMicro(time_passed));
 	}
 	else {
-		logMessage(level, "[%s] time passed: %.3fns", debug_name, stm_ns(time_passed));
+		logMessage(level, "[%s] time passed: %.3fns", debug_name, timerToNano(time_passed));
 	}
 }
 
@@ -119,11 +179,15 @@ void GPUClock::setName(const char *name) {
 }
 
 void GPUClock::start() {
-	gpuTimerCapture(start_timer);
+	if (!gpuTimerPollOne(start_timer)) {
+		gpuTimerCapture(start_timer);
+	}
 }
 
 void GPUClock::end() {
-	gpuTimerCapture(end_timer);
+	if (!gpuTimerPollOne(end_timer)) {
+		gpuTimerCapture(end_timer);
+	}
 }
 
 void GPUClock::print(LogLevel level) {
@@ -160,9 +224,11 @@ void GPUClock::print(LogLevel level) {
 }
 
 bool GPUClock::isReady() {
-	bool is_ready = false;
-	if (GpuTimer *t = gpuTimerGet(start_timer)) is_ready |= (bool)t->value;
-	if (GpuTimer *t = gpuTimerGet(end_timer)) is_ready |= (bool)t->value;
+	gpuTimerPollOne(start_timer);
+	gpuTimerPollOne(end_timer);
+	bool is_ready = true;
+	if (GpuTimer *t = gpuTimerGet(start_timer)) is_ready &= (bool)t->value;
+	if (GpuTimer *t = gpuTimerGet(end_timer))   is_ready &= (bool)t->value;
 	return is_ready;
 }
 
@@ -184,7 +250,7 @@ void gpuTimerInit() {
 		fatal("couldn't create disjoint query");
 	}
 
-	gpu_timers.emplace_back(mem::move(disjoint_timer));
+	gpu_timers.push(mem::move(disjoint_timer));
 }
 
 void gpuTimerCleanup() {
@@ -206,13 +272,12 @@ void gpuTimerEndFrame() {
 void gpuTimerPoll() {
 	GpuTimer &disjoint = gpu_timers[0];
 	disjoint.should_read = false;
-	HRESULT hr;
 	
 	if (gpuTimerIsReady(disjoint)) {
 		disjoint.should_read = true;
 		
 		D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disjoint_data;
-		hr = gfx::context->GetData(disjoint.query, &disjoint_data, sizeof(disjoint_data), 0);
+		HRESULT hr = gfx::context->GetData(disjoint.query, &disjoint_data, sizeof(disjoint_data), 0);
 		if (FAILED(hr)) {
 			gfx::logD3D11messages();
 			return;
@@ -223,21 +288,6 @@ void gpuTimerPoll() {
 		}
 
 		disjoint.value = disjoint_data.Frequency;
-	}
-
-	for (size_t i = 1; i < gpu_timers.size(); ++i) {
-		GpuTimer &timer = gpu_timers[i];
-		
-		if (!timer.is_valid || !timer.should_read || !gpuTimerIsReady(i)) {
-			timer.value = 0;
-			continue;
-		}
-
-		hr = gfx::context->GetData(timer.query, &timer.value, sizeof(UINT64), 0);
-		if (FAILED(hr)) {
-			err("couldn't get data from timer");
-			gfx::logD3D11messages();
-		}
 	}
 }
 
@@ -259,7 +309,7 @@ static size_t gpuTimerAdd(const char *name) {
 	HRESULT hr = gfx::device->CreateQuery(&desc, &new_timer.query);
 	if (FAILED(hr)) err("couldn't create start query");
 	
-	gpu_timers.emplace_back(mem::move(new_timer));
+	gpu_timers.push(mem::move(new_timer));
 	
 	return index;
 }
@@ -275,6 +325,24 @@ static GpuTimer *gpuTimerGet(size_t index) {
 		return &gpu_timers[index];
 	}
 	return nullptr;
+}
+
+static bool gpuTimerPollOne(size_t index) {
+	if (GpuTimer *timer = gpuTimerGet(index)) {
+		if (!timer->is_valid || !timer->should_read || !gpuTimerIsReady(index)) {
+			timer->value = 0;
+			return false;
+		}
+
+		HRESULT hr = gfx::context->GetData(timer->query, &timer->value, sizeof(UINT64), 0);
+		if (FAILED(hr)) {
+			err("couldn't get data from timer");
+			gfx::logD3D11messages();
+			return false;
+		}
+		return true;
+	}
+	return false;
 }
 
 static void gpuTimerCapture(size_t index) {

@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include <sokol_time.h>
 #include <imgui.h>
 
 #define WIN32_LEAN_AND_MEAN
@@ -15,6 +14,7 @@
 #include "utils.h"
 #include "input.h"
 #include "options.h"
+#include "timer.h"
 
 static const char *level_strings[(int)LogLevel::Count] = {
     "[NONE] ",
@@ -66,7 +66,7 @@ void logMessage(LogLevel level, const char *fmt, ...) {
 }
 
 void logMessageV(LogLevel level, const char *fmt, va_list vlist) {
-    double time_millis = stm_ms(stm_now());
+    double time_millis = timerToMilli(timerNow());
     double time_seconds = time_millis / 1000.0;
     int minutes = (int)(time_seconds / 60.0);
     int seconds = (int)(time_seconds) % 60;
@@ -159,7 +159,7 @@ void Logger::endLine(LogLevel level, int minutes, int seconds, int millis) {
 
 void Logger::draw() {
     static bool is_open = true;
-    if (isKeyPressed(KEY_L)) is_open = true;
+    if (isActionPressed(Action::OpenLogger)) is_open = true;
     if (!is_open) return;
     if (!ImGui::Begin("Logger", &is_open)) {
         ImGui::End();

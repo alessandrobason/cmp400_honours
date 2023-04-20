@@ -19,9 +19,6 @@
     <Filter Include="ImGui\backends">
       <UniqueIdentifier>{ab8bcac1-6f11-4fb4-80cb-6ff701cd56b7}</UniqueIdentifier>
     </Filter>
-    <Filter Include="sokol">
-      <UniqueIdentifier>{add8c3b9-0d7d-49f4-8965-9128b99701e6}</UniqueIdentifier>
-    </Filter>
     <Filter Include="stb">
       <UniqueIdentifier>{a5352279-4cc9-4eba-b022-f063aeb18e90}</UniqueIdentifier>
     </Filter>
@@ -72,9 +69,6 @@
     <ClCompile Include="..\src\input.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\libs\sokol\sokol.c">
-      <Filter>sokol</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\widgets.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -106,6 +100,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\camera.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\brush.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -155,9 +152,6 @@
     <ClInclude Include="..\src\maths.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\libs\sokol\sokol_time.h">
-      <Filter>sokol</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\widgets.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -171,9 +165,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\macros.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\slice.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\libs\stb\stb_image_write.h">
@@ -193,6 +184,12 @@
     </ClInclude>
     <ClInclude Include="..\libs\stb\stb_image.h">
       <Filter>stb</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\brush.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\handle.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

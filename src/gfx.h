@@ -3,19 +3,16 @@
 #include <stdint.h>
 
 #include "d3d11_fwd.h"
-#include "slice.h"
 #include "vec.h"
 #include "utils.h"
+#include "handle.h"
 
 enum class ShaderType : uint8_t {
-	None     = 0,
-	Vertex   = 1 << 0,
-	Fragment = 1 << 1,
-	Compute  = 1 << 2,
+	None,
+	Vertex,
+	Fragment,
+	Compute,
 };
-
-inline ShaderType &operator|=(ShaderType &self, ShaderType b) { self = ShaderType((uint8_t)self | (uint8_t)b); return self; }
-inline uint8_t operator&(ShaderType a, ShaderType b) { return (uint8_t)a & (uint8_t)b; }
 
 struct Colour;
 
@@ -32,26 +29,42 @@ struct Buffer {
 		Count,
 	};
 
-	Buffer() = default;
+	// Buffer() = default;
 	Buffer(const Buffer &buf) = delete;
 	Buffer(Buffer &&buf);
 	~Buffer();
-
 	Buffer &operator=(Buffer &&buf);
 
+	static Handle<Buffer> make();
+	static Handle<Buffer> makeConstant(size_t type_size, Usage usage, bool can_write = true, bool can_read = false, const void *initial_data = nullptr, size_t data_count = 1);
+	static Handle<Buffer> makeStructured(size_t type_size, size_t count = 1, const void *initial_data = nullptr);
+	static Buffer *get(Handle<Buffer> handle);
+	static bool isHandleValid(Handle<Buffer> handle);
+	static void cleanAll();
+
 	template<typename T>
-	bool create(Usage usage, bool can_write = true, bool can_read = false) {
-		return create(sizeof(T), usage, can_write, can_read);
+	static Handle<Buffer> makeConstant(Usage usage, bool can_write = true, bool can_read = false, const void *initial_data = nullptr, size_t data_count = 1) {
+		return makeConstant(sizeof(T), usage, can_write, can_read, initial_data, data_count);
 	}
 
 	template<typename T>
-	bool createStructured(size_t count = 1, const void* initial_data = nullptr) {
-		return createStructured(sizeof(T), count, initial_data);
+	static Handle<Buffer> makeStructured(size_t count = 1, const void* initial_data = nullptr) {
+		return makeStructured(sizeof(T), count, initial_data);
 	}
 
-	bool create(size_t type_size, Usage usage, bool can_write = true, bool can_read = false);
-	bool create(size_t type_size, Usage usage, const void *initial_data, size_t data_count = 1, bool can_write = true, bool can_read = false);
-	bool createStructured(size_t type_size, size_t count = 1, const void *initial_data = nullptr);
+	// template<typename T>
+	// bool create(Usage usage, bool can_write = true, bool can_read = false) {
+	// 	return create(sizeof(T), usage, can_write, can_read);
+	// }
+
+	// template<typename T>
+	// bool createStructured(size_t count = 1, const void* initial_data = nullptr) {
+	// 	return createStructured(sizeof(T), count, initial_data);
+	// }
+
+	// bool create(size_t type_size, Usage usage, bool can_write = true, bool can_read = false);
+	// bool create(size_t type_size, Usage usage, bool can_write = true, bool can_read = false, const void *initial_data = nullptr, size_t data_count = 1);
+	// bool createStructured(size_t type_size, size_t count = 1, const void *initial_data = nullptr);
 	void cleanup();
 
 	template<typename T>
@@ -76,6 +89,9 @@ struct Buffer {
 	dxptr<ID3D11Buffer> buffer = nullptr;
 	dxptr<ID3D11UnorderedAccessView> uav = nullptr;
 	dxptr<ID3D11ShaderResourceView> srv = nullptr;
+
+private:
+	Buffer() = default;
 };
 
 /* ==========================================
@@ -92,59 +108,52 @@ struct Shader {
 
 	bool load(const char *filename, ShaderType type);
 
-	//bool loadVertex(const char *filename);
 	bool loadVertex(const void *data, size_t len);
-	//bool loadFragment(const char *filename);
 	bool loadFragment(const void *data, size_t len);
-	//bool loadCompute(const char *filename);
 	bool loadCompute(const void *data, size_t len);
-	//bool load(const char *vertex, const char *fragment, const char *compute);
 
-	int addBuffer(size_t type_size, Buffer::Usage usage = Buffer::Usage::Default, bool can_write = true, bool can_read = false);
-	int addBuffer(size_t type_size, Buffer::Usage usage, const void *initial_data, size_t data_count = 1, bool can_write = true, bool can_read = false);
-	template<typename T>
-	int addBuffer(Buffer::Usage usage = Buffer::Usage::Default, bool can_write = true, bool can_read = false) { return addBuffer(sizeof(T), usage, can_write, can_read); }
-	template<typename T>
-	int addBuffer(Buffer::Usage usage, const void *initial_data, size_t data_count = 1, bool can_write = true, bool can_read = false) {
-		return addBuffer(sizeof(T), usage, initial_data, data_count, can_write, can_read);
-	}
+	// int addBuffer(size_t type_size, Buffer::Usage usage = Buffer::Usage::Default, bool can_write = true, bool can_read = false);
+	// int addBuffer(size_t type_size, Buffer::Usage usage, const void *initial_data, size_t data_count = 1, bool can_write = true, bool can_read = false);
+	// template<typename T>
+	// int addBuffer(Buffer::Usage usage = Buffer::Usage::Default, bool can_write = true, bool can_read = false) { return addBuffer(sizeof(T), usage, can_write, can_read); }
+	// template<typename T>
+	// int addBuffer(Buffer::Usage usage, const void *initial_data, size_t data_count = 1, bool can_write = true, bool can_read = false) {
+	// 	static_assert(sizeof(T) % 16 == 0);
+	// 	return addBuffer(sizeof(T), usage, initial_data, data_count, can_write, can_read);
+	// }
 
-	int addStructuredBuf(size_t type_size, size_t count = 1, const void* initial_data = nullptr);
-	template<typename T>
-	int addStructuredBuf(size_t count = 1, const void* initial_data = nullptr) {
-		return addStructuredBuf(sizeof(T), count, initial_data);
-	}
+	// int addStructuredBuf(size_t type_size, size_t count = 1, const void* initial_data = nullptr);
+	// template<typename T>
+	// int addStructuredBuf(size_t count = 1, const void* initial_data = nullptr) {
+	// 	static_assert(sizeof(T) % 16 == 0);
+	// 	return addStructuredBuf(sizeof(T), count, initial_data);
+	// }
 
-	Buffer *getBuffer(int index);
+	// Buffer *getBuffer(int index);
 
 	bool addSampler();
 	void setSRV(Slice<ID3D11ShaderResourceView *> textures);
 
 	void cleanup();
 
-	//bool update(float time);
 	void bind();
-	//void unbind(int srv_count = 0, int buffer_count = 0);
-	void bindCBuf(int buffer, unsigned int slot = 0);
-	void bindCBuffers(Slice<int> cbuffers = {});
+	void bindCBuf(Handle<Buffer> handle, unsigned int slot = 0);
+	void bindCBuffers(Slice<Handle<Buffer>> handles = {});
 	void unbindCBuf(unsigned int slot = 0);
 	void unbindCBuffers(int count = 1, unsigned int slot = 0);
+	// void bindCBuf(int buffer, unsigned int slot = 0);
+	// void bindCBuffers(Slice<int> cbuffers = {});
+	// void unbindCBuf(unsigned int slot = 0);
+	// void unbindCBuffers(int count = 1, unsigned int slot = 0);
 
-	void dispatch(const vec3u &threads, Slice<int> cbuffers = {}, Slice<ID3D11ShaderResourceView *> srvs = {}, Slice<ID3D11UnorderedAccessView *> uavs = {});
+	void dispatch(const vec3u &threads, Slice<Handle<Buffer>> cbuffers = {}, Slice<ID3D11ShaderResourceView *> srvs = {}, Slice<ID3D11UnorderedAccessView *> uavs = {});
+	//void dispatch(const vec3u &threads, Slice<int> cbuffers = {}, Slice<ID3D11ShaderResourceView *> srvs = {}, Slice<ID3D11UnorderedAccessView *> uavs = {});
 
 	dxptr<ID3D11DeviceChild> shader = nullptr;
 	// either input layout (if VS) or sampler state (if PS)
 	dxptr<ID3D11DeviceChild> extra = nullptr;
-	arr<Buffer> buffers;
+	// arr<Buffer> buffers;
 	ShaderType shader_type = ShaderType::None;
-#if 0
-	dxptr<ID3D11VertexShader> vert_sh = nullptr;
-	dxptr<ID3D11PixelShader> pixel_sh = nullptr;
-	dxptr<ID3D11ComputeShader> compute_sh = nullptr;
-	dxptr<ID3D11InputLayout> layout = nullptr;
-	arr<Buffer> buffers;
-	dxptr<ID3D11SamplerState> sampler = nullptr;
-#endif
 };
 
 /* ==========================================
@@ -236,14 +245,26 @@ struct Texture2D {
    ========================================== */
 
 struct Texture3D {
+	enum class Type {
+		uint8,
+		uint16,
+		uint32,
+		sint8,
+		sint16,
+		sint32,
+		float16, 
+		float32,
+		count,
+	};
+
 	Texture3D() = default;
 	Texture3D(const Texture3D &rt) = delete;
 	Texture3D(Texture3D &&rt);
 	~Texture3D();
 	Texture3D &operator=(Texture3D &&rt);
 
-	inline bool create(const vec3u &texsize) { return create(texsize.x, texsize.y, texsize.z); }
-	bool create(int width, int height, int depth);
+	inline bool create(const vec3u &texsize, Type type) { return create(texsize.x, texsize.y, texsize.z, type); }
+	bool create(int width, int height, int depth, Type type);
 	void cleanup();
 
 	vec3i size = 0;

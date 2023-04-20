@@ -1,44 +1,24 @@
 Texture3D<float> vol_tex : register(t0);
 
-cbuffer FindData : register(b0) {
+cbuffer BrushFindData : register(b0) {
 	float3 pos;
-	float padding__0;
+	float depth;
 	float3 dir;
-	float padding__1;
-#if 0
-	float2 rtv_pos;
-	float2 rtv_size;
+	float padding__0;
+};
+
+struct BrushData {
 	float3 pos;
-	float aspect_ratio;
-	float3 fwd;
-	float zoom;
-	float3 right;
-	float padding___1;
-	float3 up;
-	float padding___2;
-	float2 mouse_pos;
-	float2 padding___3;
-#endif
-};
-
-cbuffer TexData : register(b1) {
-    float3 tex_size;
-    float padding__2;
-	float3 tex_position;
-	float padding__3;
-};
-
-struct BrushPosData {
-	float3 brush_pos;
 	float padding__4;
-	float3 brush_norm;
+	float3 norm;
 	float padding__5;
 };
 
-RWStructuredBuffer<BrushPosData> brush_data;
+RWStructuredBuffer<BrushData> brush;
+static float3 vol_tex_size = 0;
 
 float3 worldToTex(float3 world) {
-	return world - tex_position + tex_size / 2.;
+	return world + vol_tex_size / 2.;
 }
 
 float trilinearInterpolation(float3 pos, float3 size) {
@@ -75,11 +55,15 @@ float trilinearInterpolation(float3 pos, float3 size) {
 }
 
 float preciseMap(float3 coords) {
-	return trilinearInterpolation(coords, tex_size);
+	return trilinearInterpolation(coords, vol_tex_size);
 }
 
 float map(float3 coords) {
 	return vol_tex.Load(int4(coords, 0));
+}
+
+bool isOutsideTexture(float3 pos) {
+	return any(pos < 0) || any(pos >= vol_tex_size);
 }
 
 float3 calcNormal(float3 pos) {
@@ -116,8 +100,8 @@ void rayMarch(float3 ro, float3 rd, out float3 out_normal, out float3 out_pos) {
 		// meaning 8 texture lookups)
 
 		float3 tex_pos = worldToTex(current_pos);
-		if (!all(tex_pos >= 0 && tex_pos < tex_size)) {
-			float distance = length(current_pos - tex_position) - tex_size.x * 0.5;
+		if (isOutsideTexture(tex_pos)) {
+			float distance = length(current_pos) - vol_tex_size.x * 0.5;
 			closest = max(abs(distance), 1);
 		}
 		else {
@@ -147,10 +131,14 @@ void rayMarch(float3 ro, float3 rd, out float3 out_normal, out float3 out_pos) {
 
 [numthreads(1, 1, 1)]
 void main() {
+	vol_tex.GetDimensions(vol_tex_size.x, vol_tex_size.y, vol_tex_size.z);
+
     rayMarch(
         pos, 
         dir, 
-        brush_data[0].brush_norm,
-        brush_data[0].brush_pos
+        brush[0].norm,
+        brush[0].pos
     );
+
+	brush[0].pos += (-brush[0].norm) * depth;
 }

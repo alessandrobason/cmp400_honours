@@ -136,6 +136,25 @@ enum Keys {
 	KEY__COUNT,
 };
 
+enum class Action {
+	ResetZoom,
+	CloseProgram,
+	TakeScreenshot,
+	OpenLogger,
+	RotateCameraHorPos,
+	RotateCameraHorNeg,
+	RotateCameraVerPos,
+	RotateCameraVerNeg,
+	ZoomIn,
+	ZoomOut,
+	Count
+};
+
+bool isActionDown(Action action);
+bool isActionUp(Action action);
+bool isActionPressed(Action action);
+void setActionKey(Action action, Keys key);
+
 bool isKeyDown(Keys key);
 bool isKeyUp(Keys key);
 bool isKeyPressed(Keys key);

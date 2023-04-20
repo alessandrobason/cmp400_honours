@@ -9,7 +9,8 @@ constexpr float y_max_angle = 90.f;
 constexpr float radius = 270.f;
 
 static bool isMouseInsideRTV() {
-	return gfx::getMainRTVBounds().contains(getMousePos());
+	return gfx::isMainRTVActive() &&
+		   gfx::getMainRTVBounds().contains(getMousePos());
 }
 
 Camera::Camera() {
@@ -26,28 +27,44 @@ void Camera::update() {
 		zoom_exp += wheel * win::dt * options.zoom_sensitivity;
 	}
 
-	if (isKeyPressed(KEY_Z)) {
+	float kb_zoom = (float)(isActionDown(Action::ZoomIn) - isActionDown(Action::ZoomOut));
+	zoom_exp += kb_zoom * 0.1f * win::dt * options.zoom_sensitivity;
+
+	if (isActionPressed(Action::ResetZoom)) {
 		zoom_exp = 1.f;
 	}
 
-	// Input stuff to check that the user has started the rotation with the mouse inside the render target
+	// keyboard input in case the user has no mouse
+	const vec2 key_rel = vec2(
+		(float)(isActionDown(Action::RotateCameraHorPos) - isActionDown(Action::RotateCameraHorNeg)),
+		(float)(isActionDown(Action::RotateCameraVerPos) - isActionDown(Action::RotateCameraVerNeg))
+	) * 2.f;
+	bool any_kb_input = any(key_rel != 0);
 
-	if (!isMouseDown(MOUSE_RIGHT)) {
-		is_dragging = false;
-		return;
-	}
+	vec2 look_offset = key_rel;
 
-	if (isMousePressed(MOUSE_RIGHT)) {
-		is_dragging = isMouseInsideRTV();
-	}
+	if (!any_kb_input) {
+		// Input stuff to check that the user has started the rotation with the mouse inside the render target
 
-	if (!is_dragging) {
-		return;
+		if (!isMouseDown(MOUSE_RIGHT)) {
+			is_dragging = false;
+			return;
+		}
+
+		if (isMousePressed(MOUSE_RIGHT)) {
+			is_dragging = isMouseInsideRTV();
+		}
+
+		if (!is_dragging) {
+			return;
+		}
+
+		look_offset = getMousePosRel();
 	}
 
 	// Calculate how much to rotate
 
-	const vec2 offset = (vec2)getMousePosRel() * win::dt * options.look_sensitivity;
+	const vec2 offset = look_offset * win::dt * options.look_sensitivity;
 	angle.x -= offset.x;
 	angle.y += offset.y;
 	angle.y = math::clamp(angle.y, -y_max_angle, y_max_angle);
@@ -88,6 +105,10 @@ vec3 Camera::getMouseDir() const {
 	uv.y /= -aspect_ratio;
 
 	return norm(fwd + right * uv.x + up * uv.y);
+}
+
+bool Camera::shouldSculpt() const {
+	return isMousePressed(MOUSE_LEFT) && isMouseInsideRTV();
 }
 
 #if 0

@@ -1,6 +1,8 @@
 #pragma once
 
-#include <cmath>
+#include <math.h>
+
+inline float sqrt(float v) { return sqrtf(v); }
 
 #pragma warning(push)
 #pragma warning(disable: 4201) // nonstandard extension used: nameless struct/union
