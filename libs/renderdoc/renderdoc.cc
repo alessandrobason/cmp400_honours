@@ -20,10 +20,12 @@ bool renderdocCleanup() {
 	return rdco_mod ? FreeLibrary(rdco_mod) : false;
 }
 
-void renderdocCaptureStart() {
+bool renderdocCaptureStart() {
 	if (rdoc_api) {
 		rdoc_api->StartFrameCapture(nullptr, nullptr);
+		return true;
 	}
+	return false;
 }
 
 void renderdocCaptureEnd() {

@@ -46,6 +46,12 @@
     <Filter Include="renderdoc">
       <UniqueIdentifier>{57dcbfcd-f539-43fd-a387-39be2bed57c4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\gui">
+      <UniqueIdentifier>{f4aa0d08-699a-4480-9ea4-681fe3ff2f6a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\gui">
+      <UniqueIdentifier>{aff898a6-932d-41ff-8ca9-04a1f351cb1f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cc">
@@ -87,9 +93,6 @@
     <ClCompile Include="..\src\camera.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\brush.cc">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\matrix.cc">
       <Filter>Source Files\math</Filter>
     </ClCompile>
@@ -129,6 +132,12 @@
     <ClCompile Include="..\libs\renderdoc\renderdoc.cc">
       <Filter>renderdoc</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\brush_editor.cc">
+      <Filter>Source Files\gui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\material_editor.cc">
+      <Filter>Source Files\gui</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\options.h">
@@ -158,9 +167,6 @@
     <ClInclude Include="..\libs\ImGui\backends\imgui_impl_win32.h">
       <Filter>ImGui\backends</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\widgets.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\libs\stb\stb_image_write.h">
       <Filter>stb</Filter>
     </ClInclude>
@@ -172,9 +178,6 @@
     </ClInclude>
     <ClInclude Include="..\libs\stb\stb_image.h">
       <Filter>stb</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\brush.h">
-      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\buffer.h">
       <Filter>Header Files\gfx</Filter>
@@ -235,6 +238,15 @@
     </ClInclude>
     <ClInclude Include="..\libs\renderdoc\renderdoc.h">
       <Filter>renderdoc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\widgets.h">
+      <Filter>Header Files\gui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\brush_editor.h">
+      <Filter>Header Files\gui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\material_editor.h">
+      <Filter>Header Files\gui</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

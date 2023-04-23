@@ -14,6 +14,11 @@ cbuffer ShaderData : register(b0) {
 	float padding__0;
 };
 
+cbuffer Material : register(b1) {
+	float3 albedo;
+	int has_texture;
+};
+
 struct BrushData {
 	float3 pos;
 	float radius;
@@ -21,18 +26,16 @@ struct BrushData {
 	float padding__4;
 };
 
-struct Material {
-	float3 albedo;
-	float padding;
-};
-
 #define MAX_DIST 10000.
+#define PI 3.14159265
 
-Texture3D<float> vol_tex : register(t0);
-// Texture3D<uint2> material_tex : register(t1);
-Texture3D<float3> material_tex : register(t1);
-StructuredBuffer<BrushData> brush : register(t2);
-StructuredBuffer<Material> materials : register(t3);
+StructuredBuffer<BrushData> brush : register(t0);
+Texture3D<float> vol_tex : register(t1);
+Texture2D material_tex : register(t2);
+Texture2D bg_hdr : register(t3);
+Texture2D irradiance_map : register(t4);
+
+sampler tex_sampler;
 
 static float3 vol_tex_size = 0;
 static float3 vol_tex_centre = 0;
@@ -101,54 +104,48 @@ float3 calcNormal(float3 pos) {
 }
 
 float getMouseDist(float3 pos) {
-	// const float radius = 18.;
 	return length(pos - brush[0].pos) - brush[0].radius;
 }
 
-// uint getMaterialIndex(float3 coords) {
-// 	return material_tex.Load(int4(round(coords), 0));
-// }
+float3 getTriplanarBlend(float3 pos, float3 normal) {
+	const float3 blend = abs(normal);
+	const float3 weights = blend / dot(blend, 1.);
+	const float3 tex_coords = pos / vol_tex_size;
 
-// float3 getAlbedo(uint index) {
-// 	return materials[index].albedo;
-// }
+	const float3 blend_r = material_tex.SampleLevel(tex_sampler, tex_coords.yz, 0).rgb * weights.x;
+	const float3 blend_g = material_tex.SampleLevel(tex_sampler, tex_coords.xz, 0).rgb * weights.y;
+	const float3 blend_b = material_tex.SampleLevel(tex_sampler, tex_coords.xy, 0).rgb * weights.z;
 
-#define FIRST_INDEX_MASK    (255)
-#define FIRST_INDEX_SHIFT   (0)
-#define SECOND_INDEX_MASK   (65280)
-#define SECOND_INDEX_SHIFT  (8)
-// #define WEIGHT_MASK         (4294901760)
-// #define WEIGHT_SHIFT        (16)
-#define WEIGHT_MAX          (65536.)
-
-#define GET_FIRST_INDEX(ind)  ((ind & FIRST_INDEX_MASK)  >> FIRST_INDEX_SHIFT)
-#define GET_SECOND_INDEX(ind) ((ind & SECOND_INDEX_MASK) >> SECOND_INDEX_SHIFT)
-// #define GET_WEIGHT(ind)       ((ind & WEIGHT_MASK)       >> WEIGHT_SHIFT)
-
-// #define SECOND_INDEX_MASK   (16711680)
-// #define SECOND_INDEX_SHIFT  (16)
-// #define SECOND_WEIGHT_MASK  (4278190080)
-// #define SECOND_WEIGHT_SHIFT (24)
-// #define GET_FIRST_WEIGHT(ind)  ((ind & FIRST_WEIGHT_MASK)  >> FIRST_WEIGHT_SHIFT)
-// #define GET_SECOND_WEIGHT(ind) ((ind & SECOND_WEIGHT_MASK) >> SECOND_WEIGHT_SHIFT)
-
-float3 getAlbedo(float3 pos) {
-	return material_tex.Load(int4(round(pos), 0));
-	// const int3 coords = round(pos);
-	// const uint2 mat_index = material_tex.Load(int4(coords, 0));
-	// const uint first_index   = GET_FIRST_INDEX(mat_index.y);
-	// const uint second_index  = GET_SECOND_INDEX(mat_index.y);
-	// if (second_index) {
-	// 	const uint weight_uint = mat_index.x;
-	// 	const float weight = weight_uint / WEIGHT_MAX;
-	// 	const float3 first_albedo = materials[first_index].albedo;
-	// 	const float3 second_albedo = materials[second_index].albedo;
-	// 	return lerp(second_albedo, first_albedo, weight);
-	// }
-	// else {
-	// 	return materials[first_index].albedo;
-	// }
+	return blend_r + blend_g + blend_b;
 }
+
+float3 getAlbedo(float3 pos, float3 normal) {
+	float3 colour = albedo;
+	if (has_texture) colour *= getTriplanarBlend(pos, normal);
+	return colour;
+}
+
+float3 getBackground(float3 dir) {
+	//float2 uv = float2(
+	//	atan2(dir.x, dir.z) / (2 * PI) + 0.5,
+	//	-(dir.y * 0.5 + 0.5)
+	//);
+	float2 uv;
+	uv.x = 0.5 + atan2(dir.z, dir.x) / (2 * PI);
+	uv.y = 0.5 - asin(dir.y) / PI;
+	return bg_hdr.SampleLevel(tex_sampler, uv, 0).rgb;
+}
+
+float3 getIrradiance(float3 dir) {
+	float2 uv;
+	uv.x = atan2(dir.x, dir.z) / (2 * PI) + 0.5;
+	uv.y = -(dir.y * 0.5 + 0.5);
+	return irradiance_map.SampleLevel(tex_sampler, uv, 0).rgb;
+}
+
+float3 fresnelSchlickRoughness(float cosTheta, float3 F0, float roughness) {
+    return F0 + (max(1.0 - roughness, F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}   
 
 float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 	float distance_traveled = 0;
@@ -203,11 +200,21 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 			if (closest < MIN_HIT_DISTANCE) {
 				const float3 normal = calcNormal(tex_pos);
 				// const float3 albedo = getAlbedo(getMaterialIndex(tex_pos));
-				const float3 albedo = getAlbedo(tex_pos);
+				//const float3 albedo = getAlbedo(tex_pos);
 				// const float3 albedo = pow(normal * .5 + .5, 4.);
+				const float3 albedo = getAlbedo(tex_pos, normal);
+				//float diffuse_intensity = max(0, dot(normal, light_dir));
+				//final_colour *= albedo * saturate(diffuse_intensity + 0.2);
+				const float3 irradiance = getIrradiance(normal);
+				//const float F0 = 0.04;
+				//const float3 kS = fresnelSchlickRoughness(max(dot(normal, ray_dir), 0), F0, 0.1);
+				//const float3 kD = (1. - kS);
+				const float3 diffuse = irradiance * albedo;
+				//const float3 ambient = (kD * diffuse) * 1.0;
+				//// const float3 ambient = irradiance * 0.05;
+				final_colour *= diffuse;
+				// final_colour *= irradiance * albedo;
 
-				float diffuse_intensity = max(0, dot(normal, light_dir));
-				final_colour *= albedo * saturate(diffuse_intensity + 0.2);
 
 				if (bounce_count >= MAX_BOUNCES) {
 					break;
@@ -230,7 +237,8 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 	}
 
 	if (step_count >= MAX_STEPS) {
-		final_colour *= lerp(top_sky_colour, bottom_sky_colour, ray_dir.y * .5 + .5);
+		// final_colour *= lerp(top_sky_colour, bottom_sky_colour, ray_dir.y * .5 + .5);
+		final_colour *= sqrt(getBackground(ray_dir));
 	}
 
 	if (is_mouse) {
@@ -253,5 +261,6 @@ float4 main(PixelInput input) : SV_TARGET {
 
 	float3 colour = rayMarch(ray_origin, ray_dir);
 	
+	return float4((colour), 1.0);
 	return float4(sqrt(colour), 1.0);
 }

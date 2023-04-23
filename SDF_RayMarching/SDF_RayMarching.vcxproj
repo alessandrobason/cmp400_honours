@@ -174,12 +174,13 @@
     <ClCompile Include="..\libs\ImGui\imgui_widgets.cpp" />
     <ClCompile Include="..\libs\renderdoc\renderdoc.cc" />
     <ClCompile Include="..\libs\stb\stb.c" />
-    <ClCompile Include="..\src\brush.cc" />
+    <ClCompile Include="..\src\brush_editor.cc" />
     <ClCompile Include="..\src\buffer.cc" />
     <ClCompile Include="..\src\camera.cc" />
     <ClCompile Include="..\src\colours.cc" />
     <ClCompile Include="..\src\ini.cc" />
     <ClCompile Include="..\src\input.cc" />
+    <ClCompile Include="..\src\material_editor.cc" />
     <ClCompile Include="..\src\matrix.cc" />
     <ClCompile Include="..\src\mesh.cc" />
     <ClCompile Include="..\src\options.cc" />
@@ -206,7 +207,7 @@
     <ClInclude Include="..\libs\renderdoc\renderdoc_app.h" />
     <ClInclude Include="..\libs\stb\stb_image.h" />
     <ClInclude Include="..\libs\stb\stb_image_write.h" />
-    <ClInclude Include="..\src\brush.h" />
+    <ClInclude Include="..\src\brush_editor.h" />
     <ClInclude Include="..\src\buffer.h" />
     <ClInclude Include="..\src\camera.h" />
     <ClInclude Include="..\src\colour.h" />
@@ -216,6 +217,7 @@
     <ClInclude Include="..\src\handle.h" />
     <ClInclude Include="..\src\ini.h" />
     <ClInclude Include="..\src\input.h" />
+    <ClInclude Include="..\src\material_editor.h" />
     <ClInclude Include="..\src\maths.h" />
     <ClInclude Include="..\src\matrix.h" />
     <ClInclude Include="..\src\mesh.h" />

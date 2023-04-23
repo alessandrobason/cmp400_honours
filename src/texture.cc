@@ -204,12 +204,14 @@ Texture2D& Texture2D::operator=(Texture2D&& rt) {
 }
 
 bool Texture2D::load(const char* filename) {
+	cleanup();
+
 	int channels = 0;
-	unsigned char *data = stbi_load(filename, &size.x, &size.y, &channels, 4);
+	unsigned char *data = stbi_load(filename, &size.x, &size.y, &channels, STBI_rgb_alpha);
 	if (!data) {
 		return false;
 	}
-	
+
 	D3D11_TEXTURE2D_DESC desc;
 	mem::zero(desc);
 	desc.Width = size.x;
@@ -220,11 +222,11 @@ bool Texture2D::load(const char* filename) {
 	desc.SampleDesc.Count = 1;
 	desc.Usage = D3D11_USAGE_IMMUTABLE;
 	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-	
+
 	D3D11_SUBRESOURCE_DATA data_desc;
 	mem::zero(data_desc);
+	data_desc.SysMemPitch = size.x * STBI_rgb_alpha;
 	data_desc.pSysMem = data;
-	data_desc.SysMemPitch = size.x * channels;
 
 	HRESULT hr = gfx::device->CreateTexture2D(&desc, &data_desc, &texture);
 	stbi_image_free(data);
@@ -246,6 +248,54 @@ bool Texture2D::load(const char* filename) {
 		return false;
 	}
 	
+	return true;
+}
+
+bool Texture2D::loadHDR(const char *filename) {
+	cleanup();
+
+	int channels = 0;
+	float *data = stbi_loadf(filename, &size.x, &size.y, &channels, 4);
+	if (!data) {
+		return false;
+	}
+
+	D3D11_TEXTURE2D_DESC desc;
+	mem::zero(desc);
+	desc.Width = size.x;
+	desc.Height = size.y;
+	desc.MipLevels = 1;
+	desc.ArraySize = 1;
+	desc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	desc.SampleDesc.Count = 1;
+	desc.Usage = D3D11_USAGE_IMMUTABLE;
+	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+
+	D3D11_SUBRESOURCE_DATA data_desc;
+	mem::zero(data_desc);
+	data_desc.SysMemPitch = size.x * 4 * sizeof(float);
+	data_desc.pSysMem = data;
+
+	HRESULT hr = gfx::device->CreateTexture2D(&desc, &data_desc, &texture);
+	stbi_image_free(data);
+	if (FAILED(hr)) {
+		err("couldn't create 2D texture");
+		return false;
+	}
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc;
+	mem::zero(srv_desc);
+	srv_desc.Format = desc.Format;
+	srv_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	srv_desc.Texture2D.MipLevels = 1;
+
+	hr = gfx::device->CreateShaderResourceView(texture, &srv_desc, &srv);
+	if (FAILED(hr)) {
+		err("couldn't create 2D texture's SRV");
+		cleanup();
+		return false;
+	}
+
 	return true;
 }
 

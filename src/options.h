@@ -6,7 +6,8 @@
 struct Options {
 	// gfx
 	bool vsync            = true;
-	vec2u resolution = vec2u(1920, 1080);
+	vec2u resolution      = vec2u(1920, 1080);
+	bool auto_capture     = false;
 
 	// camera
 	float zoom_sensitivity = 20.f;

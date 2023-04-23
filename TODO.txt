@@ -1,5 +1,5 @@
 [X] Mouse input texture
-[ ] Object material
+[X] Object material
 [ ] Save to / Load from file
 [ ] Antialiasing
 [ ] Make normal map 3d texture, so the normal calculation
@@ -11,7 +11,6 @@
     could have the same thing with the ctrl key and the alt key for depth and
     smoothness
 [ ] make GPUTimer handle-based (look at half-implemented version in timer.h)
-[ ] only update subregion in materials, so we don't need to copy every tmie
 
 -- Options ideas --
 * texture format (either f16 or f32)

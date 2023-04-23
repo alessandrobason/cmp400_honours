@@ -365,7 +365,7 @@ namespace file {
 
 		arr<WatchedFile> watched;
 		arr<ChangedFile> changed;
-		uint8_t change_buf[1024];
+		uint8_t change_buf[1024]{};
 		win32_overlapped_t overlapped;
 		win32_handle_t handle = nullptr;
 	};

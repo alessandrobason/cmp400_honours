@@ -210,6 +210,12 @@ void Shader::bind() {
 	}
 }
 
+void Shader::bind(Slice<Handle<Buffer>> cbuffers, Slice<ID3D11ShaderResourceView *> srvs) {
+	bind();
+	bindCBuffers(cbuffers);
+	bindSRV(srvs);
+}
+
 void Shader::bindCBuf(Handle<Buffer> handle, unsigned int slot) {
 	if (Buffer *buf = handle.get()) {
 		buf->bindCBuffer(shader_type, slot);
@@ -223,6 +229,11 @@ void Shader::bindCBuffers(Slice<Handle<Buffer>> handles) {
 			buf->bindCBuffer(shader_type, slot++);
 		}
 	}
+}
+
+void Shader::unbind(int cbuf_count, int srv_count) {
+	unbindCBuffers(cbuf_count);
+	unbindSRV(srv_count);
 }
 
 void Shader::unbindCBuf(unsigned int slot) {

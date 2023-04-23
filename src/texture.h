@@ -12,6 +12,7 @@ struct Texture2D {
 	Texture2D &operator=(Texture2D &&rt);
 
 	bool load(const char *filename);
+	bool loadHDR(const char *filename);
 	void cleanup();
 
 	vec2i size = 0;

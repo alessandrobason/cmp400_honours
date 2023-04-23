@@ -23,6 +23,7 @@
 #include "input.h"
 #include "timer.h"
 #include "buffer.h"
+#include "widgets.h"
 
 static LRESULT wndProc(HWND, UINT, WPARAM, LPARAM);
 
@@ -242,8 +243,8 @@ namespace gfx {
 	}
 
 	void captureFrame() {
-		if (!is_frame_captured) {
-			renderdocCaptureStart();
+		if (!is_frame_captured && renderdocCaptureStart()) {
+			addMessageToWidget(LogLevel::Info, "Captured current frame for RenderDoc");
 		}
 		is_frame_captured = true;
 	}

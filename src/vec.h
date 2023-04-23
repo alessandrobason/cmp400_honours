@@ -1,6 +1,7 @@
 #pragma once
 
 #include <math.h>
+#include "maths.h"
 
 inline float sqrt(float v) { return sqrtf(v); }
 
@@ -184,6 +185,35 @@ struct vec4T {
 	constexpr static T dot(const vec4T& a, const vec4T& b) { return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w; }
 };
 
+namespace math {
+	template<typename T>
+	constexpr vec2T<T> clamp(const vec2T<T> &v, const vec2T<T> &minv, const vec2T<T> &maxv) {
+		return vec2T<T>(
+			math::min(math::max(v.x, minv.x), maxv.x),
+			math::min(math::max(v.y, minv.y), maxv.y)
+			);
+	}
+
+	template<typename T>
+	constexpr vec3T<T> clamp(const vec3T<T> &v, const vec3T<T> &minv, const vec3T<T> &maxv) {
+		return vec3T<T>(
+			math::min(math::max(v.x, minv.x), maxv.x),
+			math::min(math::max(v.y, minv.y), maxv.y),
+			math::min(math::max(v.z, minv.z), maxv.z)
+			);
+	}
+
+	template<typename T>
+	constexpr vec4T<T> clamp(const vec4T<T> &v, const vec4T<T> &minv, const vec4T<T> &maxv) {
+		return vec4T<T>(
+			math::min(math::max(v.x, minv.x), maxv.x),
+			math::min(math::max(v.y, minv.y), maxv.y),
+			math::min(math::max(v.z, minv.z), maxv.z),
+			math::min(math::max(v.w, minv.w), maxv.w)
+			);
+	}
+} // namespace math
+
 template<typename T>
 constexpr T norm(const T& val) {
 	return val.normalised();
@@ -192,6 +222,11 @@ constexpr T norm(const T& val) {
 template<typename T>
 constexpr vec3T<T> cross(const vec3T<T>& a, const vec3T<T>& b) {
 	return vec3T<T>::cross(a, b);
+}
+
+template<typename T>
+constexpr T saturate(const T &val) {
+	return math::clamp(val, T(0), T(1));
 }
 
 template<typename T> constexpr T dot(const vec2T<T>& v1, const vec2T<T>& v2) { return vec2T<T>::dot(v1, v2); }

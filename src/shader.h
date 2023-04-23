@@ -30,8 +30,10 @@ struct Shader {
 	void cleanup();
 
 	void bind();
+	void bind(Slice<Handle<Buffer>> cbuffers, Slice<ID3D11ShaderResourceView *> srvs);
 	void bindCBuf(Handle<Buffer> handle, unsigned int slot = 0);
 	void bindCBuffers(Slice<Handle<Buffer>> handles = {});
+	void unbind(int cbuf_count = 0, int srv_count = 0);
 	void unbindCBuf(unsigned int slot = 0);
 	void unbindCBuffers(int count = 1, unsigned int slot = 0);
 

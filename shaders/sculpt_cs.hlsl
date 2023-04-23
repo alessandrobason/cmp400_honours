@@ -20,7 +20,7 @@ StructuredBuffer<BrushData> brush_data : register(t1);
 // StructuredBuffer<uint> material : register(t2);
 // output
 RWTexture3D<float> vol_tex : register(u0);
-RWTexture3D<float3> material_tex : register(u1);
+// RWTexture3D<float3> material_tex : register(u1);
 
 static float3 brush_size = 0;
 static float3 volume_tex_size = 0;
@@ -134,6 +134,7 @@ inline void setVTSkipRead(uint3 id, float old_value, float new_value, float3 pos
         case OP_SMOOTH_SUBTRACTION:  op_smooth_subtraction(old_value, new_value, smooth_amount, id, changed); break; 
     }
 
+#if 0
     if (changed && new_value < ROUGH_MIN_HIT_DISTANCE) {
         const float3 old_colour = material_tex[id];
         if (all(old_colour == 0)) {
@@ -190,6 +191,7 @@ inline void setVTSkipRead(uint3 id, float old_value, float new_value, float3 pos
         material_tex[id] = SET_MATERIAL(id1, id2, weight);
 #endif
     }
+#endif
 }
 
 inline void setVolumeTexture(uint3 id, float new_value, float3 pos) {

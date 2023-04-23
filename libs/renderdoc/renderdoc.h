@@ -2,5 +2,5 @@
 
 bool renderdocInit();
 bool renderdocCleanup();
-void renderdocCaptureStart();
+bool renderdocCaptureStart();
 void renderdocCaptureEnd();
