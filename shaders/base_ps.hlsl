@@ -16,15 +16,23 @@ cbuffer ShaderData : register(b0) {
 
 struct BrushData {
 	float3 pos;
-	float padding__3;
+	float radius;
 	float3 norm;
 	float padding__4;
+};
+
+struct Material {
+	float3 albedo;
+	float padding;
 };
 
 #define MAX_DIST 10000.
 
 Texture3D<float> vol_tex : register(t0);
-StructuredBuffer<BrushData> brush : register(t1);
+// Texture3D<uint2> material_tex : register(t1);
+Texture3D<float3> material_tex : register(t1);
+StructuredBuffer<BrushData> brush : register(t2);
+StructuredBuffer<Material> materials : register(t3);
 
 static float3 vol_tex_size = 0;
 static float3 vol_tex_centre = 0;
@@ -93,8 +101,53 @@ float3 calcNormal(float3 pos) {
 }
 
 float getMouseDist(float3 pos) {
-	const float radius = 18.;
-	return length(pos - brush[0].pos) - radius;
+	// const float radius = 18.;
+	return length(pos - brush[0].pos) - brush[0].radius;
+}
+
+// uint getMaterialIndex(float3 coords) {
+// 	return material_tex.Load(int4(round(coords), 0));
+// }
+
+// float3 getAlbedo(uint index) {
+// 	return materials[index].albedo;
+// }
+
+#define FIRST_INDEX_MASK    (255)
+#define FIRST_INDEX_SHIFT   (0)
+#define SECOND_INDEX_MASK   (65280)
+#define SECOND_INDEX_SHIFT  (8)
+// #define WEIGHT_MASK         (4294901760)
+// #define WEIGHT_SHIFT        (16)
+#define WEIGHT_MAX          (65536.)
+
+#define GET_FIRST_INDEX(ind)  ((ind & FIRST_INDEX_MASK)  >> FIRST_INDEX_SHIFT)
+#define GET_SECOND_INDEX(ind) ((ind & SECOND_INDEX_MASK) >> SECOND_INDEX_SHIFT)
+// #define GET_WEIGHT(ind)       ((ind & WEIGHT_MASK)       >> WEIGHT_SHIFT)
+
+// #define SECOND_INDEX_MASK   (16711680)
+// #define SECOND_INDEX_SHIFT  (16)
+// #define SECOND_WEIGHT_MASK  (4278190080)
+// #define SECOND_WEIGHT_SHIFT (24)
+// #define GET_FIRST_WEIGHT(ind)  ((ind & FIRST_WEIGHT_MASK)  >> FIRST_WEIGHT_SHIFT)
+// #define GET_SECOND_WEIGHT(ind) ((ind & SECOND_WEIGHT_MASK) >> SECOND_WEIGHT_SHIFT)
+
+float3 getAlbedo(float3 pos) {
+	return material_tex.Load(int4(round(pos), 0));
+	// const int3 coords = round(pos);
+	// const uint2 mat_index = material_tex.Load(int4(coords, 0));
+	// const uint first_index   = GET_FIRST_INDEX(mat_index.y);
+	// const uint second_index  = GET_SECOND_INDEX(mat_index.y);
+	// if (second_index) {
+	// 	const uint weight_uint = mat_index.x;
+	// 	const float weight = weight_uint / WEIGHT_MAX;
+	// 	const float3 first_albedo = materials[first_index].albedo;
+	// 	const float3 second_albedo = materials[second_index].albedo;
+	// 	return lerp(second_albedo, first_albedo, weight);
+	// }
+	// else {
+	// 	return materials[first_index].albedo;
+	// }
 }
 
 float3 rayMarch(float3 ray_origin, float3 ray_dir) {
@@ -149,11 +202,12 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 
 			if (closest < MIN_HIT_DISTANCE) {
 				const float3 normal = calcNormal(tex_pos);
-				const float3 material = pow(normal * .5 + .5, 4.);
+				// const float3 albedo = getAlbedo(getMaterialIndex(tex_pos));
+				const float3 albedo = getAlbedo(tex_pos);
+				// const float3 albedo = pow(normal * .5 + .5, 4.);
 
 				float diffuse_intensity = max(0, dot(normal, light_dir));
-				final_colour *= material * saturate(diffuse_intensity + 0.2);
-				// final_colour *= pow(material, 4);
+				final_colour *= albedo * saturate(diffuse_intensity + 0.2);
 
 				if (bounce_count >= MAX_BOUNCES) {
 					break;

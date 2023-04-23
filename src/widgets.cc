@@ -7,6 +7,7 @@
 #include "system.h"
 #include "tracelog.h"
 #include "maths.h"
+#include "utils.h"
 
 void fpsWidget() {
 	constexpr float PAD = 10.0f;
@@ -232,4 +233,8 @@ bool filledSlider(const char *str_id, float *p_data, float vmin, float vmax, con
 
 	IMGUI_TEST_ENGINE_ITEM_INFO(id, label, g.LastItemData.StatusFlags);
 	return value_changed;
+}
+
+bool inputU8(const char *label, uint8_t *data, uint8_t step, uint8_t step_fast) {
+	return ImGui::InputScalar(label, ImGuiDataType_U8, data, &step, &step_fast, "%u");
 }

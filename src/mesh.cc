@@ -1,11 +1,10 @@
-#include "gfx.h"
+#include "mesh.h"
 
 #include <d3d11.h>
 
 #include "system.h"
 #include "utils.h"
 #include "tracelog.h"
-#include "macros.h"
 
 Mesh::Mesh(Mesh &&m) {
     *this = mem::move(m);

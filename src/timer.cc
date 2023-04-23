@@ -234,6 +234,37 @@ bool GPUClock::isReady() {
 
 // == GPU TIMER =========================================================================================
 
+struct InternalTimer : public GPUTimer {
+
+};
+
+static arr<InternalTimer *> gpu_list;
+static VirtualAllocator gpu_arena;
+
+Handle<GPUTimer> GPUTimer::make(const char *name) {
+	InternalTimer *timer = (InternalTimer *)gpu_arena.alloc(sizeof(InternalTimer));
+	gpu_list.push(timer);
+	return timer;
+}
+
+bool GPUTimer::isHandleValid(Handle<GPUTimer> handle) {
+	return (InternalTimer *)handle.value != nullptr;
+}
+
+GPUTimer *GPUTimer::get(Handle<GPUTimer> handle) {
+	return (GPUTimer *)handle.value;
+}
+
+void GPUTimer::start() {
+
+}
+
+void GPUTimer::end() {
+}
+
+
+// == GPU TIMER =========================================================================================
+
 static arr<GpuTimer> gpu_timers;
 
 void gpuTimerInit() {

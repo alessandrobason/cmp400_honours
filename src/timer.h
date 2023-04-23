@@ -1,8 +1,9 @@
 #pragma once
 
-#include <stdint.h>
+#include "common.h"
 #include "tracelog.h"
 #include "d3d11_fwd.h"
+#include "handle.h"
 
 void timerInit();
 uint64_t timerNow();
@@ -56,4 +57,14 @@ struct GPUClock{
 
 	size_t start_timer = 0;
 	size_t end_timer = 0;
+};
+
+struct GPUTimer {
+	// -- handle stuff --
+	static Handle<GPUTimer> make(const char *name);
+	static bool isHandleValid(Handle<GPUTimer> handle);
+	static GPUTimer *get(Handle<GPUTimer> handle);
+	// ------------------
+	void start();
+	void end();
 };

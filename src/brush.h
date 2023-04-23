@@ -1,13 +1,16 @@
 #pragma once
 
-#include <stdint.h>
+#include "common.h"
 #include "vec.h"
-#include "gfx.h"
+#include "texture.h"
+#include "handle.h"
+
+struct Buffer;
 
 enum class Operations : uint32_t {
 	None               = 0,
-	Union              = 1u << 1,
-	Subtraction        = 1u << 2,
+	Subtraction        = 1u << 29,
+	Union              = 1u << 30,
 	Smooth             = 1u << 31,
 	SmoothUnion        = Smooth | Union,
 	SmoothSubtraction  = Smooth | Subtraction,
@@ -15,10 +18,13 @@ enum class Operations : uint32_t {
 
 // Used in the sculpting shader
 struct OperationData {
-	Operations operation;
+	//Operations operation;
+	uint32_t operation;
 	float smooth_k;
 	float scale;
 	float depth;
+	vec3 colour;
+	float padding__0;
 };
 
 struct Brush {
@@ -35,9 +41,9 @@ struct Brush {
 	float smooth_k = 0.5f;
 	float scale = 1.f;
 	bool is_single_click = true;
+	uint8_t material_index = 1;
 
 	Texture3D texture;
-	//Buffer *buffer = nullptr;
 	Handle<Buffer> buf_handle;
 
 	// widget data
@@ -47,5 +53,5 @@ struct Brush {
 	Texture2D eraser_icon;
 	State state = State::Brush;
 	bool is_open = true;
-	bool has_changed = false;
+	bool has_changed = true;
 };

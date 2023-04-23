@@ -1,4 +1,4 @@
-#include "gfx.h"
+#include "texture.h"
 
 #include <d3d11.h>
 #include <stb_image.h>
@@ -7,7 +7,6 @@
 #include "system.h"
 #include "utils.h"
 #include "tracelog.h"
-#include "macros.h"
 
 /* ==========================================
    ============= RENDER TEXTURE =============
@@ -260,14 +259,16 @@ void Texture2D::cleanup() {
    ========================================== */
 
 static DXGI_FORMAT to_dx_format[(int)Texture3D::Type::count] = {
-	DXGI_FORMAT_R8_UINT,   // uint8
-	DXGI_FORMAT_R16_UINT,  // uint16
-	DXGI_FORMAT_R32_UINT,  // uint32
-	DXGI_FORMAT_R8_SINT,   // sint8
-	DXGI_FORMAT_R16_SINT,  // sint16
-	DXGI_FORMAT_R32_SINT,  // sint32
-	DXGI_FORMAT_R16_FLOAT, // float16
-	DXGI_FORMAT_R32_FLOAT, // float32
+	DXGI_FORMAT_R8_UINT,     // uint8
+	DXGI_FORMAT_R16_UINT,    // uint16
+	DXGI_FORMAT_R32_UINT,    // uint32
+	DXGI_FORMAT_R8_SINT,     // sint8
+	DXGI_FORMAT_R16_SINT,    // sint16
+	DXGI_FORMAT_R32_SINT,    // sint32
+	DXGI_FORMAT_R16_FLOAT,   // float16
+	DXGI_FORMAT_R32_FLOAT,   // float32
+	DXGI_FORMAT_R16G16_UINT, // r16g16_uint
+	DXGI_FORMAT_R11G11B10_FLOAT, // r16g16_uint
 };
 
 Texture3D::Texture3D(Texture3D &&rt) {

@@ -11,6 +11,8 @@
 #include <backends/imgui_impl_dx11.h>
 #include <backends/imgui_impl_win32.h>
 
+#include <renderdoc.h>
+
 //#include <tracy/Tracy.hpp>
 //#include <tracy/TracyD3D11.hpp>
 
@@ -19,8 +21,8 @@
 #include "options.h"
 #include "maths.h"
 #include "input.h"
-#include "macros.h"
 #include "timer.h"
+#include "buffer.h"
 
 static LRESULT wndProc(HWND, UINT, WPARAM, LPARAM);
 
@@ -40,12 +42,18 @@ namespace gfx {
 	static vec4 main_rtv_bounds = 0;
 	static bool is_main_rtv_active = false;
 
+	static bool is_frame_captured = false;
+
 	void init() {
 		if (!createDevice()) {
 			fatal("couldn't create d3d11 device");
 		}
 
 		gpuTimerInit();
+
+		if (!renderdocInit()) {
+			err("couldn't initialize renderdoc connection");
+		}
 
 		// -- Initialize ImGui --
 		IMGUI_CHECKVERSION();
@@ -74,6 +82,8 @@ namespace gfx {
 	void cleanup() {
 		Buffer::cleanAll();
 		gpuTimerCleanup();
+
+		renderdocCleanup();
 		
 		// Cleanup ImGui
 		ImGui_ImplDX11_Shutdown();
@@ -105,6 +115,12 @@ namespace gfx {
 		swapchain->Present(Options::get().vsync, 0);
 
 		gpuTimerEndFrame();
+
+		if (is_frame_captured) {
+			renderdocCaptureEnd();
+		}
+
+		is_frame_captured = false;
 
 		//TracyD3D11Collect(tracy_ctx);
 	}
@@ -225,6 +241,13 @@ namespace gfx {
 		is_main_rtv_active = is_active;
 	}
 
+	void captureFrame() {
+		if (!is_frame_captured) {
+			renderdocCaptureStart();
+		}
+		is_frame_captured = true;
+	}
+
 	void gfx::logD3D11messages() {
 #ifndef NDEBUG
 		UINT64 message_count = infodev->GetNumStoredMessages();
@@ -312,6 +335,7 @@ namespace win {
 
 	void create(const char *name, int width, int height) {
 		Options::get().load();
+		timerInit();
 
 		size = { width, height };
 		
@@ -343,7 +367,6 @@ namespace win {
 		ShowWindow((HWND)hwnd, SW_SHOWDEFAULT);
 		UpdateWindow((HWND)hwnd);
 
-		timerInit();
 		laptime = timerNow();
 	}
 

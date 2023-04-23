@@ -1,15 +1,17 @@
+#define BASE_RADIUS 21.
+
 Texture3D<float> vol_tex : register(t0);
 
 cbuffer BrushFindData : register(b0) {
 	float3 pos;
 	float depth;
 	float3 dir;
-	float padding__0;
+	float scale;
 };
 
 struct BrushData {
 	float3 pos;
-	float padding__4;
+	float radius;
 	float3 norm;
 	float padding__5;
 };
@@ -140,5 +142,6 @@ void main() {
         brush[0].pos
     );
 
-	brush[0].pos += (-brush[0].norm) * depth;
+	brush[0].pos += (-brush[0].norm) * (depth * BASE_RADIUS * scale);
+	brush[0].radius = BASE_RADIUS * scale;
 }

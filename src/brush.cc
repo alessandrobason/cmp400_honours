@@ -3,17 +3,20 @@
 #include <d3d11.h>
 #include <imgui.h>
 #include "system.h"
+#include "input.h"
 #include "widgets.h"
+#include "buffer.h"
 
 constexpr vec3u brush_tex_size = 64;
 constexpr Texture3D::Type brush_type = Texture3D::Type::float16;
 
-Operations operator|=(Operations a, Operations b) {
-	return (Operations)((uint32_t)a | (uint32_t)b);
+Operations operator|=(Operations &a, Operations b) {
+	a = (Operations)((uint32_t)a | (uint32_t)b);
+	return a;
 }
 
 static const Operations state_to_oper[(int)Brush::State::Count] = {
-	Operations::Union,	    // Brush 
+	Operations::Union,	     // Brush 
 	Operations::Subtraction, // Eraser
 };
 
@@ -96,27 +99,32 @@ void Brush::drawWidget() {
 	ImGui::Text("Depth");
 	has_changed |= filledSlider("##Depth", &depth, -1.f, 1.f);
 	ImGui::Text("Smooth constant");
-	has_changed |= filledSlider("##Smooth", &smooth_k, 0.f, 1.f);
+	has_changed |= filledSlider("##Smooth", &smooth_k, 0.f, 20.f);
 	ImGui::Text("Single click");
 	ImGui::Checkbox("##Single click", &is_single_click);
+	ImGui::Text("Material");
+	has_changed |= inputU8("##MatIndex", &material_index);
 
 	ImGui::PopStyleVar();
 
 	ImGui::End();
 
-	ImGui::ShowDemoWindow();
+	if (isKeyDown(KEY_Q)) depth -= 2.f * win::dt;
+	if (isKeyDown(KEY_W)) depth += 2.f * win::dt;
 }
 
 void Brush::update() {
 	if (!has_changed) return;
 	if (Buffer *buf = buf_handle.get()) {
 		if (OperationData *data = buf->map<OperationData>()) {
-			data->operation = state_to_oper[(int)state];
+			data->operation = (uint32_t)state_to_oper[(int)state];
 			if (smooth_k > 0.f) {
-				data->operation |= Operations::Smooth;
+				data->operation |= (uint32_t)Operations::Smooth;
 			}
+			// data->operation |= material_index;
 			data->smooth_k = smooth_k;
 			data->scale = scale;
+			data->colour = material_index > 1 ? vec3(0.1f, 1.0f, 0.2f) : vec3(1.0f, 0.1f, 0.2f);
 			buf->unmap();
 		}
 	}

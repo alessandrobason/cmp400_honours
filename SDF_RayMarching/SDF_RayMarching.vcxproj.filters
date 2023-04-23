@@ -25,18 +25,30 @@
     <Filter Include="tracy">
       <UniqueIdentifier>{73ad29b7-8cee-4101-81c2-f9871c2e1b79}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\gfx">
+      <UniqueIdentifier>{ba8588b4-7531-4809-8df4-c1ffa4a28686}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\math">
+      <UniqueIdentifier>{d1ff2a3a-32d6-4d9e-88eb-03c9953597a1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\gfx">
+      <UniqueIdentifier>{03f9aeda-d378-42a6-9a09-40728e87cc68}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\math">
+      <UniqueIdentifier>{3bd06c8f-bd52-4b7b-b497-2d141eafadfa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\core">
+      <UniqueIdentifier>{0c33647b-86d4-4b24-815f-df8268aad796}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\core">
+      <UniqueIdentifier>{3be5e44b-a651-4f42-ba26-b21d07cbc5e4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="renderdoc">
+      <UniqueIdentifier>{57dcbfcd-f539-43fd-a387-39be2bed57c4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cc">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\system.cc">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\utils.cc">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\ini.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\options.cc">
@@ -63,38 +75,11 @@
     <ClCompile Include="..\libs\ImGui\backends\imgui_impl_win32.cpp">
       <Filter>ImGui\backends</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\tracelog.cc">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\input.cc">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\widgets.cc">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\texture.cc">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\mesh.cc">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\shader.cc">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\matrix.cc">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\buffer.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\libs\stb\stb.c">
       <Filter>stb</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\timer.cc">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\colours.cc">
-      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\shape_builder.cc">
       <Filter>Source Files</Filter>
@@ -105,18 +90,48 @@
     <ClCompile Include="..\src\brush.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\matrix.cc">
+      <Filter>Source Files\math</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\buffer.cc">
+      <Filter>Source Files\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\colours.cc">
+      <Filter>Source Files\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\mesh.cc">
+      <Filter>Source Files\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\shader.cc">
+      <Filter>Source Files\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\texture.cc">
+      <Filter>Source Files\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\ini.cc">
+      <Filter>Source Files\core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\input.cc">
+      <Filter>Source Files\core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\system.cc">
+      <Filter>Source Files\core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\timer.cc">
+      <Filter>Source Files\core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\tracelog.cc">
+      <Filter>Source Files\core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\utils.cc">
+      <Filter>Source Files\core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\renderdoc\renderdoc.cc">
+      <Filter>renderdoc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\src\ini.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\options.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\utils.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\system.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\libs\ImGui\imconfig.h">
@@ -143,40 +158,13 @@
     <ClInclude Include="..\libs\ImGui\backends\imgui_impl_win32.h">
       <Filter>ImGui\backends</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\tracelog.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\input.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\maths.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\widgets.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\d3d11_fwd.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\vec.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\matrix.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\macros.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\libs\stb\stb_image_write.h">
       <Filter>stb</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\timer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\shape_builder.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\gfx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\camera.h">
@@ -188,8 +176,65 @@
     <ClInclude Include="..\src\brush.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\buffer.h">
+      <Filter>Header Files\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\shader.h">
+      <Filter>Header Files\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\texture.h">
+      <Filter>Header Files\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\mesh.h">
+      <Filter>Header Files\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\colour.h">
+      <Filter>Header Files\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\gfx_common.h">
+      <Filter>Header Files\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\d3d11_fwd.h">
+      <Filter>Header Files\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\maths.h">
+      <Filter>Header Files\math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\matrix.h">
+      <Filter>Header Files\math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\vec.h">
+      <Filter>Header Files\math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\system.h">
+      <Filter>Header Files\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\ini.h">
+      <Filter>Header Files\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\input.h">
+      <Filter>Header Files\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\tracelog.h">
+      <Filter>Header Files\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\utils.h">
+      <Filter>Header Files\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\common.h">
+      <Filter>Header Files\core</Filter>
+    </ClInclude>
     <ClInclude Include="..\src\handle.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\timer.h">
+      <Filter>Header Files\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\renderdoc\renderdoc_app.h">
+      <Filter>renderdoc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\renderdoc\renderdoc.h">
+      <Filter>renderdoc</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

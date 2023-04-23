@@ -1,4 +1,4 @@
-#include "gfx.h"
+#include "shader.h"
 
 #include <d3d11.h>
 
@@ -8,8 +8,8 @@
 #include "system.h"
 #include "tracelog.h"
 #include "utils.h"
-#include "macros.h"
-#include "gfx.h"
+#include "mesh.h"
+#include "buffer.h"
 
 static dxptr<ID3DBlob> compileShader(const char *filename, ShaderType type);
 
@@ -168,11 +168,22 @@ bool Shader::addSampler() {
 	return true;
 }
 
-void Shader::setSRV(Slice<ID3D11ShaderResourceView *> textures) {
+void Shader::bindSRV(Slice<ID3D11ShaderResourceView *> textures) {
 	switch (shader_type) {
 		case ShaderType::Vertex:   gfx::context->VSSetShaderResources(0, (UINT)textures.len, textures.data); break;
 		case ShaderType::Fragment: gfx::context->PSSetShaderResources(0, (UINT)textures.len, textures.data); break;
 		case ShaderType::Compute:  gfx::context->CSSetShaderResources(0, (UINT)textures.len, textures.data); break;
+	}
+}
+
+void Shader::unbindSRV(unsigned int count) {
+	static ID3D11ShaderResourceView *null_srv[10] = {};
+	assert(count < ARRLEN(null_srv));
+
+	switch (shader_type) {
+		case ShaderType::Vertex:   gfx::context->VSSetShaderResources(0, count, null_srv); break;
+		case ShaderType::Fragment: gfx::context->PSSetShaderResources(0, count, null_srv); break;
+		case ShaderType::Compute:  gfx::context->CSSetShaderResources(0, count, null_srv); break;
 	}
 }
 

@@ -1,4 +1,4 @@
-#include "gfx.h"
+#include "colour.h"
 
 const Colour Colour::black       = { 0, 0, 0, 1 };
 const Colour Colour::white       = { 1, 1, 1, 1 };

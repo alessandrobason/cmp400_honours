@@ -1,7 +1,6 @@
 #pragma once
 
 #include <stdarg.h>
-#include <stddef.h>
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -11,7 +10,6 @@
 
 #include "timer.h"
 #include "d3d11_fwd.h"
-#include "macros.h"
 
 // == memory utils ================================================
 
@@ -375,3 +373,17 @@ namespace file {
 	bool exists(const char *filename);
 	MemoryBuf read(const char *filename);
 } // namespace file 
+
+// == allocators utils ============================================
+
+struct VirtualAllocator {
+	VirtualAllocator();
+	~VirtualAllocator();
+
+	void *alloc(size_t size);
+	void rewind(size_t size);
+
+	uint8_t *start = nullptr;
+	uint8_t *current = nullptr;
+	uint8_t *next_page = nullptr;
+};

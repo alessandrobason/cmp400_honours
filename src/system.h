@@ -1,8 +1,8 @@
 #pragma once
 
-#include <stdint.h>
+#include "common.h"
 
-#include "gfx.h"
+#include "texture.h"
 
 namespace gfx {
 	extern dxptr<ID3D11Device> device;
@@ -28,6 +28,8 @@ namespace gfx {
 
 	bool isMainRTVActive();
 	void setMainRTVActive(bool is_active);
+
+	void captureFrame();
 
 	void logD3D11messages();
 } // namespace gfx

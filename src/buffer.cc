@@ -1,13 +1,28 @@
-#include "gfx.h"
+#include "buffer.h"
 
 #include <d3d11.h>
 
 #include "system.h"
 #include "utils.h"
-#include "macros.h"
 #include "tracelog.h"
 
-static arr<Buffer> buffers;
+static arr<Buffer *> buffers;
+static VirtualAllocator buffer_arena;
+
+uint8_t operator&(Bind left, Bind right) { return (uint8_t)left & (uint8_t)right; }
+
+static bool bufMakeConstant(Buffer *buf, size_t type_size, Buffer::Usage usage, bool can_write, bool can_read, const void *initial_data, size_t data_count);
+static bool bufMakeStructured(Buffer *buf, size_t type_size, size_t count, Bind bind, const void *initial_data);
+
+static Buffer *getNewBuffer() {
+    Buffer *newbuf = (Buffer *)buffer_arena.alloc(sizeof(Buffer));
+    buffers.push(newbuf);
+    return newbuf;
+}
+
+static void popLastBuffer() {
+    buffer_arena.rewind(sizeof(Buffer));
+}
 
 static D3D11_USAGE usage_to_d3d11[(size_t)Buffer::Usage::Count] = {
     D3D11_USAGE_DEFAULT,
@@ -35,10 +50,7 @@ Buffer &Buffer::operator=(Buffer &&buf) {
 }
 
 Handle<Buffer> Buffer::make() {
-    Handle<Buffer> handle = buffers.size();
-    Buffer newbuf{};
-    buffers.push(mem::move(newbuf));
-    return handle;
+    return getNewBuffer();
 }
 
 Handle<Buffer> Buffer::makeConstant(
@@ -49,222 +61,45 @@ Handle<Buffer> Buffer::makeConstant(
     const void *initial_data, 
     size_t data_count
 ) {
-    Handle<Buffer> handle = buffers.size();
-    Buffer newbuf{};
+    Buffer *newbuf = getNewBuffer();
 
-    D3D11_BUFFER_DESC bd;
-    mem::zero(bd);
-    bd.Usage = usage_to_d3d11[(size_t)usage];
-    bd.StructureByteStride = (UINT)type_size;
-    bd.ByteWidth = (UINT)(type_size * data_count);
-    bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-    if (usage != Usage::Immutable) {
-        if (can_write) {
-            bd.CPUAccessFlags |= D3D11_CPU_ACCESS_WRITE;
-        }
-        if (can_read) {
-            bd.CPUAccessFlags |= D3D11_CPU_ACCESS_READ;
-        }
+    if (!bufMakeConstant(newbuf, type_size, usage, can_write, can_read, initial_data, data_count)) {
+        popLastBuffer();
+        return nullptr;
     }
 
-    HRESULT hr = E_FAIL;
-
-    if (initial_data) {
-        D3D11_SUBRESOURCE_DATA dd;
-        mem::zero(dd);
-        dd.pSysMem = initial_data;
-        hr = gfx::device->CreateBuffer(&bd, &dd, &newbuf.buffer);
-    }
-    else {
-        hr = gfx::device->CreateBuffer(&bd, nullptr, &newbuf.buffer);
-    }
-
-    if (FAILED(hr)) {
-        err("couldn't create buffer");
-        return invalid_handle;
-    }
-
-    buffers.push(mem::move(newbuf));
-    return handle;
+    return newbuf;
 }
 
 Handle<Buffer> Buffer::makeStructured(
     size_t type_size, 
-    size_t count, 
+    size_t count,
+    Bind bind,
     const void *initial_data
 ) {
-    Handle<Buffer> handle = buffers.size();
-    Buffer newbuf{};
+    Buffer *newbuf = getNewBuffer();
 
-    D3D11_BUFFER_DESC desc;
-    mem::zero(desc);
-    desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
-    desc.ByteWidth = (UINT)(type_size * count);
-    desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-    desc.StructureByteStride = (UINT)type_size;
-
-    HRESULT hr = E_FAIL;
-
-    if (initial_data) {
-        D3D11_SUBRESOURCE_DATA init_data;
-        mem::zero(init_data);
-        init_data.pSysMem = initial_data;
-        hr = gfx::device->CreateBuffer(&desc, &init_data, &newbuf.buffer);
-    }
-    else {
-        hr = gfx::device->CreateBuffer(&desc, nullptr, &newbuf.buffer);
+    if (!bufMakeStructured(newbuf, type_size, count, bind, initial_data)) {
+        popLastBuffer();
+        return nullptr;
     }
 
-    if (FAILED(hr)) {
-        err("couldn't create structured buffer");
-        return false;
-    }
-
-    D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc;
-    mem::zero(srv_desc);
-    srv_desc.ViewDimension = D3D11_SRV_DIMENSION_BUFFEREX;
-    srv_desc.Format = DXGI_FORMAT_UNKNOWN;
-    srv_desc.BufferEx.NumElements = (UINT)count;
-
-    hr = gfx::device->CreateShaderResourceView(newbuf.buffer, &srv_desc, &newbuf.srv);
-
-    if (FAILED(hr)) {
-        err("couldn't create structured buffer's SRV");
-        return invalid_handle;
-    }
-
-    D3D11_UNORDERED_ACCESS_VIEW_DESC uav_desc;
-    mem::zero(uav_desc);
-    uav_desc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
-    uav_desc.Format = DXGI_FORMAT_UNKNOWN;
-    uav_desc.Buffer.NumElements = (UINT)count;
-
-    hr = gfx::device->CreateUnorderedAccessView(newbuf.buffer, &uav_desc, &newbuf.uav);
-
-    if (FAILED(hr)) {
-        err("couldn't create structured buffer's UAV");
-        return invalid_handle;
-    }
-
-    buffers.push(mem::move(newbuf));
-    return handle;
+    return newbuf;
 }
 
 Buffer *Buffer::get(Handle<Buffer> handle) {
-    return handle.isValid() ? &buffers[handle.index] : nullptr;
+    return (Buffer *)handle.value;
 }
 
 bool Buffer::isHandleValid(Handle<Buffer> handle) {
-    return handle.index < buffers.size();
+    return (Buffer *)handle.value != nullptr;
 }
 
 void Buffer::cleanAll() {
-    buffers.clear();
+    for (Buffer *buf : buffers) {
+        buf->cleanup();
+    }
 }
-
-// bool Buffer::create(size_t type_size, Usage usage, bool can_write, bool can_read) {
-//     D3D11_BUFFER_DESC bd;
-//     mem::zero(bd);
-//     bd.Usage = usage_to_d3d11[(size_t)usage];
-//     bd.StructureByteStride = (UINT)type_size;
-//     bd.ByteWidth = (UINT)type_size;
-//     bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-//     if (can_write) {
-//         bd.CPUAccessFlags |= D3D11_CPU_ACCESS_WRITE;
-//     }
-//     if (can_read) {
-//         bd.CPUAccessFlags |= D3D11_CPU_ACCESS_READ;
-//     }
-//     
-//     HRESULT hr = gfx::device->CreateBuffer(&bd, nullptr, &buffer);
-//     return SUCCEEDED(hr);
-// }
-
-#if 0
-bool Buffer::create(size_t type_size, Usage usage, bool can_write, bool can_read, const void *initial_data, size_t data_count) {
-    D3D11_BUFFER_DESC bd;
-    mem::zero(bd);
-    bd.Usage = usage_to_d3d11[(size_t)usage];
-    bd.StructureByteStride = (UINT)type_size;
-    bd.ByteWidth = (UINT)(type_size * data_count);
-    bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-    if (usage != Usage::Immutable) {
-        if (can_write) {
-            bd.CPUAccessFlags |= D3D11_CPU_ACCESS_WRITE;
-        }
-        if (can_read) {
-            bd.CPUAccessFlags |= D3D11_CPU_ACCESS_READ;
-        }
-    }
-
-    if (initial_data) {
-        D3D11_SUBRESOURCE_DATA dd;
-        mem::zero(dd);
-        dd.pSysMem = initial_data;
-        HRESULT hr = gfx::device->CreateBuffer(&bd, &dd, &buffer);
-        return SUCCEEDED(hr);
-    }
-
-    HRESULT hr = gfx::device->CreateBuffer(&bd, nullptr, &buffer);
-    return SUCCEEDED(hr);
-}
-
-bool Buffer::createStructured(size_t type_size, size_t count, const void* initial_data) {
-    D3D11_BUFFER_DESC desc;
-    mem::zero(desc);
-    desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
-    desc.ByteWidth = (UINT)(type_size * count);
-    desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-    desc.StructureByteStride = (UINT)type_size;
-    
-    HRESULT hr = E_FAIL;
-
-    if (initial_data) {
-        D3D11_SUBRESOURCE_DATA init_data;
-        mem::zero(init_data);
-        init_data.pSysMem = initial_data;
-        hr = gfx::device->CreateBuffer(&desc, &init_data, &buffer);
-    }
-    else {
-        hr = gfx::device->CreateBuffer(&desc, nullptr, &buffer);
-    }
-
-    if (FAILED(hr)) {
-        err("couldn't create structured buffer");
-        return false;
-    }
-
-    D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc;
-    mem::zero(srv_desc);
-    srv_desc.ViewDimension = D3D11_SRV_DIMENSION_BUFFEREX;
-    srv_desc.Format = DXGI_FORMAT_UNKNOWN;
-    srv_desc.BufferEx.NumElements = (UINT)count;
-
-    hr = gfx::device->CreateShaderResourceView(buffer, &srv_desc, &srv);
-
-    if (FAILED(hr)) {
-        cleanup();
-        err("couldn't create structured buffer's SRV");
-        return false;
-    }
-
-    D3D11_UNORDERED_ACCESS_VIEW_DESC uav_desc;
-    mem::zero(uav_desc);
-    uav_desc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
-    uav_desc.Format = DXGI_FORMAT_UNKNOWN;
-    uav_desc.Buffer.NumElements = (UINT)count;
-
-    hr = gfx::device->CreateUnorderedAccessView(buffer, &uav_desc, &uav);
-
-    if (FAILED(hr)) {
-        cleanup();
-        err("couldn't create structured buffer's UAV");
-        return false;
-    }
-
-    return true;
-}
-#endif
 
 void Buffer::cleanup() {
     buffer.destroy();
@@ -272,8 +107,27 @@ void Buffer::cleanup() {
     uav.destroy();
 }
 
-void Buffer::unmap(unsigned int subresource) {
-    gfx::context->Unmap(buffer, subresource);
+void Buffer::resize(size_t new_count) {
+    D3D11_BUFFER_DESC desc;
+    buffer->GetDesc(&desc);
+
+    // it is a structured buffer
+    if (desc.MiscFlags & D3D11_RESOURCE_MISC_BUFFER_STRUCTURED) {
+        size_t type_size = desc.StructureByteStride;
+        size_t old_count = desc.ByteWidth / type_size;
+        if (old_count < new_count) {
+            Handle<Buffer> newbuf = Buffer::makeStructured(type_size, new_count);
+            assert(newbuf);
+            gfx::context->CopySubresourceRegion(newbuf->buffer, 0, 0, 0, 0, buffer, 0, nullptr);
+            *this = mem::move(*newbuf.get());
+            newbuf->cleanup();
+            popLastBuffer();
+        }
+    }
+    // it is a constant buffer
+    else if (desc.BindFlags & D3D11_BIND_CONSTANT_BUFFER) {
+        assert(false); // TODO
+    }
 }
 
 void Buffer::bindCBuffer(Buffer &buf, ShaderType type, unsigned int slot) {
@@ -325,28 +179,6 @@ void Buffer::unbindUAV(unsigned int slot, size_t count) {
     gfx::context->CSSetUnorderedAccessViews(slot, (UINT)count, null_uavs, nullptr);
 }
 
-#if 0
-void Buffer::unmapVS(unsigned int subresource, unsigned int slot) {
-    gfx::context->Unmap(buffer, subresource);
-    gfx::context->VSSetConstantBuffers(slot, 1, &buffer);
-}
-
-void Buffer::unmapPS(unsigned int subresource, unsigned int slot) {
-    gfx::context->Unmap(buffer, subresource);
-    gfx::context->PSSetConstantBuffers(slot, 1, &buffer);
-}
-
-void Buffer::unmapGS(unsigned int subresource, unsigned int slot) {
-    gfx::context->Unmap(buffer, subresource);
-    gfx::context->GSSetConstantBuffers(slot, 1, &buffer);
-}
-
-void Buffer::unmapCS(unsigned int subresource, unsigned int slot){
-    gfx::context->Unmap(buffer, subresource);
-    gfx::context->CSSetConstantBuffers(slot, 1, &buffer);
-}
-#endif
-
 void* Buffer::map(unsigned int subresource) {
     D3D11_MAPPED_SUBRESOURCE resource;
     HRESULT hr = gfx::context->Map(buffer, subresource, D3D11_MAP_WRITE_DISCARD, 0, &resource);
@@ -355,4 +187,126 @@ void* Buffer::map(unsigned int subresource) {
         return nullptr;
     }
     return resource.pData;
+}
+
+// void* Buffer::mapRegion() {
+//     D3D11_MAPPED_SUBRESOURCE resource;
+//     HRESULT hr = gfx::context->Map(buffer, subresource, D3D11_MAP_WRITE_DISCARD, 0, &resource);
+//     if (FAILED(hr)) {
+//         err("couldn't map buffer");
+//         return nullptr;
+//     }
+//     return resource.pData;
+// }
+
+void Buffer::unmap(unsigned int subresource) {
+    gfx::context->Unmap(buffer, subresource);
+}
+
+// == PRIVATE FUNCTIONS ==================================================
+
+static bool bufMakeConstant(Buffer *buf, size_t type_size, Buffer::Usage usage, bool can_write, bool can_read, const void *initial_data, size_t data_count) {
+    assert(buf);
+    buf->cleanup();
+    
+    D3D11_BUFFER_DESC bd;
+    mem::zero(bd);
+    bd.Usage = usage_to_d3d11[(size_t)usage];
+    bd.StructureByteStride = (UINT)type_size;
+    bd.ByteWidth = (UINT)(type_size * data_count);
+    bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    if (usage != Buffer::Usage::Immutable) {
+        if (can_write) {
+            bd.CPUAccessFlags |= D3D11_CPU_ACCESS_WRITE;
+        }
+        if (can_read) {
+            bd.CPUAccessFlags |= D3D11_CPU_ACCESS_READ;
+        }
+    }
+
+    HRESULT hr = E_FAIL;
+
+    if (initial_data) {
+        D3D11_SUBRESOURCE_DATA dd;
+        mem::zero(dd);
+        dd.pSysMem = initial_data;
+        hr = gfx::device->CreateBuffer(&bd, &dd, &buf->buffer);
+    }
+    else {
+        hr = gfx::device->CreateBuffer(&bd, nullptr, &buf->buffer);
+    }
+
+    if (FAILED(hr)) {
+        err("couldn't create buffer");
+        return false;
+    }
+
+    return true;
+}
+
+static bool bufMakeStructured(Buffer *buf, size_t type_size, size_t count, Bind bind, const void *initial_data) {
+    assert(buf);
+    buf->cleanup();
+
+    D3D11_BUFFER_DESC desc;
+    mem::zero(desc);
+    if (bind & Bind::GpuRead)  desc.BindFlags |= D3D11_BIND_SHADER_RESOURCE;
+    if (bind & Bind::GpuWrite) desc.BindFlags |= D3D11_BIND_UNORDERED_ACCESS;
+    if (bind & Bind::CpuRead)  desc.CPUAccessFlags |= D3D11_CPU_ACCESS_READ;
+    if (bind & Bind::CpuWrite) {
+        desc.Usage = D3D11_USAGE_DYNAMIC;
+        desc.CPUAccessFlags |= D3D11_CPU_ACCESS_WRITE;
+    }
+    desc.ByteWidth = (UINT)(type_size * count);
+    desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+    desc.StructureByteStride = (UINT)type_size;
+
+    HRESULT hr = E_FAIL;
+
+    if (initial_data) {
+        D3D11_SUBRESOURCE_DATA init_data;
+        mem::zero(init_data);
+        init_data.pSysMem = initial_data;
+        hr = gfx::device->CreateBuffer(&desc, &init_data, &buf->buffer);
+    }
+    else {
+        hr = gfx::device->CreateBuffer(&desc, nullptr, &buf->buffer);
+    }
+
+    if (FAILED(hr)) {
+        err("couldn't create structured buffer");
+        return false;
+    }
+
+    if (bind & Bind::GpuRead) {
+        D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc;
+        mem::zero(srv_desc);
+        srv_desc.ViewDimension = D3D11_SRV_DIMENSION_BUFFEREX;
+        srv_desc.Format = DXGI_FORMAT_UNKNOWN;
+        srv_desc.BufferEx.NumElements = (UINT)count;
+
+        hr = gfx::device->CreateShaderResourceView(buf->buffer, &srv_desc, &buf->srv);
+
+        if (FAILED(hr)) {
+            err("couldn't create structured buffer's SRV");
+            return false;
+        }
+    }
+
+    if (bind & Bind::GpuWrite) {
+        D3D11_UNORDERED_ACCESS_VIEW_DESC uav_desc;
+        mem::zero(uav_desc);
+        uav_desc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
+        uav_desc.Format = DXGI_FORMAT_UNKNOWN;
+        uav_desc.Buffer.NumElements = (UINT)count;
+
+        hr = gfx::device->CreateUnorderedAccessView(buf->buffer, &uav_desc, &buf->uav);
+
+        if (FAILED(hr)) {
+            err("couldn't create structured buffer's UAV");
+            return false;
+        }
+    }
+
+    return true;
 }

@@ -1,5 +1,4 @@
 #include <stdio.h>
-//#include <iostream>
 
 #include "system.h"
 #include "input.h"
@@ -7,18 +6,21 @@
 #include "options.h"
 #include "tracelog.h"
 #include "widgets.h"
-#include "macros.h"
 #include "timer.h"
-#include "gfx.h"
 #include "shape_builder.h"
 #include "camera.h"
 #include "matrix.h"
 #include "brush.h"
 
+#include "buffer.h"
+#include "colour.h"
+#include "mesh.h"
+#include "shader.h"
+#include "texture.h"
+
 #include <imgui.h>
 
 #include <d3d11.h>
-//#include <functional>
 
 #include "utils.h"
 
@@ -28,6 +30,7 @@ bool is_dirty = true;
 constexpr vec3u maintex_size = 512;
 constexpr vec3u brush_size = 64;
 constexpr vec3u threads = maintex_size / 8;
+constexpr unsigned int initial_material_count = 10;
 
 struct PSShaderData {
 	vec3 cam_up;
@@ -40,9 +43,9 @@ struct PSShaderData {
 	float padding__0;
 };
 
-struct BrushPositionData {
+struct BrushData {
 	vec3 position;
-	float padding__0;
+	float radius;
 	vec3 normal;
 	float padding__1;
 };
@@ -51,7 +54,12 @@ struct BrushFindData {
 	vec3 pos;
 	float depth;
 	vec3 dir;
-	float padding__0;
+	float scale;
+};
+
+struct MaterialPS {
+	vec3 albedo;
+	float padding;
 };
 
 static void gfxErrorExit() {
@@ -86,14 +94,15 @@ int main() {
 	{
 		Camera cam;
 		Brush brush;
-		Texture3D main_texture;
+		Texture3D main_texture, material_texture;
 		DynamicShader sh_manager;
 		int main_ps_ind, main_vs_ind, sculpt_ind, gen_brush_ind, empty_texture_ind, find_brush_ind;
 		Shader *main_ps, *main_vs, *sculpt, *gen_brush, *empty_texture, *find_brush;
-		Handle<Buffer> brush_pos_data;
-		//Buffer brush_pos_data;
+		Handle<Buffer> brush_data_handle;
+		Handle<Buffer> material_handle;
 
 		if (!main_texture.create(maintex_size, Texture3D::Type::float16)) gfxErrorExit();
+		if (!material_texture.create(maintex_size, Texture3D::Type::r11g11b10_float)) gfxErrorExit();
 
 		main_vs_ind       = sh_manager.add("base_vs",          ShaderType::Vertex);
 		main_ps_ind       = sh_manager.add("base_ps",          ShaderType::Fragment);
@@ -118,21 +127,24 @@ int main() {
 
 		main_ps->addSampler();
 
-		Handle<Buffer> shader_data_handle = Buffer::makeConstant<PSShaderData>(Buffer::Usage::Dynamic);
+		Handle<Buffer> shader_data_handle    = Buffer::makeConstant<PSShaderData>(Buffer::Usage::Dynamic);
 		Handle<Buffer> operation_data_handle = Buffer::makeConstant<OperationData>(Buffer::Usage::Dynamic);
-		Handle<Buffer> find_data_handle = Buffer::makeConstant<BrushFindData>(Buffer::Usage::Dynamic);
+		Handle<Buffer> find_data_handle      = Buffer::makeConstant<BrushFindData>(Buffer::Usage::Dynamic);
 
-		brush_pos_data = Buffer::makeStructured<BrushPositionData>();
+		brush_data_handle = Buffer::makeStructured<BrushData>();
+		material_handle   = Buffer::makeStructured<MaterialPS>(initial_material_count, Bind::CpuWrite | Bind::GpuRead);
 
 		if (!shader_data_handle)    gfxErrorExit();
 		if (!operation_data_handle) gfxErrorExit();
 		if (!find_data_handle)      gfxErrorExit();
-		if (!brush_pos_data)        gfxErrorExit();
+		if (!brush_data_handle)     gfxErrorExit();
+		if (!material_handle)       gfxErrorExit();
 
-		// int shader_data_ind = main_ps->addBuffer<PSShaderData>(Buffer::Usage::Dynamic);
-		// int operation_data_ind = sculpt->addBuffer<OperationData>(Buffer::Usage::Dynamic);
-		// int find_data_ind = find_brush->addBuffer<BrushFindData>(Buffer::Usage::Dynamic);
-		// if (!brush_pos_data.createStructured<BrushPositionData>()) gfxErrorExit();
+		if (MaterialPS *data = material_handle->map<MaterialPS>()) {
+			data[1].albedo = vec3(0.1f, 1.0f, 0.2f);
+			data[2].albedo = vec3(1.0f, 0.1f, 0.2f);
+			material_handle->unmap();
+		}
 
 		Mesh triangle = makeFullScreenTriangle();
 
@@ -145,12 +157,10 @@ int main() {
 		GPUClock sculpt_clock("Sculpt");
 
 		brush.setBuffer(operation_data_handle);
-		Buffer *brush_pos_buf = brush_pos_data.get();
-		assert(brush_pos_buf);
 
 		if (Buffer *buf = operation_data_handle.get()) {
 			if (OperationData *data = buf->map<OperationData>()) {
-				data->operation = Operations::Union;
+				data->operation = (uint32_t)Operations::Union | 1u;
 				data->smooth_k  = 0.f;
 				data->scale     = 1.f;
 				data->depth     = 0.f;
@@ -158,10 +168,9 @@ int main() {
 			}
 		}
 		
-		sculpt->dispatch(threads, { operation_data_handle }, { brush.getSRV(), brush_pos_buf->srv }, { main_texture.uav });
+		sculpt->dispatch(threads, { operation_data_handle }, { brush.getSRV(), brush_data_handle->srv }, { main_texture.uav, material_texture.uav });
 
 		while (win::isOpen()) {
-			assert(brush_pos_buf == brush_pos_data.get());
 			sh_manager.poll();
 
 			if (sculpt_clock.isReady()) sculpt_clock.print();
@@ -175,15 +184,17 @@ int main() {
 					data->pos   = cam.pos + cam.fwd * cam.getZoom();
 					data->dir   = cam.getMouseDir();
 					data->depth = brush.depth;
+					data->scale = brush.scale;
 					buf->unmap();
 				}
 			}
 
-			find_brush->dispatch(1, { find_data_handle, /*find_tex_data_ind*/ }, { main_texture.srv }, { brush_pos_buf->uav });
+			find_brush->dispatch(1, { find_data_handle }, { main_texture.srv }, { brush_data_handle->uav });
 
 			if (cam.shouldSculpt()) {
+				gfx::captureFrame();
 				sculpt_clock.start();
-				sculpt->dispatch(threads, { operation_data_handle }, { brush.getSRV(), brush_pos_buf->srv }, { main_texture.uav });
+				sculpt->dispatch(threads, { operation_data_handle }, { brush.getSRV(), brush_data_handle->srv }, { main_texture.uav, material_texture.uav });
 				sculpt_clock.end();
 			}
 
@@ -213,10 +224,10 @@ int main() {
 			gfx::main_rtv.bind();
 			main_vs->bind();
 			main_ps->bind();
-			main_ps->bindCBuffers({ shader_data_handle, /*tex_data_ind*/ });
-			main_ps->setSRV({ main_texture.srv, brush_pos_buf->srv });
+			main_ps->bindCBuffers({ shader_data_handle });
+			main_ps->bindSRV({ main_texture.srv, material_texture.srv, brush_data_handle->srv, material_handle->srv });
 			triangle.render();
-			main_ps->setSRV({ nullptr, nullptr });
+			main_ps->unbindSRV(4);
 			main_ps->unbindCBuffers(2);
 
 			gfx::imgui_rtv.bind();
