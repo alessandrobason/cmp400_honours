@@ -21,7 +21,7 @@ struct Texture2D {
 };
 
 struct Texture3D {
-	enum class Type {
+	enum class Type : uint8_t {
 		uint8,
 		uint16,
 		uint32,
@@ -41,8 +41,10 @@ struct Texture3D {
 	~Texture3D();
 	Texture3D &operator=(Texture3D &&rt);
 
-	inline bool create(const vec3u &texsize, Type type) { return create(texsize.x, texsize.y, texsize.z, type); }
-	bool create(int width, int height, int depth, Type type);
+	bool create(const vec3u &texsize, Type type, const void *initial_data = nullptr);
+	bool create(int width, int height, int depth, Type type, const void *initial_data = nullptr);
+	bool load(const char *filename);
+	bool save(const char *filename);
 	void cleanup();
 
 	vec3i size = 0;

@@ -120,18 +120,8 @@ Logger::Logger() {
 Logger::~Logger() {
     if (Options::get().print_to_file) {
         if (!fp) {
-            char name[255];
-            mem::zero(name);
-            int count = 0;
-            while (
-                file::exists(
-                    str::formatBuf(name, sizeof(name), "logs/log_%.3d.txt", count)
-                )
-                ) {
-                count++;
-            }
-
-            fp = fopen(name, "wb+");
+            mem::ptr<char[]> filename = file::findFirstAvailable("logs", "log_%d.txt");
+            fp = fopen(filename.get(), "wb+");
         }
 
         int last_offset = 0;

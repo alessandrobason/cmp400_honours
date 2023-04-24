@@ -34,6 +34,7 @@ struct BrushEditor {
 
 	ID3D11UnorderedAccessView *getUAV();
 	ID3D11ShaderResourceView *getSRV();
+	float getScale();
 
 	vec3 position = 0.f;
 	float depth = 0.f;

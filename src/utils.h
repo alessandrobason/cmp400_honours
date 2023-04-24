@@ -175,7 +175,7 @@ struct arr {
 		len = 0;
 	}
 
-	void pop_back() {
+	void pop() {
 		if (len) {
 			buf[--len].~T();
 		}
@@ -302,6 +302,8 @@ namespace str {
 		bool is_owned = false;
 	};
 
+	bool cmp(const char *a, const char *b);
+
 	mem::ptr<wchar_t[]> ansiToWide(const char *cstr, size_t len = 0);
 	bool ansiToWide(const char *cstr, size_t src_len, wchar_t *buf, size_t dst_len);
 
@@ -370,8 +372,41 @@ namespace file {
 		win32_handle_t handle = nullptr;
 	};
 
+	struct fp {
+		fp() = default;
+		fp(const char *filename, const char *mode = "rb");
+		fp(const fp &f) = delete;
+		fp(fp &&f);
+		~fp();
+
+		fp &operator=(fp &&f);
+
+		bool open(const char *filename, const char *mode = "rb");
+		void close();
+
+		operator bool() const;
+
+		template<typename T>
+		bool read(T &data) {
+			return read(&data, sizeof(T));
+		}
+
+		template<typename T>
+		bool write(const T &data) {
+			return write(&data, sizeof(T));
+		}
+
+		bool read(void *data, size_t len);
+		bool write(const void *data, size_t len);
+
+		void *fptr = nullptr;
+	};
+
 	bool exists(const char *filename);
 	MemoryBuf read(const char *filename);
+	mem::ptr<char[]> findFirstAvailable(const char *dir = ".", const char *name_fmt = "name_%d.txt");
+	mem::ptr<char[]> getFilename(const char *path);
+	const char *getExtension(const char *path);
 } // namespace file 
 
 // == allocators utils ============================================

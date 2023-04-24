@@ -11,7 +11,7 @@ static VirtualAllocator buffer_arena;
 
 uint8_t operator&(Bind left, Bind right) { return (uint8_t)left & (uint8_t)right; }
 
-static bool bufMakeConstant(Buffer *buf, size_t type_size, Buffer::Usage usage, bool can_write, bool can_read, const void *initial_data, size_t data_count);
+static bool bufMakeConstant(Buffer *buf, size_t type_size, Buffer::Usage usage, bool cpu_can_write, bool cpu_can_read, const void *initial_data, size_t data_count);
 static bool bufMakeStructured(Buffer *buf, size_t type_size, size_t count, Bind bind, const void *initial_data);
 
 static Buffer *getNewBuffer() {
@@ -20,8 +20,20 @@ static Buffer *getNewBuffer() {
     return newbuf;
 }
 
+static void removeBuf(Buffer *buf) {
+    if (!buf) return;
+    buf->cleanup();
+    for (size_t i = 0; i < buffers.len; ++i) {
+        if (buffers[i] == buf) {
+            buffers.remove(i);
+            break;
+        }
+    }
+}
+
 static void popLastBuffer() {
     buffer_arena.rewind(sizeof(Buffer));
+    buffers.pop();
 }
 
 static D3D11_USAGE usage_to_d3d11[(size_t)Buffer::Usage::Count] = {
@@ -56,14 +68,14 @@ Handle<Buffer> Buffer::make() {
 Handle<Buffer> Buffer::makeConstant(
     size_t type_size, 
     Usage usage, 
-    bool can_write, 
-    bool can_read, 
+    bool cpu_can_write,
+    bool cpu_can_read,
     const void *initial_data, 
     size_t data_count
 ) {
     Buffer *newbuf = getNewBuffer();
 
-    if (!bufMakeConstant(newbuf, type_size, usage, can_write, can_read, initial_data, data_count)) {
+    if (!bufMakeConstant(newbuf, type_size, usage, cpu_can_write, cpu_can_read, initial_data, data_count)) {
         popLastBuffer();
         return nullptr;
     }
@@ -93,6 +105,10 @@ Buffer *Buffer::get(Handle<Buffer> handle) {
 
 bool Buffer::isHandleValid(Handle<Buffer> handle) {
     return (Buffer *)handle.value != nullptr;
+}
+
+void Buffer::destroy(Handle<Buffer> handle) {
+    removeBuf(handle.get());
 }
 
 void Buffer::cleanAll() {
@@ -205,21 +221,24 @@ void Buffer::unmap(unsigned int subresource) {
 
 // == PRIVATE FUNCTIONS ==================================================
 
-static bool bufMakeConstant(Buffer *buf, size_t type_size, Buffer::Usage usage, bool can_write, bool can_read, const void *initial_data, size_t data_count) {
+static bool bufMakeConstant(Buffer *buf, size_t type_size, Buffer::Usage usage, bool cpu_can_write, bool cpu_can_read, const void *initial_data, size_t data_count) {
     assert(buf);
     buf->cleanup();
     
     D3D11_BUFFER_DESC bd;
     mem::zero(bd);
     bd.Usage = usage_to_d3d11[(size_t)usage];
-    bd.StructureByteStride = (UINT)type_size;
     bd.ByteWidth = (UINT)(type_size * data_count);
-    bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+
+    if (usage != Buffer::Usage::Staging) {
+        bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    }
+
     if (usage != Buffer::Usage::Immutable) {
-        if (can_write) {
+        if (cpu_can_write) {
             bd.CPUAccessFlags |= D3D11_CPU_ACCESS_WRITE;
         }
-        if (can_read) {
+        if (cpu_can_read) {
             bd.CPUAccessFlags |= D3D11_CPU_ACCESS_READ;
         }
     }

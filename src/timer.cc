@@ -153,6 +153,7 @@ void CPUClock::print(LogLevel level) {
 	else {
 		logMessage(level, "[%s] time passed: %.3fns", debug_name, timerToNano(time_passed));
 	}
+	start = timerNow();
 }
 
 // == GPU CLOCK =========================================================================================

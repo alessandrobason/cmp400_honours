@@ -140,6 +140,7 @@ float3 getIrradiance(float3 dir) {
 	float2 uv;
 	uv.x = atan2(dir.x, dir.z) / (2 * PI) + 0.5;
 	uv.y = -(dir.y * 0.5 + 0.5);
+
 	return irradiance_map.SampleLevel(tex_sampler, uv, 0).rgb;
 }
 
@@ -203,16 +204,17 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 				//const float3 albedo = getAlbedo(tex_pos);
 				// const float3 albedo = pow(normal * .5 + .5, 4.);
 				const float3 albedo = getAlbedo(tex_pos, normal);
-				//float diffuse_intensity = max(0, dot(normal, light_dir));
-				//final_colour *= albedo * saturate(diffuse_intensity + 0.2);
-				const float3 irradiance = getIrradiance(normal);
+				const float diffuse_intensity = max(0, dot(normal, light_dir));
+				// const float ambient_occlusion = (float)step_count / MAX_STEPS;
+				final_colour *= albedo * saturate(diffuse_intensity + 0.2);
+				// const float3 irradiance = getIrradiance(normal);
 				//const float F0 = 0.04;
 				//const float3 kS = fresnelSchlickRoughness(max(dot(normal, ray_dir), 0), F0, 0.1);
 				//const float3 kD = (1. - kS);
-				const float3 diffuse = irradiance * albedo;
+				//const float3 diffuse = albedo;
 				//const float3 ambient = (kD * diffuse) * 1.0;
 				//// const float3 ambient = irradiance * 0.05;
-				final_colour *= diffuse;
+				//final_colour *= diffuse  * diffuse_intensity;
 				// final_colour *= irradiance * albedo;
 
 
@@ -238,7 +240,7 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 
 	if (step_count >= MAX_STEPS) {
 		// final_colour *= lerp(top_sky_colour, bottom_sky_colour, ray_dir.y * .5 + .5);
-		final_colour *= sqrt(getBackground(ray_dir));
+		final_colour *= getBackground(ray_dir);
 	}
 
 	if (is_mouse) {
@@ -261,6 +263,5 @@ float4 main(PixelInput input) : SV_TARGET {
 
 	float3 colour = rayMarch(ray_origin, ray_dir);
 	
-	return float4((colour), 1.0);
 	return float4(sqrt(colour), 1.0);
 }

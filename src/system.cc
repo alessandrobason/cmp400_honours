@@ -12,6 +12,7 @@
 #include <backends/imgui_impl_win32.h>
 
 #include <renderdoc.h>
+#include <nfd.hpp>
 
 //#include <tracy/Tracy.hpp>
 //#include <tracy/TracyD3D11.hpp>
@@ -53,7 +54,7 @@ namespace gfx {
 		gpuTimerInit();
 
 		if (!renderdocInit()) {
-			err("couldn't initialize renderdoc connection");
+			warn("couldn't initialize renderdoc connection (this is normal if you're not debugging)");
 		}
 
 		// -- Initialize ImGui --
@@ -369,9 +370,12 @@ namespace win {
 		UpdateWindow((HWND)hwnd);
 
 		laptime = timerNow();
+
+		NFD::Init();
 	}
 
 	void cleanup() {
+		NFD::Quit();
 		gfx::cleanup();
 
 		DestroyWindow((HWND)hwnd);

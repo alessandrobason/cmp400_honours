@@ -29,9 +29,10 @@
 
 bool is_dirty = true;
 constexpr vec3u maintex_size = 512;
-constexpr vec3u brush_size = 64;
 constexpr vec3u threads = maintex_size / 8;
 constexpr unsigned int initial_material_count = 10;
+
+static_assert(all(maintex_size % 8 == 0));
 
 struct PSShaderData {
 	vec3 cam_up;
@@ -84,20 +85,19 @@ static Mesh makeFullScreenTriangle() {
 
 int main() {
 	win::create("Honours Project", 800, 600);
-	assert(all(maintex_size % 8 == 0));
-	assert(all(brush_size % 8 == 0));
 
 	{
 		Camera cam;
 		BrushEditor brush_editor;
 		MaterialEditor material_editor;
-		Texture3D main_texture;
+		Texture3D main_texture, scaled_texture;
 		DynamicShader sh_manager;
-		int main_ps_ind, main_vs_ind, sculpt_ind, gen_brush_ind, empty_texture_ind, find_brush_ind;
-		Shader *main_ps, *main_vs, *sculpt, *gen_brush, *empty_texture, *find_brush;
+		int main_ps_ind, main_vs_ind, sculpt_ind, gen_brush_ind, empty_texture_ind, find_brush_ind, scale_ind;
+		Shader *main_ps, *main_vs, *sculpt, *gen_brush, *empty_texture, *find_brush, *scale_cs;
 		Handle<Buffer> brush_data_handle;
 
 		if (!main_texture.create(maintex_size, Texture3D::Type::float16)) gfxErrorExit();
+		if (!scaled_texture.create(64, Texture3D::Type::float16)) gfxErrorExit();
 
 		main_vs_ind       = sh_manager.add("base_vs",          ShaderType::Vertex);
 		main_ps_ind       = sh_manager.add("base_ps",          ShaderType::Fragment);
@@ -105,6 +105,7 @@ int main() {
 		gen_brush_ind     = sh_manager.add("gen_brush_cs",     ShaderType::Compute);
 		empty_texture_ind = sh_manager.add("empty_texture_cs", ShaderType::Compute);
 		find_brush_ind    = sh_manager.add("find_brush_cs",    ShaderType::Compute);
+		scale_ind         = sh_manager.add("scale_cs",         ShaderType::Compute);
 
 		main_vs       = sh_manager.get(main_vs_ind);
 		main_ps       = sh_manager.get(main_ps_ind);
@@ -112,6 +113,7 @@ int main() {
 		gen_brush     = sh_manager.get(gen_brush_ind);
 		empty_texture = sh_manager.get(empty_texture_ind);
 		find_brush    = sh_manager.get(find_brush_ind);
+		scale_cs      = sh_manager.get(scale_ind);
 
 		if (!main_vs)       gfxErrorExit();
 		if (!main_ps)       gfxErrorExit();
@@ -119,6 +121,7 @@ int main() {
 		if (!gen_brush)     gfxErrorExit();
 		if (!empty_texture) gfxErrorExit();
 		if (!find_brush)    gfxErrorExit();
+		if (!scale_cs)      gfxErrorExit();
 
 		main_ps->addSampler();
 
@@ -134,7 +137,7 @@ int main() {
 		Mesh triangle = makeFullScreenTriangle();
 
 		// generate brush
-		gen_brush->dispatch(brush_size / 8, {}, {}, { brush_editor.getUAV()});
+		gen_brush->dispatch(brush_editor.texture.size / 8, {}, {}, { brush_editor.getUAV()});
 
 		// fill texture
 		empty_texture->dispatch(threads, {}, {}, { main_texture.uav });
@@ -163,6 +166,14 @@ int main() {
 			if (sculpt_clock.isReady()) sculpt_clock.print();
 			if (isActionPressed(Action::CloseProgram)) win::close();
 
+			if (isKeyPressed(KEY_T)) {
+				info("running scale shader");
+				gfx::captureFrame();
+				scale_cs->dispatch(scaled_texture.size / 8, {}, { main_texture.srv }, { scaled_texture.uav });
+				scaled_texture.save("test_brush.bin");
+				brush_editor.texture.load("test_brush.bin");
+			}
+
 			cam.update();
 			brush_editor.update();
 			material_editor.update();
@@ -172,7 +183,7 @@ int main() {
 					data->pos   = cam.pos + cam.fwd * cam.getZoom();
 					data->dir   = cam.getMouseDir();
 					data->depth = brush_editor.depth;
-					data->scale = brush_editor.scale;
+					data->scale = brush_editor.getScale();
 					buf->unmap();
 				}
 			}
@@ -214,13 +225,13 @@ int main() {
 			gfx::main_rtv.bind();
 			main_vs->bind();
 			main_ps->bind(
-				{ shader_data_handle, material_editor.mat_handle }, 
+				{ shader_data_handle, material_editor.getBuffer() },
 				{ 
 					brush_data_handle->srv, 
 					main_texture.srv, 
-					material_editor.texture.srv, 
-					material_editor.bg_hdr.srv,  
-					material_editor.irradiance_map.srv  
+					material_editor.getDiffuse(),
+					material_editor.getBackground(),
+					material_editor.getIrradiance()
 				}
 			);
 			triangle.render();

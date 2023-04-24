@@ -7,8 +7,10 @@
 #include "widgets.h"
 #include "buffer.h"
 
-constexpr vec3u brush_tex_size = 64;
+constexpr vec3u brush_tex_size = 128;
 constexpr Texture3D::Type brush_type = Texture3D::Type::float16;
+
+static_assert(all(brush_tex_size % 8 == 0));
 
 Operations operator|=(Operations &a, Operations b) {
 	a = (Operations)((uint32_t)a | (uint32_t)b);
@@ -138,6 +140,12 @@ ID3D11UnorderedAccessView *BrushEditor::getUAV() {
 
 ID3D11ShaderResourceView *BrushEditor::getSRV() {
 	return texture.srv;
+}
+
+float BrushEditor::getScale() {
+	constexpr float base_brush_size = 64.f;
+	const float size_scale = (float)texture.size.x / base_brush_size;
+	return scale * size_scale;
 }
 
 // == PRIVATE FUNCTIONS ========================================

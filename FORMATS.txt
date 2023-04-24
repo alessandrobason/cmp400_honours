@@ -1,0 +1,29 @@
+# TEXTURE 3D
+
+---- header ----
+char[5] "tex3d"
+u32 x
+u32 y
+u32 z
+u8  type
+
+type can be [ 
+    uint8, uint16, uint32, sint8, 
+    sint16, sint32, float16, float32, 
+    r16g16_uint, r11g11b10_float 
+]
+
+T depends on type:
+uint8           -> u8
+uint16          -> u16
+uint32          -> u32
+sint8           -> i8
+sint16          -> i16
+sint32          -> i32
+float16         -> f16 (custom datatype, just a u16 underneath)
+float32         -> f32
+r16g16_uint     -> u32
+r11g11b10_float -> f32
+
+---- data ----
+T[x * y * z] data

@@ -2,22 +2,20 @@
 
 #include <d3d11.h>
 #include <imgui.h>
+#include <nfd.hpp>
 
 #include "maths.h"
 #include "system.h"
 
 MaterialEditor::MaterialEditor() {
-	if (!texture.load("assets/testing_texture.png")) {
-		fatal("couldn't load default material texture");
-	}
+	diffuse_handle    = addTexture("assets/testing_texture.png");
+	background_handle = addTexture("assets/rainforest_trail.png");
+	//background_handle = addTexture(*this, "assets/rainforest_trail_4k.hdr");
+	//irradiance_handle = addTexture(*this, "assets/irradiance_map.hdr");
 
-	if (!bg_hdr.loadHDR("assets/rainforest_trail_4k.hdr")) {
-		fatal("couldn't load default background hdr texture");
-	}
-
-	if (!irradiance_map.loadHDR("assets/irradiance_map.hdr")) {
-		fatal("couldn't load default irradiance texture");
-	}
+	if (diffuse_handle == -1) fatal("couldn't load default material texture");
+	if (background_handle == -1) fatal("couldn't load default background hdr texture");
+	//if (irradiance_handle == -1) fatal("couldn't load default irradiance texture");
 
 	mat_handle = Buffer::makeConstant<MaterialPS>(Buffer::Usage::Dynamic);
 
@@ -34,7 +32,8 @@ void MaterialEditor::drawWidget() {
 		return;
 	}
 
-	vec2 tex_size = texture.size;
+	Texture2D *diffuse = get(diffuse_handle);
+	vec2 tex_size = diffuse->size;
 	vec2 clamped = math::clamp(tex_size, vec2(0.f), vec2(200.f));
 	clamped.y *= tex_size.y / tex_size.x;
 
@@ -44,32 +43,102 @@ void MaterialEditor::drawWidget() {
 	ImGui::SameLine();
 	has_changed |= ImGui::Checkbox("##UseTexture", &has_texture);
 
-	if (ImGui::Button("Load Image From File")) {
+	if (ImGui::BeginCombo("Textures", textures[diffuse_handle].name.get())) {
+		for (size_t i = 0; i < textures.len; ++i) {
+			bool is_selected = i == diffuse_handle;
+			if (ImGui::Selectable(textures[i].name.get(), is_selected)) {
+				diffuse_handle = i;
+			}
 
+			if (is_selected) {
+				ImGui::SetItemDefaultFocus();
+			}
+		}
+
+		ImGui::EndCombo();
+	}
+
+	if (ImGui::Button("Load Image From File")) {
+		should_open_nfd = true;
+#if 0
+		std::promise<NFD::UniquePathU8> promise;
+		future = promise.get_future();
+		std::thread(
+			[](std::promise<NFD::UniquePathU8> promise) {
+				NFD::UniquePathU8 path;
+				nfdu8filteritem_t filter[] = { { "Normal Image", "jpg,jpeg,png,bmp,psd,tga,gif,pic" }, { "HDR Image", "hdr" } };
+				nfdresult_t result = NFD::OpenDialog(path, filter, ARRLEN(filter), "assets");
+				if (result == NFD_OKAY) {
+					promise.set_value(mem::move(path));
+				}
+				else {
+					promise.set_value(nullptr);
+				}
+			},
+			std::move(promise)
+		).detach();
+#endif
+#if 0
+		promise = launchJob<NFD::UniquePathU8>(
+			[]() -> NFD::UniquePathU8 {
+				NFD::UniquePathU8 path;
+				nfdu8filteritem_t filter[] = { { "Normal Image", "jpg,jpeg,png,bmp,psd,tga,gif,pic" }, { "HDR Image", "hdr" } };
+				nfdresult_t result = NFD::OpenDialog(path, filter, ARRLEN(filter), "assets");
+				if (result == NFD_OKAY) {
+					return path;
+					//promise.set_value(mem::move(path));
+				}
+				else {
+					return nullptr;
+					//promise.set_value(nullptr);
+				}
+			}
+		);
+#endif
 	}
 
 	ImGui::BeginDisabled(!has_texture);
 		ImGui::Text("Texture");
 		ImGui::SameLine();
 		const vec2 cursor_pos = ImGui::GetCursorScreenPos();
-		ImGui::Image((ImTextureID)texture.srv, clamped);
+		ImGui::Image((ImTextureID)diffuse->srv, clamped);
 		if (ImGui::IsItemHovered()) {
 			const vec2 mouse_pos = ImGui::GetMousePos();
 			const vec2 norm_pos = (mouse_pos - cursor_pos) / clamped;
 			const vec2 uv_start = norm_pos - 0.15f;
 			const vec2 uv_end = norm_pos + 0.15f;
 			ImGui::BeginTooltip();
-				ImGui::Image((ImTextureID)texture.srv, clamped * 2.f, uv_start, uv_end);
+				ImGui::Image((ImTextureID)diffuse->srv, clamped * 2.f, uv_start, uv_end);
 			ImGui::EndTooltip();
 		}
 	ImGui::EndDisabled();
 
 	ImGui::End();
-
-	//ImGui::ShowDemoWindow();
 }
 
 void MaterialEditor::update() {
+	if (should_open_nfd) {
+		should_open_nfd = false;
+
+		NFD::UniquePathU8 path;
+		nfdu8filteritem_t filter[] = { { "Normal Image", "jpg,jpeg,png,bmp,psd,tga,gif,pic" }, { "HDR Image", "hdr" } };
+		nfdresult_t result = NFD::OpenDialog(path, filter, ARRLEN(filter), "assets");
+		if (result == NFD_OKAY) {
+			if (str::cmp("hdr", file::getExtension(path.get()))) {
+				addTextureHDR(path.get());
+			}
+			else {
+				addTexture(path.get());
+			}
+		}
+		else if (result == NFD_CANCEL) {
+			// user has closed the dialog without selecting
+		}
+		else {
+			err("error with the file dialog: %s", NFD::GetError());
+		}
+	}
+
 	if (!has_changed) return;
 	if (Buffer *buf = mat_handle.get()) {
 		if (MaterialPS *data = buf->map<MaterialPS>()) {
@@ -81,6 +150,66 @@ void MaterialEditor::update() {
 	has_changed = false;
 }
 
-ID3D11ShaderResourceView *MaterialEditor::getSRV() {
-	return texture.srv;
+Handle<Buffer> MaterialEditor::getBuffer() {
+	return mat_handle;
+}
+
+ID3D11ShaderResourceView *MaterialEditor::getDiffuse() {
+	return get(diffuse_handle)->srv;
+}
+
+ID3D11ShaderResourceView *MaterialEditor::getBackground() {
+	return get(background_handle)->srv;
+}
+
+ID3D11ShaderResourceView *MaterialEditor::getIrradiance() {
+	return nullptr;
+	//return get(irradiance_handle)->srv;
+}
+
+Texture2D *MaterialEditor::get(size_t index) {
+	return index < textures.len ? &textures[index].tex : nullptr;
+}
+
+size_t MaterialEditor::addTexture(const char *path) {
+	Texture2D newtex;
+	mem::ptr<char[]> name = file::getFilename(path);
+	size_t ind = checkTextureAlreadyLoaded(name.get());
+	if (ind < textures.len) {
+		warn("texture %s is already loaded", name.get());
+		return ind;
+	}
+	if (!newtex.load(path)) {
+		err("couldn't load texture %s", name.get());
+		return -1;
+	}
+	ind = textures.len;
+	textures.push(mem::move(newtex), name);
+	return ind;
+}
+
+size_t MaterialEditor::addTextureHDR(const char *path) {
+	Texture2D newtex;
+	mem::ptr<char[]> name = file::getFilename(path);
+	size_t ind = checkTextureAlreadyLoaded(name.get());
+	if (ind < textures.len) {
+		warn("HDR texture %s is already loaded", name.get());
+		return ind;
+	}
+	if (!newtex.loadHDR(path)) {
+		err("couldn't load HDR texture %s", name.get());
+		return -1;
+	}
+	ind = textures.len;
+	textures.push(mem::move(newtex), name);
+	return ind;
+}
+
+size_t MaterialEditor::checkTextureAlreadyLoaded(const char *name) {
+	for (size_t i = 0; i < textures.len; ++i) {
+		if (str::cmp(name, textures[i].name.get())) {
+			return i;
+		}
+	}
+	return -1;
 }

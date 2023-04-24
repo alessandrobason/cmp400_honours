@@ -13,18 +13,6 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="ImGui">
-      <UniqueIdentifier>{38c8ee29-d12c-47ed-ab44-1f773ea29f30}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ImGui\backends">
-      <UniqueIdentifier>{ab8bcac1-6f11-4fb4-80cb-6ff701cd56b7}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="stb">
-      <UniqueIdentifier>{a5352279-4cc9-4eba-b022-f063aeb18e90}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="tracy">
-      <UniqueIdentifier>{73ad29b7-8cee-4101-81c2-f9871c2e1b79}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Header Files\gfx">
       <UniqueIdentifier>{ba8588b4-7531-4809-8df4-c1ffa4a28686}</UniqueIdentifier>
     </Filter>
@@ -43,14 +31,32 @@
     <Filter Include="Source Files\core">
       <UniqueIdentifier>{3be5e44b-a651-4f42-ba26-b21d07cbc5e4}</UniqueIdentifier>
     </Filter>
-    <Filter Include="renderdoc">
-      <UniqueIdentifier>{57dcbfcd-f539-43fd-a387-39be2bed57c4}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Header Files\gui">
       <UniqueIdentifier>{f4aa0d08-699a-4480-9ea4-681fe3ff2f6a}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source Files\gui">
       <UniqueIdentifier>{aff898a6-932d-41ff-8ca9-04a1f351cb1f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Libraries">
+      <UniqueIdentifier>{8bfabb9c-1be2-4e91-bcd0-b230f410461c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Libraries\renderdoc">
+      <UniqueIdentifier>{57dcbfcd-f539-43fd-a387-39be2bed57c4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Libraries\stb">
+      <UniqueIdentifier>{a5352279-4cc9-4eba-b022-f063aeb18e90}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Libraries\tracy">
+      <UniqueIdentifier>{73ad29b7-8cee-4101-81c2-f9871c2e1b79}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Libraries\ImGui">
+      <UniqueIdentifier>{38c8ee29-d12c-47ed-ab44-1f773ea29f30}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Libraries\ImGui\backends">
+      <UniqueIdentifier>{ab8bcac1-6f11-4fb4-80cb-6ff701cd56b7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Libraries\NativeFileDialog-Extended">
+      <UniqueIdentifier>{505bed91-1ea2-40bf-b4e7-75a6f7d46c23}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -61,31 +67,31 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\libs\ImGui\imgui.cpp">
-      <Filter>ImGui</Filter>
+      <Filter>Libraries\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="..\libs\ImGui\imgui_demo.cpp">
-      <Filter>ImGui</Filter>
+      <Filter>Libraries\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="..\libs\ImGui\imgui_draw.cpp">
-      <Filter>ImGui</Filter>
+      <Filter>Libraries\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="..\libs\ImGui\imgui_tables.cpp">
-      <Filter>ImGui</Filter>
+      <Filter>Libraries\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="..\libs\ImGui\imgui_widgets.cpp">
-      <Filter>ImGui</Filter>
+      <Filter>Libraries\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="..\libs\ImGui\backends\imgui_impl_dx11.cpp">
-      <Filter>ImGui\backends</Filter>
+      <Filter>Libraries\ImGui\backends</Filter>
     </ClCompile>
     <ClCompile Include="..\libs\ImGui\backends\imgui_impl_win32.cpp">
-      <Filter>ImGui\backends</Filter>
+      <Filter>Libraries\ImGui\backends</Filter>
     </ClCompile>
     <ClCompile Include="..\src\widgets.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\libs\stb\stb.c">
-      <Filter>stb</Filter>
+      <Filter>Libraries\stb</Filter>
     </ClCompile>
     <ClCompile Include="..\src\shape_builder.cc">
       <Filter>Source Files</Filter>
@@ -130,7 +136,7 @@
       <Filter>Source Files\core</Filter>
     </ClCompile>
     <ClCompile Include="..\libs\renderdoc\renderdoc.cc">
-      <Filter>renderdoc</Filter>
+      <Filter>Libraries\renderdoc</Filter>
     </ClCompile>
     <ClCompile Include="..\src\brush_editor.cc">
       <Filter>Source Files\gui</Filter>
@@ -138,37 +144,40 @@
     <ClCompile Include="..\src\material_editor.cc">
       <Filter>Source Files\gui</Filter>
     </ClCompile>
+    <ClCompile Include="..\libs\nativefiledialog-extended\src\nfd_win.cpp">
+      <Filter>Libraries\NativeFileDialog-Extended</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\options.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\libs\ImGui\imconfig.h">
-      <Filter>ImGui</Filter>
+      <Filter>Libraries\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="..\libs\ImGui\imgui.h">
-      <Filter>ImGui</Filter>
+      <Filter>Libraries\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="..\libs\ImGui\imgui_internal.h">
-      <Filter>ImGui</Filter>
+      <Filter>Libraries\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="..\libs\ImGui\imstb_rectpack.h">
-      <Filter>ImGui</Filter>
+      <Filter>Libraries\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="..\libs\ImGui\imstb_textedit.h">
-      <Filter>ImGui</Filter>
+      <Filter>Libraries\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="..\libs\ImGui\imstb_truetype.h">
-      <Filter>ImGui</Filter>
+      <Filter>Libraries\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="..\libs\ImGui\backends\imgui_impl_dx11.h">
-      <Filter>ImGui\backends</Filter>
+      <Filter>Libraries\ImGui\backends</Filter>
     </ClInclude>
     <ClInclude Include="..\libs\ImGui\backends\imgui_impl_win32.h">
-      <Filter>ImGui\backends</Filter>
+      <Filter>Libraries\ImGui\backends</Filter>
     </ClInclude>
     <ClInclude Include="..\libs\stb\stb_image_write.h">
-      <Filter>stb</Filter>
+      <Filter>Libraries\stb</Filter>
     </ClInclude>
     <ClInclude Include="..\src\shape_builder.h">
       <Filter>Header Files</Filter>
@@ -177,7 +186,7 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\libs\stb\stb_image.h">
-      <Filter>stb</Filter>
+      <Filter>Libraries\stb</Filter>
     </ClInclude>
     <ClInclude Include="..\src\buffer.h">
       <Filter>Header Files\gfx</Filter>
@@ -234,10 +243,10 @@
       <Filter>Header Files\core</Filter>
     </ClInclude>
     <ClInclude Include="..\libs\renderdoc\renderdoc_app.h">
-      <Filter>renderdoc</Filter>
+      <Filter>Libraries\renderdoc</Filter>
     </ClInclude>
     <ClInclude Include="..\libs\renderdoc\renderdoc.h">
-      <Filter>renderdoc</Filter>
+      <Filter>Libraries\renderdoc</Filter>
     </ClInclude>
     <ClInclude Include="..\src\widgets.h">
       <Filter>Header Files\gui</Filter>
@@ -248,10 +257,16 @@
     <ClInclude Include="..\src\material_editor.h">
       <Filter>Header Files\gui</Filter>
     </ClInclude>
+    <ClInclude Include="..\libs\nativefiledialog-extended\src\include\nfd.h">
+      <Filter>Libraries\NativeFileDialog-Extended</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\nativefiledialog-extended\src\include\nfd.hpp">
+      <Filter>Libraries\NativeFileDialog-Extended</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="..\libs\ImGui\LICENSE.txt">
-      <Filter>ImGui</Filter>
+      <Filter>Libraries\ImGui</Filter>
     </Text>
   </ItemGroup>
   <ItemGroup>

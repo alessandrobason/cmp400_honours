@@ -1,12 +1,12 @@
 [X] Mouse input texture
 [X] Object material
-[ ] Save to / Load from file
+[X] Save to / Load from file
 [ ] Antialiasing
 [ ] Make normal map 3d texture, so the normal calculation
     becomes only 8 texture lookups instead of 32 (jesus christ)
 [X] Brush UI
 [ ] Key remapping
-[ ] Background image
+[X] Background image
 [ ] If you hold shift, a bar appears over the mouse for changing the size,
     could have the same thing with the ctrl key and the alt key for depth and
     smoothness

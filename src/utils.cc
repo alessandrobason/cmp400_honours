@@ -18,6 +18,10 @@ void safeRelease(IUnknown *ptr) {
 
 // == string utils ================================================
 namespace str {
+	bool cmp(const char *a, const char *b) {
+		return strcmp(a, b) == 0;
+	}
+
 	mem::ptr<wchar_t[]> ansiToWide(const char *cstr, size_t len) {
 		if (len == 0) len = strlen(cstr);
 		// MultiByteToWideChar returns length INCLUDING null-terminating character
@@ -304,6 +308,68 @@ namespace file {
 		return read(fp);
 	}
 
+	mem::ptr<char[]> findFirstAvailable(const char *dir, const char *name_fmt) {
+		char fmt[256];
+		mem::zero(fmt);
+		str::formatBuf(fmt, sizeof(fmt), "%s/%s", dir, name_fmt);
+
+		char name[255];
+		mem::zero(name);
+
+		int count = 0;
+		while (file::exists(
+			str::formatBuf(name, sizeof(name), fmt, count)
+		)) {
+			++count;
+		}
+		return str::dup(name);
+	}
+
+	mem::ptr<char[]> getFilename(const char *path) {
+		if (!path || *path == '\0') return nullptr;
+		size_t len = strlen(path);
+		const char *cur = path;
+
+		for (cur = path + len - 1; *cur; --cur) {
+			if (*cur == '.') {
+				break;
+			}
+		}
+
+		size_t end = cur - path;
+
+		for (cur = path + end - 1; *cur; --cur) {
+			if (*cur == '/' || *cur == '\\') {
+				break;
+			}
+		}
+
+		size_t beg = cur - path + 1;
+
+		if (beg >= len) beg = 0;
+		if (end <= beg) end = len;
+
+		size_t newlen = end - beg;
+
+		mem::ptr<char[]> ptr = mem::ptr<char[]>::make(newlen + 1);
+		memcpy(ptr.get(), path + beg, newlen);
+		ptr[newlen] = '\0';
+		return ptr;
+	}
+
+	const char *getExtension(const char *path) {
+		if (!path || *path == '\0') return nullptr;
+		size_t len = strlen(path);
+
+		for (const char *cur = path + len - 1; *cur; --cur) {
+			if (*cur == '.') {
+				return cur + 1;
+			}
+		}
+
+		return path;
+	}
+
 	Watcher::Watcher(const char *watch_folder) {
 		init(watch_folder);
 	}
@@ -321,7 +387,6 @@ namespace file {
 			mem::swap(watched, w.watched);
 			mem::swap(changed, w.changed);
 			mem::copy(change_buf, w.change_buf);
-			//mem::swap(change_buf, w.change_buf);
 			mem::swap(handle, w.handle);
 		}
 
@@ -462,7 +527,7 @@ namespace file {
 			if (index < changed.size()) {
 				// remove it from list by swapping it with the last one
 				mem::swap(changed[index], changed.back());
-				changed.pop_back();
+				changed.pop();
 			}
 		}
 
@@ -519,6 +584,49 @@ namespace file {
 	Watcher::WatchedFile::WatchedFile(mem::ptr<char[]> &&new_name, void *udata) {
 		name = mem::move(new_name);
 		custom_data = udata;
+	}
+
+	fp::fp(const char *filename, const char *mode) {
+		open(filename, mode);
+	}
+
+	fp::fp(fp &&f) {
+		*this = mem::move(f);
+	}
+
+	fp::~fp() {
+		close();
+	}
+
+	fp &fp::operator=(fp &&f) {
+		if (this != &f) {
+			mem::swap(fptr, f.fptr);
+		}
+		return *this;
+	}
+
+	bool fp::open(const char *filename, const char *mode) {
+		fptr = fopen(filename, mode);
+		return fptr != nullptr;
+	}
+
+	void fp::close() {
+		if (fptr) {
+			fclose((FILE *)fptr);
+			fptr = nullptr;
+		}
+	}
+
+	fp::operator bool() const {
+		return fptr != nullptr;
+	}
+
+	bool fp::read(void *data, size_t len) {
+		return fread(data, 1, len, (FILE *)fptr) == len;
+	}
+
+	bool fp::write(const void *data, size_t len) {
+		return fwrite(data, 1, len, (FILE *)fptr) == len;
 	}
 
 } // namespace file

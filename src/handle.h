@@ -13,11 +13,15 @@ struct Handle {
 	Handle(T *ptr) : value((size_t)ptr) {}
 
 	T *get() const { return T::get(*this); }
-	T *getChecked() const { 
-		T *ptr = get(); 
+
+	T *getChecked() const {
+		T *ptr = get();
 		if (!ptr) fatal("failed to get pointer from handle");
 		return ptr;
 	}
+
+	void destroy() const { T::destroy(*this); }
+
 	bool isValid() const { return T::isHandleValid(*this); }
 
 	T *operator->() const { return getChecked(); }
