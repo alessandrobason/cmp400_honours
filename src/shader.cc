@@ -34,7 +34,6 @@ Shader &Shader::operator=(Shader &&s) {
 bool Shader::load(const char* filename, ShaderType type) {
 	assert(shader_type == ShaderType::None);
 	shader_type = type;
-	shader.destroy();
 
 	file::MemoryBuf buf = file::read(str::format("shaders/bin/%s.cso", filename));
 
@@ -53,6 +52,7 @@ bool Shader::load(const char* filename, ShaderType type) {
 }
 
 bool Shader::loadVertex(const void *data, size_t len) {
+	cleanup();
 	shader_type = ShaderType::Vertex;
 	HRESULT hr = gfx::device->CreateVertexShader(data, len, nullptr, (ID3D11VertexShader **)&shader);
 	if (FAILED(hr)) {
@@ -84,6 +84,7 @@ bool Shader::loadVertex(const void *data, size_t len) {
 }
 
 bool Shader::loadFragment(const void *data, size_t len) {
+	cleanup();
 	shader_type = ShaderType::Fragment;
 	HRESULT hr = gfx::device->CreatePixelShader(data, len, nullptr, (ID3D11PixelShader **)&shader);
 	if (FAILED(hr)) {
@@ -91,10 +92,11 @@ bool Shader::loadFragment(const void *data, size_t len) {
 		return false;
 	}
 
-	return true;
+	return addSampler();
 }
 
 bool Shader::loadCompute(const void *data, size_t len) {
+	cleanup();
 	shader_type = ShaderType::Compute;
 	HRESULT hr = gfx::device->CreateComputeShader(data, len, nullptr, (ID3D11ComputeShader**)&shader);
 	if (FAILED(hr)) {
@@ -104,48 +106,6 @@ bool Shader::loadCompute(const void *data, size_t len) {
 
 	return true;
 }
-
-#if 0
-int Shader::addBuffer(size_t type_size, Buffer::Usage usage, bool can_write, bool can_read) {
-	Buffer newbuf;
-	if (!newbuf.create(type_size, usage, can_write, can_read)) {
-		err("couldn't create new buffer!");
-		return -1;
-	}
-	int index = (int)buffers.size();
-	buffers.push(mem::move(newbuf));
-	return index;
-}
-
-int Shader::addBuffer(size_t type_size, Buffer::Usage usage, const void *initial_data, size_t data_count, bool can_write, bool can_read) {
-	Buffer newbuf;
-	if (!newbuf.create(type_size, usage, initial_data, data_count, can_write, can_read)) {
-		err("couldn't create new buffer!");
-		return -1;
-	}
-	int index = (int)buffers.size();
-	buffers.push(mem::move(newbuf));
-	return index;
-}
-
-int Shader::addStructuredBuf(size_t type_size, size_t count, const void* initial_data) {
-	Buffer newbuf;
-	if (!newbuf.createStructured(type_size, count, initial_data)) {
-		err("couldn't create new structured buffer!");
-		return -1;
-	}
-	int index = (int)buffers.size();
-	buffers.push(mem::move(newbuf));
-	return index;
-}
-
-Buffer *Shader::getBuffer(int index) {
-	if (index < 0 || index >= (int)buffers.size()) {
-		return nullptr;
-	}
-	return &buffers[index];
-}
-#endif
 
 bool Shader::addSampler() {
 	assert(shader_type == ShaderType::Fragment);
@@ -190,8 +150,6 @@ void Shader::unbindSRV(unsigned int count) {
 void Shader::cleanup() {
 	shader.destroy();
 	extra.destroy();
-	// for (Buffer &buf : buffers) buf.cleanup();
-	// buffers.clear();
 }
 
 void Shader::bind() {
@@ -244,33 +202,6 @@ void Shader::unbindCBuffers(int count, unsigned int slot) {
 	Buffer::unbindCBuffer(shader_type, slot, count);
 }
 
-#if 0
-void Shader::bindCBuf(int buffer, unsigned int slot) {
-	if (Buffer *buf = getBuffer(buffer)) {
-		buf->bindCBuffer(shader_type, slot);
-	}
-}
-
-void Shader::bindCBuffers(Slice<int> cbuffers) {
-	int slot = 0;
-	for (int ind : cbuffers) {
-		if (Buffer *buf = getBuffer(ind)) {
-			buf->bindCBuffer(shader_type, slot++);
-		}
-	}
-}
-
-void Shader::unbindCBuf(unsigned int slot) {
-	Buffer::unbindCBuffer(shader_type, slot);
-}
-
-void Shader::unbindCBuffers(int count, unsigned int slot) {
-	if (count >= (int)buffers.size()) count = (int)buffers.size() - 1;
-	Buffer::unbindCBuffer(shader_type, slot, count);
-}
-#endif
-
-//void Shader::dispatch(const vec3u &threads, Slice<int> cbuffers, Slice<ID3D11ShaderResourceView *> srvs, Slice<ID3D11UnorderedAccessView *> uavs) {
 void Shader::dispatch(const vec3u &threads, Slice<Handle<Buffer>> cbuffers, Slice<ID3D11ShaderResourceView *> srvs, Slice<ID3D11UnorderedAccessView *> uavs) {
 	if (!shader) return;
 
@@ -284,11 +215,6 @@ void Shader::dispatch(const vec3u &threads, Slice<Handle<Buffer>> cbuffers, Slic
 					buf->bindCBuffer(ShaderType::Compute, cbuffers_count++);
 				}
 			}
-			// for (int ind : cbuffers) {
-			// 	if (Buffer *buf = getBuffer(ind)) {
-			// 		buf->bindCBuffer(ShaderType::Compute, cbuffers_count++);
-			// 	}
-			// }
 		}
 		if (!srvs.empty()) gfx::context->CSSetShaderResources(0, (UINT)srvs.len, srvs.data);
 		if (!uavs.empty()) gfx::context->CSSetUnorderedAccessViews(0, (UINT)uavs.len, uavs.data, nullptr);

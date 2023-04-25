@@ -2,6 +2,7 @@
 
 #include <d3d11.h>
 #include <imgui.h>
+#include <nfd.hpp>
 #include "system.h"
 #include "input.h"
 #include "widgets.h"
@@ -31,9 +32,12 @@ static void gfxErrorExit(const char *ctx) {
 }
 
 BrushEditor::BrushEditor() {
-	if (!texture.create(brush_tex_size, brush_type)) {
+	Texture3D brush_tex;
+	if (!brush_tex.create(brush_tex_size, brush_type)) {
 		gfxErrorExit("initialize brush");
 	}
+	brush_handle = textures.len;
+	textures.push(mem::move(brush_tex), str::dup("default"));
 
 	if (!brush_icon.load("assets/brush_icon.png")) {
 		fatal("couldn't load brush icon");
@@ -106,8 +110,25 @@ void BrushEditor::drawWidget() {
 	has_changed |= filledSlider("##Smooth", &smooth_k, 0.f, 20.f);
 	ImGui::Text("Single click");
 	ImGui::Checkbox("##Single click", &is_single_click);
-	ImGui::Text("Material");
-	has_changed |= inputU8("##MatIndex", &material_index);
+
+	if (ImGui::BeginCombo("Brushes", textures[brush_handle].name.get())) {
+		for (size_t i = 0; i < textures.len; ++i) {
+			bool is_selected = i == brush_handle;
+			if (ImGui::Selectable(textures[i].name.get(), is_selected)) {
+				brush_handle = i;
+			}
+
+			if (is_selected) {
+				ImGui::SetItemDefaultFocus();
+			}
+		}
+
+		ImGui::EndCombo();
+	}
+
+	if (ImGui::Button("Load brush from file")) {
+		should_open_nfd = true;
+	}
 
 	ImGui::PopStyleVar();
 
@@ -118,6 +139,23 @@ void BrushEditor::drawWidget() {
 }
 
 void BrushEditor::update() {
+	if (should_open_nfd) {
+		should_open_nfd = false;
+
+		NFD::UniquePathU8 path;
+		nfdu8filteritem_t filter[] = { { "Tex3D", "bin" } };
+		nfdresult_t result = NFD::OpenDialog(path, filter, ARRLEN(filter));
+		if (result == NFD_OKAY) {
+			brush_handle = addTexture(path.get());
+		}
+		else if (result == NFD_CANCEL) {
+			// user has closed the dialog without selecting
+		}
+		else {
+			err("error with the file dialog: %s", NFD::GetError());
+		}
+	}
+
 	if (!has_changed) return;
 	if (Buffer *buf = oper_handle.get()) {
 		if (OperationData *data = buf->map<OperationData>()) {
@@ -127,25 +165,86 @@ void BrushEditor::update() {
 			}
 			data->smooth_k = smooth_k;
 			data->scale = scale;
-			data->colour = material_index > 1 ? vec3(0.1f, 1.0f, 0.2f) : vec3(1.0f, 0.1f, 0.2f);
 			buf->unmap();
 		}
 	}
 	has_changed = false;
 }
 
-ID3D11UnorderedAccessView *BrushEditor::getUAV() {
-	return texture.uav;
+void BrushEditor::setOpen(bool new_is_open) {
+	is_open = new_is_open;
 }
 
-ID3D11ShaderResourceView *BrushEditor::getSRV() {
-	return texture.srv;
+bool BrushEditor::isOpen() const {
+	return is_open;
 }
 
-float BrushEditor::getScale() {
+ID3D11UnorderedAccessView *BrushEditor::getBrushUAV() {
+	if (Texture3D *brush = get(brush_handle)) return brush->uav;
+	return nullptr;
+}
+
+ID3D11ShaderResourceView *BrushEditor::getBrushSRV() {
+	if (Texture3D *brush = get(brush_handle)) return brush->srv;
+	return nullptr;
+}
+
+vec3i BrushEditor::getBrushSize() const {
+	if (const Texture3D *brush = get(brush_handle)) return brush->size;
+	return 0;
+}
+
+float BrushEditor::getScale() const {
 	constexpr float base_brush_size = 64.f;
-	const float size_scale = (float)texture.size.x / base_brush_size;
-	return scale * size_scale;
+	if (const Texture3D *brush = get(brush_handle)) {
+		const float size_scale = (float)brush->size.x / base_brush_size;
+		return scale * size_scale;
+	}
+	else {
+		return scale;
+	}
+}
+
+float BrushEditor::getDepth() const {
+	return depth;
+}
+
+Handle<Buffer> BrushEditor::getOperHandle() {
+	return oper_handle;
+}
+
+Texture3D *BrushEditor::get(size_t index) {
+	return index < textures.len ? &textures[index].tex : nullptr;
+}
+
+const Texture3D *BrushEditor::get(size_t index) const {
+	return index < textures.len ? &textures[index].tex : nullptr;
+}
+
+size_t BrushEditor::addTexture(const char *path) {
+	Texture3D newtex;
+	mem::ptr<char[]> name = file::getFilename(path);
+	size_t ind = checkTextureAlreadyLoaded(name.get());
+	if (ind < textures.len) {
+		warn("texture %s is already loaded", name.get());
+		return ind;
+	}
+	if (!newtex.load(path)) {
+		err("couldn't load texture %s", name.get());
+		return -1;
+	}
+	ind = textures.len;
+	textures.push(mem::move(newtex), name);
+	return ind;
+}
+
+size_t BrushEditor::checkTextureAlreadyLoaded(const char *name) {
+	for (size_t i = 0; i < textures.len; ++i) {
+		if (str::cmp(name, textures[i].name.get())) {
+			return i;
+		}
+	}
+	return -1;
 }
 
 // == PRIVATE FUNCTIONS ========================================

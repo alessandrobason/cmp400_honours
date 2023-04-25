@@ -19,11 +19,15 @@ struct Options {
 	bool quit_on_fatal    = true;
 
 	void load(const char *filename = "options.ini");
+	void drawWidget();
 	bool update();
 	void cleanup();
+	void setOpen(bool is_open);
+	bool isOpen() const;
 
 	static Options &get();
 
 private:
 	file::Watcher watcher = "./";
+	bool is_open = false;
 };

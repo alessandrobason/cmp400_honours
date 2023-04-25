@@ -52,51 +52,24 @@
     <Filter Include="Libraries\ImGui">
       <UniqueIdentifier>{38c8ee29-d12c-47ed-ab44-1f773ea29f30}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Libraries\ImGui\backends">
-      <UniqueIdentifier>{ab8bcac1-6f11-4fb4-80cb-6ff701cd56b7}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Libraries\NativeFileDialog-Extended">
       <UniqueIdentifier>{505bed91-1ea2-40bf-b4e7-75a6f7d46c23}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Libraries\zstd">
+      <UniqueIdentifier>{da40fb5e-5e12-4895-ab76-965ac256b6e1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Libraries\ImGui\backends">
+      <UniqueIdentifier>{36a5f0f7-dadd-4154-8f3c-d7f47d9dee7c}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\options.cc">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libs\ImGui\imgui.cpp">
-      <Filter>Libraries\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libs\ImGui\imgui_demo.cpp">
-      <Filter>Libraries\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libs\ImGui\imgui_draw.cpp">
-      <Filter>Libraries\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libs\ImGui\imgui_tables.cpp">
-      <Filter>Libraries\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libs\ImGui\imgui_widgets.cpp">
-      <Filter>Libraries\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libs\ImGui\backends\imgui_impl_dx11.cpp">
-      <Filter>Libraries\ImGui\backends</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libs\ImGui\backends\imgui_impl_win32.cpp">
-      <Filter>Libraries\ImGui\backends</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\widgets.cc">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\libs\stb\stb.c">
       <Filter>Libraries\stb</Filter>
     </ClCompile>
     <ClCompile Include="..\src\shape_builder.cc">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\camera.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\matrix.cc">
@@ -147,35 +120,41 @@
     <ClCompile Include="..\libs\nativefiledialog-extended\src\nfd_win.cpp">
       <Filter>Libraries\NativeFileDialog-Extended</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\widgets.cc">
+      <Filter>Source Files\gui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\options.cc">
+      <Filter>Source Files\core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\camera.cc">
+      <Filter>Source Files\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\zstd\zstd.cc">
+      <Filter>Libraries\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\imgui\imgui.cpp">
+      <Filter>Libraries\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\imgui\imgui_demo.cpp">
+      <Filter>Libraries\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\imgui\imgui_draw.cpp">
+      <Filter>Libraries\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\imgui\imgui_tables.cpp">
+      <Filter>Libraries\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\imgui\imgui_widgets.cpp">
+      <Filter>Libraries\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\imgui\backends\imgui_impl_dx11.cpp">
+      <Filter>Libraries\ImGui\backends</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\imgui\backends\imgui_impl_win32.cpp">
+      <Filter>Libraries\ImGui\backends</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\src\options.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libs\ImGui\imconfig.h">
-      <Filter>Libraries\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libs\ImGui\imgui.h">
-      <Filter>Libraries\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libs\ImGui\imgui_internal.h">
-      <Filter>Libraries\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libs\ImGui\imstb_rectpack.h">
-      <Filter>Libraries\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libs\ImGui\imstb_textedit.h">
-      <Filter>Libraries\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libs\ImGui\imstb_truetype.h">
-      <Filter>Libraries\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libs\ImGui\backends\imgui_impl_dx11.h">
-      <Filter>Libraries\ImGui\backends</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libs\ImGui\backends\imgui_impl_win32.h">
-      <Filter>Libraries\ImGui\backends</Filter>
-    </ClInclude>
     <ClInclude Include="..\libs\stb\stb_image_write.h">
       <Filter>Libraries\stb</Filter>
     </ClInclude>
@@ -263,11 +242,39 @@
     <ClInclude Include="..\libs\nativefiledialog-extended\src\include\nfd.hpp">
       <Filter>Libraries\NativeFileDialog-Extended</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="..\libs\ImGui\LICENSE.txt">
+    <ClInclude Include="..\libs\zstd\zstd.hpp">
+      <Filter>Libraries\zstd</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\zstd\zstd.h">
+      <Filter>Libraries\zstd</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\options.h">
+      <Filter>Header Files\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\imgui\imconfig.h">
       <Filter>Libraries\ImGui</Filter>
-    </Text>
+    </ClInclude>
+    <ClInclude Include="..\libs\imgui\imgui.h">
+      <Filter>Libraries\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\imgui\imgui_internal.h">
+      <Filter>Libraries\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\imgui\imstb_rectpack.h">
+      <Filter>Libraries\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\imgui\imstb_textedit.h">
+      <Filter>Libraries\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\imgui\imstb_truetype.h">
+      <Filter>Libraries\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\imgui\backends\imgui_impl_dx11.h">
+      <Filter>Libraries\ImGui\backends</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\imgui\backends\imgui_impl_win32.h">
+      <Filter>Libraries\ImGui\backends</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="..\shaders\base_ps.hlsl">

@@ -297,6 +297,7 @@ namespace win {
 	static uint64_t laptime = 0;
 	static bool is_open = true;
 	static vec2i size;
+	static str::tstr base_window_name;
 
 	bool isOpen() {
 		poll();
@@ -351,11 +352,11 @@ namespace win {
 		wc.lpszClassName = windows_class_name;
 		RegisterClassEx(&wc);
 
-		str::tstr window_name = name;
+		base_window_name = name;
 
 		hwnd = (win32_handle_t)CreateWindow(
 			windows_class_name,
-			window_name,
+			base_window_name,
 			WS_OVERLAPPEDWINDOW,
 			CW_USEDEFAULT, CW_USEDEFAULT,
 			width, height,
@@ -385,6 +386,14 @@ namespace win {
 
 		Options::get().cleanup();
 		info("All cleaned up. See you soon!");
+	}
+
+	const str::tstr &getBaseWindowName() {
+		return base_window_name;
+	}
+
+	void setWindowName(const str::tstr &name) {
+		SetWindowText((HWND)hwnd, name);
 	}
 
 	float timeSinceStart() {

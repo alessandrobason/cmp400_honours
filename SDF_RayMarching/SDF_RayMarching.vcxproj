@@ -126,7 +126,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)libs\sokol;$(SolutionDir)libs\ImGui;$(SolutionDir)libs\stb;$(SolutionDir)libs\renderdoc;$(SolutionDir)libs\nativefiledialog-extended\src\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)libs\sokol;$(SolutionDir)libs\ImGui;$(SolutionDir)libs\stb;$(SolutionDir)libs\renderdoc;$(SolutionDir)libs\nativefiledialog-extended\src\include;$(SolutionDir)libs\zstd;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>26439</DisableSpecificWarnings>
     </ClCompile>
     <Link>
@@ -149,7 +149,7 @@
       <ConformanceMode>true</ConformanceMode>
       <TreatWarningAsError>true</TreatWarningAsError>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)libs\sokol;$(SolutionDir)libs\ImGui;$(SolutionDir)libs\stb;$(SolutionDir)libs\renderdoc;$(SolutionDir)libs\nativefiledialog-extended\src\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)libs\sokol;$(SolutionDir)libs\ImGui;$(SolutionDir)libs\stb;$(SolutionDir)libs\renderdoc;$(SolutionDir)libs\nativefiledialog-extended\src\include;$(SolutionDir)libs\zstd;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>26439</DisableSpecificWarnings>
     </ClCompile>
     <Link>
@@ -165,16 +165,17 @@
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\libs\ImGui\backends\imgui_impl_dx11.cpp" />
-    <ClCompile Include="..\libs\ImGui\backends\imgui_impl_win32.cpp" />
-    <ClCompile Include="..\libs\ImGui\imgui.cpp" />
-    <ClCompile Include="..\libs\ImGui\imgui_demo.cpp" />
-    <ClCompile Include="..\libs\ImGui\imgui_draw.cpp" />
-    <ClCompile Include="..\libs\ImGui\imgui_tables.cpp" />
-    <ClCompile Include="..\libs\ImGui\imgui_widgets.cpp" />
+    <ClCompile Include="..\libs\imgui\backends\imgui_impl_dx11.cpp" />
+    <ClCompile Include="..\libs\imgui\backends\imgui_impl_win32.cpp" />
+    <ClCompile Include="..\libs\imgui\imgui.cpp" />
+    <ClCompile Include="..\libs\imgui\imgui_demo.cpp" />
+    <ClCompile Include="..\libs\imgui\imgui_draw.cpp" />
+    <ClCompile Include="..\libs\imgui\imgui_tables.cpp" />
+    <ClCompile Include="..\libs\imgui\imgui_widgets.cpp" />
     <ClCompile Include="..\libs\nativefiledialog-extended\src\nfd_win.cpp" />
     <ClCompile Include="..\libs\renderdoc\renderdoc.cc" />
     <ClCompile Include="..\libs\stb\stb.c" />
+    <ClCompile Include="..\libs\zstd\zstd.cc" />
     <ClCompile Include="..\src\brush_editor.cc" />
     <ClCompile Include="..\src\buffer.cc" />
     <ClCompile Include="..\src\camera.cc" />
@@ -196,20 +197,22 @@
     <ClCompile Include="..\src\widgets.cc" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\libs\ImGui\backends\imgui_impl_dx11.h" />
-    <ClInclude Include="..\libs\ImGui\backends\imgui_impl_win32.h" />
-    <ClInclude Include="..\libs\ImGui\imconfig.h" />
-    <ClInclude Include="..\libs\ImGui\imgui.h" />
-    <ClInclude Include="..\libs\ImGui\imgui_internal.h" />
-    <ClInclude Include="..\libs\ImGui\imstb_rectpack.h" />
-    <ClInclude Include="..\libs\ImGui\imstb_textedit.h" />
-    <ClInclude Include="..\libs\ImGui\imstb_truetype.h" />
+    <ClInclude Include="..\libs\imgui\backends\imgui_impl_dx11.h" />
+    <ClInclude Include="..\libs\imgui\backends\imgui_impl_win32.h" />
+    <ClInclude Include="..\libs\imgui\imconfig.h" />
+    <ClInclude Include="..\libs\imgui\imgui.h" />
+    <ClInclude Include="..\libs\imgui\imgui_internal.h" />
+    <ClInclude Include="..\libs\imgui\imstb_rectpack.h" />
+    <ClInclude Include="..\libs\imgui\imstb_textedit.h" />
+    <ClInclude Include="..\libs\imgui\imstb_truetype.h" />
     <ClInclude Include="..\libs\nativefiledialog-extended\src\include\nfd.h" />
     <ClInclude Include="..\libs\nativefiledialog-extended\src\include\nfd.hpp" />
     <ClInclude Include="..\libs\renderdoc\renderdoc.h" />
     <ClInclude Include="..\libs\renderdoc\renderdoc_app.h" />
     <ClInclude Include="..\libs\stb\stb_image.h" />
     <ClInclude Include="..\libs\stb\stb_image_write.h" />
+    <ClInclude Include="..\libs\zstd\zstd.h" />
+    <ClInclude Include="..\libs\zstd\zstd.hpp" />
     <ClInclude Include="..\src\brush_editor.h" />
     <ClInclude Include="..\src\buffer.h" />
     <ClInclude Include="..\src\camera.h" />
@@ -234,9 +237,6 @@
     <ClInclude Include="..\src\tracelog.h" />
     <ClInclude Include="..\src\vec.h" />
     <ClInclude Include="..\src\widgets.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="..\libs\ImGui\LICENSE.txt" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="..\shaders\base_ps.hlsl">

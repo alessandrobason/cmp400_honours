@@ -3,6 +3,7 @@
 #include <d3d11.h>
 #include <stb_image.h>
 #include <stb_image_write.h>
+#include <zstd.hpp>
 
 #include "system.h"
 #include "utils.h"
@@ -223,8 +224,8 @@ bool Texture3D::create(int width, int height, int depth, Type type, const void *
 		D3D11_SUBRESOURCE_DATA data;
 		mem::zero(data);
 		data.pSysMem = initial_data;
-		data.SysMemPitch = size.x * type_size;
-		data.SysMemSlicePitch = size.x * size.y * type_size;
+		data.SysMemPitch = (UINT)(size.x * type_size);
+		data.SysMemSlicePitch = (UINT)(size.x * size.y * type_size);
 		hr = gfx::device->CreateTexture3D(&desc, &data, &texture);
 	}
 	else {
@@ -263,44 +264,50 @@ bool Texture3D::create(int width, int height, int depth, Type type, const void *
 }
 
 bool Texture3D::load(const char *filename) {
-	file::fp fp = filename;
-	if (!fp) {
-		err("couldn't open file (%s)", filename);
+	file::MemoryBuf whole_file = file::read(filename);
+	if (!whole_file.data) {
+		err("couldn't read file (%s)", filename);
 		return false;
 	}
 
+	size_t compressed_size = whole_file.size;
+
+	zstd::Buf decompressed = zstd::decompress(whole_file.data.get(), whole_file.size);
+	whole_file.destroy();
+
+	if (!decompressed) {
+		err("could not decompress texture file: %s", decompressed.getErrorString());
+		return false;
+	}
+
+	StreamIn stream((uint8_t *)decompressed.data, decompressed.len);
+
 	Type type;
 	char header[5];
-	fp.read(header);
+	if (!stream.read(header)) { err("could not read texture header"); return false; }
 
 	if (memcmp(header, "tex3d", sizeof(header)) != 0) {
 		err("file (%s) is not a Texture3D bin file, the header should be \"tex3d\" but instead is \"%.5s\"", header);
 		return false;
 	}
 
-	fp.read(size);
-	fp.read(type);
+	if (!stream.read(size)) { err("could not read texture size"); return false; }
+	if (!stream.read(type)) { err("could not read texture type"); return false; }
 
 	size_t type_size = type_to_size[(int)type];
 	size_t data_len = size.x * size.y * size.z * type_size;
 	mem::ptr<uint8_t[]> data = mem::ptr<uint8_t[]>::make(data_len);
 
-	fp.read(data.get(), data_len);
+	if (!stream.read(data.get(), data_len)) { err("could not read texture data"); return false; }
 
 	create(size, type, data.get());
 
 	return true;
 }
 
-bool Texture3D::save(const char *filename) {
-	if (file::exists(filename)) {
+bool Texture3D::save(const char *filename, bool overwrite) {
+	if (!overwrite && file::exists(filename)) {
 		err("trying to save a Texture3D but file (%s) already exists", filename);
-		return false;
-	}
-
-	file::fp fp(filename, "wb");
-	if (!fp) {
-		err("couldn't open file (%s)", filename);
 		return false;
 	}
 
@@ -333,15 +340,53 @@ bool Texture3D::save(const char *filename) {
 
 	// write the data to the file
 
+	StreamOut stream;
+
 	char header[] = "tex3d";
-	fp.write(header, sizeof(header) - 1);
-	fp.write(size);
-	fp.write(type);
-	fp.write(mapped.pData, size.x * size.y * size.z * type_to_size[(int)type]);
+	stream.write(header, sizeof(header) - 1);
+	stream.write(size);
+	stream.write(type);
+	stream.write(mapped.pData, size.x * size.y * size.z * type_to_size[(int)type]);
 
 	gfx::context->Unmap(temp, 0);
 
-	return true;
+	zstd::Buf compressed = zstd::compress(stream.getData(), stream.getLen());
+	if (!compressed) {
+		err("could not compress texture data: %s", compressed.getErrorString());
+		return false;
+	}
+
+	const auto &getUnit = [](size_t s) {
+		constexpr size_t kb = 1024;
+		constexpr size_t mb = kb * 1024;
+		constexpr size_t gb = mb * 1024;
+		if (s > gb) return "GB";
+		if (s > mb) return "MB";
+		if (s > kb) return "KB";
+		return "B";
+	};
+
+	const auto &asByteSize = [](size_t s) {
+		constexpr size_t kb = 1024;
+		constexpr size_t mb = kb * 1024;
+		constexpr size_t gb = mb * 1024;
+		if (s > gb) return (double)s / gb;
+		if (s > mb) return (double)s / mb;
+		if (s > kb) return (double)s / kb;
+		return (double)s;
+	};
+
+	double ratio = (double)compressed.len / stream.getLen();
+	info(
+		"(%s.%s) size: %.2f%s, compressed size: %.2f%s, compression ratio: %.3f",
+		file::getFilename(filename).get(), file::getExtension(filename),
+		asByteSize(stream.getLen()), getUnit(stream.getLen()),
+		asByteSize(compressed.len), getUnit(compressed.len),
+		ratio
+	);
+	info("the compressed file is %.0f%% smaller", round((1.0 - ratio) * 100.0));
+
+	return file::write(filename, compressed.data, compressed.len);
 }
 
 void Texture3D::cleanup() {
@@ -350,6 +395,11 @@ void Texture3D::cleanup() {
 	srv.destroy();
 }
 
+Texture3D::Type Texture3D::getType() {
+	D3D11_TEXTURE3D_DESC desc;
+	texture->GetDesc(&desc);
+	return dxToType(desc.Format);
+}
 
 /* ==========================================
    ============= RENDER TEXTURE =============

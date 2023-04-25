@@ -83,12 +83,17 @@ float preciseMap(float3 coords) {
 	return trilinearInterpolation(coords, vol_tex_size);
 }
 
-float map(float3 coords) {
+float roughMap(float3 coords) {
 	return vol_tex.Load(int4(coords, 0));
 }
 
 bool isOutsideTexture(float3 pos) {
 	return any(pos < 0) || any(pos >= vol_tex_size);
+}
+
+float texBoundarySDF(float3 pos) {
+	float3 q = abs(pos) - vol_tex_size * 0.5;
+	return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
 }
 
 float3 calcNormal(float3 pos) {
@@ -153,11 +158,12 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 	const int MAX_STEPS = 300;
 	const float ROUGH_MIN_HIT_DISTANCE = 1;
 	const float MIN_HIT_DISTANCE = .005;
-	const float MAX_TRACE_DISTANCE = 1000;
+	const float MAX_TRACE_DISTANCE = 3000;
 	const int MAX_BOUNCES = 0;
 	float3 current_pos;
 
-	const float3 mouse_colour      = float3(.4, .4, .8);
+	const float3 inside_mouse_colour  = float3(.4, .4, .8);
+	const float3 outside_mouse_colour = float3(.8, .4, .4);
 	const float3 top_sky_colour    = float3(1, 0.1, 0.1);
 	const float3 bottom_sky_colour = float3(0.1, 0.1, 1);
 
@@ -165,6 +171,7 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 	const float3 light_dir = normalize(0 - light_pos);
 
 	bool is_mouse = false;
+	bool is_inside = false;
 	float3 final_colour = 1;
 	int step_count = 0;
 	int bounce_count = 0;
@@ -172,14 +179,46 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 	for (; step_count < MAX_STEPS; ++step_count) {
 		current_pos = ray_origin + ray_dir * distance_traveled;
 		float closest = 0;
+		closest = texBoundarySDF(current_pos);
 
-		float3 tex_pos = worldToTex(current_pos);
+		// we're at least inside the texture
+		if (closest < MIN_HIT_DISTANCE) {
+			is_inside = true;
+			float3 tex_pos = worldToTex(current_pos);
+			// do a rough sample of the volume texture, this simply samples the closest voxel
+			// without doing any filtering and is only used to avoid that expensive calculation
+			// when we can
+			closest = roughMap(tex_pos);
+
+			// if it is roughly close to a shape, do a much more precise check using trilinear filtering
+			if (closest < ROUGH_MIN_HIT_DISTANCE) {
+				closest = preciseMap(tex_pos);
+
+				if (closest < MIN_HIT_DISTANCE) {
+					const float3 normal = calcNormal(tex_pos);
+					const float3 albedo = getAlbedo(tex_pos, normal);
+					const float diffuse_intensity = max(0, dot(normal, light_dir));
+					final_colour *= albedo * saturate(diffuse_intensity + 0.2);
+					break;
+				}
+			}
+		}
+
+		if (!is_mouse) {
+			float mouse_close = getMouseDist(current_pos);
+			// mouse brush doesn't have to be perfect, just has to give the idea of where the 
+			// new brush will be added so lets use ROUGH_MIN_HIT_DISTANCE
+			is_mouse = mouse_close < ROUGH_MIN_HIT_DISTANCE;
+			closest = min(mouse_close, closest);
+		}
+
+#if 0
 		if (isOutsideTexture(tex_pos)) {
 			float distance = length(current_pos) - vol_tex_centre.x;
 			closest = max(abs(distance), 1);
 		}
 		else {
-			closest = map(tex_pos);
+			closest = roughMap(tex_pos);
 		}
 
 		if (!is_mouse) {
@@ -229,9 +268,13 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 				distance_traveled = 0;
 			}
 		}
+#endif
 
 		if (distance_traveled > MAX_TRACE_DISTANCE) {
 			step_count = MAX_STEPS;
+			if (!is_inside) {
+				final_colour -= 0.8;
+			}
 			break;
 		}
 
@@ -239,12 +282,11 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 	}
 
 	if (step_count >= MAX_STEPS) {
-		// final_colour *= lerp(top_sky_colour, bottom_sky_colour, ray_dir.y * .5 + .5);
 		final_colour *= getBackground(ray_dir);
 	}
 
 	if (is_mouse) {
-		final_colour *= mouse_colour;
+		final_colour *= is_inside ? inside_mouse_colour : outside_mouse_colour;
 	}
 
 	return final_colour;

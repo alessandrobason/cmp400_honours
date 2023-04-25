@@ -278,6 +278,32 @@ struct Slice {
 	size_t len = 0;
 };
 
+// == stream utils ================================================
+
+struct StreamOut {
+	uint8_t *getData();
+	size_t getLen() const;
+
+	void write(const void *data, size_t len);
+	template<typename T>
+	void write(const T &data) { write(&data, sizeof(T)); }
+
+	arr<uint8_t> buf;
+};
+
+struct StreamIn {
+	StreamIn() = default;
+	StreamIn(const uint8_t *buf, size_t len) : start(buf), cur(buf), len(len) {}
+
+	bool read(void *data, size_t len);
+	template<typename T>
+	bool read(T &data) { return read(&data, sizeof(T)); }
+
+	const uint8_t *start = nullptr;
+	const uint8_t *cur = nullptr;
+	size_t len = 0;
+};
+
 // == string utils ================================================
 
 namespace str {
@@ -295,6 +321,7 @@ namespace str {
 		bool operator==(const tstr &t);
 
 		size_t len() const;
+		tstr clone() const;
 
 		operator const TCHAR *() const;
 
@@ -329,6 +356,7 @@ namespace str {
 
 namespace file {
 	struct MemoryBuf {
+		void destroy() { data.destroy(); data = nullptr; size = 0; }
 		mem::ptr<uint8_t[]> data = nullptr;
 		size_t size = 0;
 	};
@@ -404,6 +432,7 @@ namespace file {
 
 	bool exists(const char *filename);
 	MemoryBuf read(const char *filename);
+	bool write(const char *filename, const void *data, size_t len);
 	mem::ptr<char[]> findFirstAvailable(const char *dir = ".", const char *name_fmt = "name_%d.txt");
 	mem::ptr<char[]> getFilename(const char *path);
 	const char *getExtension(const char *path);

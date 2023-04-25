@@ -1,8 +1,9 @@
 #pragma once
 
 #include "common.h"
-
 #include "texture.h"
+
+namespace str { struct tstr; }
 
 namespace gfx {
 	extern dxptr<ID3D11Device> device;
@@ -45,6 +46,10 @@ namespace win {
 	void create(const char *name, int width, int height);
 	void close();
 	void cleanup();
+
+	const str::tstr &getBaseWindowName();
+	void setWindowName(const str::tstr &name);
+
 	float timeSinceStart();
 
 	vec2i getSize();

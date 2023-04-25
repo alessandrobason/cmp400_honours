@@ -10,16 +10,12 @@ struct MaterialPS {
 	int has_texture;
 };
 
-struct TexNamePair {
-	TexNamePair(Texture2D &&tex, mem::ptr<char[]> &&name) : tex(mem::move(tex)), name(mem::move(name)) {}
-	Texture2D tex;
-	mem::ptr<char[]> name;
-};
-
 struct MaterialEditor {
 	MaterialEditor();
 	void drawWidget();
 	void update();
+	void setOpen(bool is_open);
+	bool isOpen() const;
 
 	Handle<Buffer> getBuffer();
 	ID3D11ShaderResourceView *getDiffuse();
@@ -27,6 +23,12 @@ struct MaterialEditor {
 	ID3D11ShaderResourceView *getIrradiance();
 
 private:
+	struct TexNamePair {
+		TexNamePair(Texture2D &&tex, mem::ptr<char[]> &&name) : tex(mem::move(tex)), name(mem::move(name)) {}
+		Texture2D tex;
+		mem::ptr<char[]> name;
+	};
+
 	Texture2D *get(size_t index);
 	size_t addTexture(const char *name);
 	size_t addTextureHDR(const char *name);

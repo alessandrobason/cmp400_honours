@@ -9,8 +9,7 @@ constexpr float y_max_angle = 90.f;
 constexpr float radius = 270.f;
 
 static bool isMouseInsideRTV() {
-	return gfx::isMainRTVActive() &&
-		   gfx::getMainRTVBounds().contains(getMousePos());
+	return gfx::getMainRTVBounds().contains(getMousePos());
 }
 
 Camera::Camera() {
@@ -108,7 +107,7 @@ vec3 Camera::getMouseDir() const {
 }
 
 bool Camera::shouldSculpt() const {
-	return isMousePressed(MOUSE_LEFT) && isMouseInsideRTV();
+	return isMousePressed(MOUSE_LEFT) && isMouseInsideRTV() && gfx::isMainRTVActive();
 }
 
 #if 0

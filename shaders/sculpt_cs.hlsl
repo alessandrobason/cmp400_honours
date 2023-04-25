@@ -3,8 +3,6 @@ cbuffer OperationData : register(b0) {
     float smooth_amount;
     float brush_scale;
     float depth;
-    float3 colour;
-    float padding__0;
 };
 
 struct BrushData {
@@ -133,65 +131,6 @@ inline void setVTSkipRead(uint3 id, float old_value, float new_value, float3 pos
         case OP_SMOOTH_UNION:        op_smooth_union(old_value, new_value, smooth_amount, id, changed);       break;       
         case OP_SMOOTH_SUBTRACTION:  op_smooth_subtraction(old_value, new_value, smooth_amount, id, changed); break; 
     }
-
-#if 0
-    if (changed && new_value < ROUGH_MIN_HIT_DISTANCE) {
-        const float3 old_colour = material_tex[id];
-        if (all(old_colour == 0)) {
-            material_tex[id] = colour;
-        }
-        else {
-            const float weight = length(pos) / brush_size.x;
-            material_tex[id] = lerp(colour, old_colour, weight);
-        }
-#if 0
-        uint2 previous_mat = material_tex[id];
-        // uint previous_material = material_tex[id];
-        uint id1       = GET_FIRST_INDEX(previous_mat.y);
-        uint id2       = GET_SECOND_INDEX(previous_mat.y);
-        uint weight    = previous_mat.x;
-
-        uint new_id = operation & MAT_MASK;
-
-        // if one of the id is the same as this new id, set its weight to
-        // half of what the other id is taking
-
-        if (new_id == id1) {
-            uint weight_rem = weight - WEIGHT_MAX;
-            uint weight_delta = weight_rem / 2;
-            weight += weight_delta;
-        }
-        else if (new_id == id2) {
-            uint weight_delta = weight / 2;
-            weight -= weight_delta;
-        }
-        // otherwise swap the smaller id for the new one
-        else {
-            // id1 not set
-            if (id1 == 0) {
-                weight = WEIGHT_MAX;
-                id1 = new_id;
-            }
-            // id2 not set
-            else if (id2 == 0) {
-                id2 = new_id;
-                weight /= 2;
-            }
-            // id1 > id2
-            else if (weight > (WEIGHT_MAX / 2.)) {
-                id2 = new_id;
-            }
-            // id2 > id1
-            else {
-                id1 = new_id;
-            }
-        }
-        
-        // material_tex[id] = operation & MAT_MASK;
-        material_tex[id] = SET_MATERIAL(id1, id2, weight);
-#endif
-    }
-#endif
 }
 
 inline void setVolumeTexture(uint3 id, float new_value, float3 pos) {

@@ -44,8 +44,9 @@ struct Texture3D {
 	bool create(const vec3u &texsize, Type type, const void *initial_data = nullptr);
 	bool create(int width, int height, int depth, Type type, const void *initial_data = nullptr);
 	bool load(const char *filename);
-	bool save(const char *filename);
+	bool save(const char *filename, bool overwrite = false);
 	void cleanup();
+	Type getType();
 
 	vec3i size = 0;
 	dxptr<ID3D11Texture3D> texture = nullptr;

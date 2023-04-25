@@ -54,6 +54,7 @@ struct Logger {
     ImGuiTextBuffer buf;
     ImVector<Line> lines;
     bool auto_scrool = true;
+    bool is_open = true;
 };
 
 static Logger logger;
@@ -110,6 +111,14 @@ void drawLogger() {
     logger.draw();
 }
 
+void logSetOpen(bool is_open) {
+    logger.is_open = is_open;
+}
+
+bool logIsOpen() {
+    return logger.is_open;
+}
+
 // == LOGGER FUNCTIONS ========================================================================================================
 
 Logger::Logger() {
@@ -148,7 +157,6 @@ void Logger::endLine(LogLevel level, int minutes, int seconds, int millis) {
 }
 
 void Logger::draw() {
-    static bool is_open = true;
     if (isActionPressed(Action::OpenLogger)) is_open = true;
     if (!is_open) return;
     if (!ImGui::Begin("Logger", &is_open)) {

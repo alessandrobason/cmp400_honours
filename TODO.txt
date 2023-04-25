@@ -1,6 +1,8 @@
 [X] Mouse input texture
 [X] Object material
 [X] Save to / Load from file
+[X] Compress file on save
+[X] Load brush from file
 [ ] Antialiasing
 [ ] Make normal map 3d texture, so the normal calculation
     becomes only 8 texture lookups instead of 32 (jesus christ)
@@ -11,6 +13,15 @@
     could have the same thing with the ctrl key and the alt key for depth and
     smoothness
 [ ] make GPUTimer handle-based (look at half-implemented version in timer.h)
+[ ] when user makes a change and hasn't saved, change window name to "filename *"
+
+[X] options UI
+[ ] load background image from file
+[ ] sculpting
+[X] "view" menu that lets you open/close any window
+[ ] support sizes that are not constant (not all values are the same)
+[ ] add "new" button in file, where we can create a new scene, let the user decide if it should have a default shape (sphere, maybe more?) in it
+[X] add percentage of file size when compressing it
 
 -- Options ideas --
 * texture format (either f16 or f32)

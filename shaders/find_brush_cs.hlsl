@@ -60,8 +60,13 @@ float preciseMap(float3 coords) {
 	return trilinearInterpolation(coords, vol_tex_size);
 }
 
-float map(float3 coords) {
+float roughMap(float3 coords) {
 	return vol_tex.Load(int4(coords, 0));
+}
+
+float texBoundarySDF(float3 pos) {
+	float3 q = abs(pos) - vol_tex_size * 0.5;
+	return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
 }
 
 bool isOutsideTexture(float3 pos) {
@@ -73,10 +78,10 @@ float3 calcNormal(float3 pos) {
 	const float2 k = float2(1, -1);
 
 	return normalize(
-		k.xyy * map(pos + k.xyy * step) +
-		k.yyx * map(pos + k.yyx * step) +
-		k.yxy * map(pos + k.yxy * step) +
-		k.xxx * map(pos + k.xxx * step)
+		k.xyy * roughMap(pos + k.xyy * step) +
+		k.yyx * roughMap(pos + k.yyx * step) +
+		k.yxy * roughMap(pos + k.yxy * step) +
+		k.xxx * roughMap(pos + k.xxx * step)
 	);
 }
 
@@ -87,36 +92,30 @@ void rayMarch(float3 ro, float3 rd, out float3 out_normal, out float3 out_pos) {
 	const float MIN_HIT_DISTANCE = .005;
 	const float MAX_TRACE_DISTANCE = 1000;
 
-	const float3 light_pos = float3(100, 100, 0);
-	const float3 light_dir = normalize(0. - light_pos);
-
 	float3 current_pos;
 
 	for (int i = 0; i < NUMBER_OF_STEPS; ++i) {
 		current_pos = ro + rd * distance_traveled;
 		float closest = 0;
+		closest = texBoundarySDF(current_pos);
 
-		// first we use a rough check with a quick map function (does not use
-		// trilinear filtering) to see if we're close enough to a surface, if
-		// we are then we use a precise map function (with trilinear filtering,
-		// meaning 8 texture lookups)
+		// we're at least inside the texture
+		if (closest < MIN_HIT_DISTANCE) {
+			float3 tex_pos = worldToTex(current_pos);
+			// do a rough sample of the volume texture, this simply samples the closest voxel
+			// without doing any filtering and is only used to avoid that expensive calculation
+			// when we can
+			closest = roughMap(tex_pos);
 
-		float3 tex_pos = worldToTex(current_pos);
-		if (isOutsideTexture(tex_pos)) {
-			float distance = length(current_pos) - vol_tex_size.x * 0.5;
-			closest = max(abs(distance), 1);
-		}
-		else {
-			closest = map(tex_pos);
-		}
+			// if it is roughly close to a shape, do a much more precise check using trilinear filtering
+			if (closest < ROUGH_MIN_HIT_DISTANCE) {
+				closest = preciseMap(tex_pos);
 
-		if (closest < ROUGH_MIN_HIT_DISTANCE) {
-			closest = preciseMap(tex_pos);
-
-			if (closest < MIN_HIT_DISTANCE) {
-				out_normal = calcNormal(tex_pos);
-                out_pos = current_pos;
-                return;
+				if (closest < MIN_HIT_DISTANCE) {
+					out_normal = calcNormal(tex_pos);
+					out_pos = current_pos;
+					return;
+				}
 			}
 		}
 

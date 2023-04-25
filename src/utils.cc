@@ -16,6 +16,30 @@ void safeRelease(IUnknown *ptr) {
 	}
 }
 
+// == stream utils ================================================
+
+uint8_t *StreamOut::getData() {
+	return buf.data();
+}
+
+size_t StreamOut::getLen() const {
+	return buf.size();
+}
+
+void StreamOut::write(const void *data, size_t len) {
+	buf.reserve(buf.len + len);
+	memcpy(buf.data() + buf.len, data, len);
+	buf.len += len;
+}
+
+bool StreamIn::read(void *data, size_t datalen) {
+	size_t remaining = len - (cur - start);
+	if (remaining < datalen) return false;
+	memcpy(data, cur, datalen);
+	cur += datalen;
+	return true;
+}
+
 // == string utils ================================================
 namespace str {
 	bool cmp(const char *a, const char *b) {
@@ -173,17 +197,7 @@ namespace str {
 		buf = ansiToWide(cstr, len).release();
 #else
 		UNUSED(len);
-		//is_owned = should_own;
-		//if (should_own) {
-		//	if (!len) len = strlen(cstr);
-		//	char *str = new char[len + 1];
-		//	memcpy(str, cstr, sizeof(char) * len);
-		//	str[len] = '\0';
-		//	buf = str;
-		//}
-		//else {
-			buf = cstr;
-		//}
+		buf = cstr;
 #endif
 	}
 
@@ -202,17 +216,7 @@ namespace str {
 		if (!wstr) return;
 #ifdef UNICODE
 		UNUSED(len);
-		//is_owned = should_own;
-		//if (should_own) {
-		//	if (!len) len = wcslen(wstr);
-		//	wchar_t *str = new wchar_t[len + 1];
-		//	memcpy(str, wstr, sizeof(wchar_t) * len);
-		//	str[len] = L'\0';
-		//	buf = str;
-		//}
-		//else {
-			buf = wstr;
-		//}
+		buf = wstr;
 #else
 		is_owned = true;
 		buf = wideToAnsi(wstr, len).release();
@@ -253,6 +257,10 @@ namespace str {
 #else
 		return strlen(buf);
 #endif
+	}
+
+	tstr tstr::clone() const {
+		return tstr(buf);
 	}
 
 	tstr::operator const TCHAR *() const {
@@ -302,10 +310,28 @@ namespace file {
 	MemoryBuf read(const char *filename) {
 		FILE *fp = fopen(filename, "rb");
 		if (!fp) {
-			err("couldn't open file: %s", filename);
+			err("couldn't open file (%s) for reading", filename);
 			return {};
 		}
 		return read(fp);
+	}
+
+	bool write(const char *filename, const void *data, size_t len) {
+		bool result = true;
+		FILE *fp = fopen(filename, "wb");
+		if (!fp) {
+			err("couldn't open file (%s) for writing", filename);
+			return false;
+		}
+
+		size_t written = fwrite(data, 1, len, fp);
+		if (written != len) {
+			err("couldn't write everything to file, written (%zu)", written);
+			result = false;
+		}
+
+		fclose(fp);
+		return result;
 	}
 
 	mem::ptr<char[]> findFirstAvailable(const char *dir, const char *name_fmt) {

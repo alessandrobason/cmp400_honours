@@ -60,41 +60,6 @@ void MaterialEditor::drawWidget() {
 
 	if (ImGui::Button("Load Image From File")) {
 		should_open_nfd = true;
-#if 0
-		std::promise<NFD::UniquePathU8> promise;
-		future = promise.get_future();
-		std::thread(
-			[](std::promise<NFD::UniquePathU8> promise) {
-				NFD::UniquePathU8 path;
-				nfdu8filteritem_t filter[] = { { "Normal Image", "jpg,jpeg,png,bmp,psd,tga,gif,pic" }, { "HDR Image", "hdr" } };
-				nfdresult_t result = NFD::OpenDialog(path, filter, ARRLEN(filter), "assets");
-				if (result == NFD_OKAY) {
-					promise.set_value(mem::move(path));
-				}
-				else {
-					promise.set_value(nullptr);
-				}
-			},
-			std::move(promise)
-		).detach();
-#endif
-#if 0
-		promise = launchJob<NFD::UniquePathU8>(
-			[]() -> NFD::UniquePathU8 {
-				NFD::UniquePathU8 path;
-				nfdu8filteritem_t filter[] = { { "Normal Image", "jpg,jpeg,png,bmp,psd,tga,gif,pic" }, { "HDR Image", "hdr" } };
-				nfdresult_t result = NFD::OpenDialog(path, filter, ARRLEN(filter), "assets");
-				if (result == NFD_OKAY) {
-					return path;
-					//promise.set_value(mem::move(path));
-				}
-				else {
-					return nullptr;
-					//promise.set_value(nullptr);
-				}
-			}
-		);
-#endif
 	}
 
 	ImGui::BeginDisabled(!has_texture);
@@ -125,10 +90,10 @@ void MaterialEditor::update() {
 		nfdresult_t result = NFD::OpenDialog(path, filter, ARRLEN(filter), "assets");
 		if (result == NFD_OKAY) {
 			if (str::cmp("hdr", file::getExtension(path.get()))) {
-				addTextureHDR(path.get());
+				diffuse_handle = addTextureHDR(path.get());
 			}
 			else {
-				addTexture(path.get());
+				diffuse_handle = addTexture(path.get());
 			}
 		}
 		else if (result == NFD_CANCEL) {
@@ -150,21 +115,31 @@ void MaterialEditor::update() {
 	has_changed = false;
 }
 
+void MaterialEditor::setOpen(bool new_is_open) {
+	is_open = new_is_open;
+}
+
+bool MaterialEditor::isOpen() const {
+	return is_open;
+}
+
 Handle<Buffer> MaterialEditor::getBuffer() {
 	return mat_handle;
 }
 
 ID3D11ShaderResourceView *MaterialEditor::getDiffuse() {
-	return get(diffuse_handle)->srv;
+	if (Texture2D *tex = get(diffuse_handle)) return tex->srv;
+	return nullptr;
 }
 
 ID3D11ShaderResourceView *MaterialEditor::getBackground() {
-	return get(background_handle)->srv;
+	if (Texture2D *tex = get(background_handle)) return tex->srv;
+	return nullptr;
 }
 
 ID3D11ShaderResourceView *MaterialEditor::getIrradiance() {
+	if (Texture2D *tex = get(irradiance_handle)) return tex->srv;
 	return nullptr;
-	//return get(irradiance_handle)->srv;
 }
 
 Texture2D *MaterialEditor::get(size_t index) {

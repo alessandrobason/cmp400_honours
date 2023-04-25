@@ -137,14 +137,14 @@ int main() {
 		Mesh triangle = makeFullScreenTriangle();
 
 		// generate brush
-		gen_brush->dispatch(brush_editor.texture.size / 8, {}, {}, { brush_editor.getUAV()});
+		gen_brush->dispatch(brush_editor.getBrushSize() / 8, {}, {}, {brush_editor.getBrushUAV()});
 
 		// fill texture
 		empty_texture->dispatch(threads, {}, {}, { main_texture.uav });
 
 		GPUClock sculpt_clock("Sculpt");
 
-		if (Buffer *buf = brush_editor.oper_handle.get()) {
+		if (Buffer *buf = brush_editor.getOperHandle().get()) {
 			if (OperationData *data = buf->map<OperationData>()) {
 				data->operation = (uint32_t)Operations::Union | 1u;
 				data->smooth_k  = 0.f;
@@ -154,10 +154,11 @@ int main() {
 			}
 		}
 		
-		sculpt->dispatch(threads, { brush_editor.oper_handle }, { brush_editor.getSRV(), brush_data_handle->srv }, { main_texture.uav });
+		sculpt->dispatch(threads, { brush_editor.getOperHandle() }, {brush_editor.getBrushSRV(), brush_data_handle->srv}, {main_texture.uav});
 
 		while (win::isOpen()) {
 			sh_manager.poll();
+			saveLoadFileDialog(main_texture, scale_cs);
 
 			if (isKeyPressed(KEY_F)) {
 				gfx::captureFrame();
@@ -166,13 +167,13 @@ int main() {
 			if (sculpt_clock.isReady()) sculpt_clock.print();
 			if (isActionPressed(Action::CloseProgram)) win::close();
 
-			if (isKeyPressed(KEY_T)) {
-				info("running scale shader");
-				gfx::captureFrame();
-				scale_cs->dispatch(scaled_texture.size / 8, {}, { main_texture.srv }, { scaled_texture.uav });
-				scaled_texture.save("test_brush.bin");
-				brush_editor.texture.load("test_brush.bin");
-			}
+			// if (isKeyPressed(KEY_T)) {
+			// 	info("running scale shader");
+			// 	gfx::captureFrame();
+			// 	scale_cs->dispatch(scaled_texture.size / 8, {}, { main_texture.srv }, { scaled_texture.uav });
+			// 	scaled_texture.save("test_brush.bin");
+			// 	brush_editor.texture.load("test_brush.bin");
+			// }
 
 			cam.update();
 			brush_editor.update();
@@ -182,7 +183,7 @@ int main() {
 				if (BrushFindData *data = buf->map<BrushFindData>()) {
 					data->pos   = cam.pos + cam.fwd * cam.getZoom();
 					data->dir   = cam.getMouseDir();
-					data->depth = brush_editor.depth;
+					data->depth = brush_editor.getDepth();
 					data->scale = brush_editor.getScale();
 					buf->unmap();
 				}
@@ -195,7 +196,7 @@ int main() {
 					gfx::captureFrame();
 				}
 				sculpt_clock.start();
-				sculpt->dispatch(threads, { brush_editor.oper_handle }, { brush_editor.getSRV(), brush_data_handle->srv }, { main_texture.uav });
+				sculpt->dispatch(threads, { brush_editor.getOperHandle() }, {brush_editor.getBrushSRV(), brush_data_handle->srv}, {main_texture.uav});
 				sculpt_clock.end();
 			}
 
@@ -240,11 +241,13 @@ int main() {
 
 			gfx::imgui_rtv.bind();
 				fpsWidget();
+				mainMenuBar(brush_editor, material_editor);
 				mainTargetWidget();
 				messagesWidget();
 				drawLogger();
 				brush_editor.drawWidget();
 				material_editor.drawWidget();
+				Options::get().drawWidget();
 			
 			gfx::end();
 
