@@ -25,6 +25,13 @@ struct OperationData {
 	float depth;
 };
 
+struct BrushData {
+	vec3 position;
+	float radius;
+	vec3 normal;
+	float padding__1;
+};
+
 struct BrushEditor {
 	BrushEditor();
 	void drawWidget();
@@ -34,6 +41,8 @@ struct BrushEditor {
 
 	ID3D11UnorderedAccessView *getBrushUAV();
 	ID3D11ShaderResourceView *getBrushSRV();
+	ID3D11UnorderedAccessView *getDataUAV();
+	ID3D11ShaderResourceView *getDataSRV();
 	vec3i getBrushSize() const;
 	float getScale() const;
 	float getDepth() const;
@@ -43,8 +52,8 @@ struct BrushEditor {
 
 private:
 	struct TexNamePair {
-		TexNamePair(Texture3D &&tex, mem::ptr<char[]> &&name) : tex(mem::move(tex)), name(mem::move(name)) {}
-		Texture3D tex;
+		TexNamePair(Handle<Texture3D> handle, mem::ptr<char[]> &&name) : handle(handle), name(mem::move(name)) {}
+		Handle<Texture3D> handle;
 		mem::ptr<char[]> name;
 	};
 
@@ -59,13 +68,13 @@ private:
 	float scale = 1.f;
 	bool is_single_click = true;
 
-	//Texture3D texture;
-	size_t brush_handle = -1;
+	size_t brush_index = 0;
 	Handle<Buffer> oper_handle;
+	Handle<Buffer> data_handle;
 
 	// widget data
-	Texture2D brush_icon;
-	Texture2D eraser_icon;
+	Handle<Texture2D> brush_icon;
+	Handle<Texture2D> eraser_icon;
 	State state = State::Brush;
 	bool is_open = true;
 	bool has_changed = true;

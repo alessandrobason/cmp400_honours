@@ -235,6 +235,7 @@ bool GPUClock::isReady() {
 
 // == GPU TIMER =========================================================================================
 
+#if 0
 struct InternalTimer : public GPUTimer {
 
 };
@@ -262,6 +263,7 @@ void GPUTimer::start() {
 
 void GPUTimer::end() {
 }
+#endif
 
 
 // == GPU TIMER =========================================================================================

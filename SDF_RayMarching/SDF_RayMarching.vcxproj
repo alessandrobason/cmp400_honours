@@ -220,6 +220,7 @@
     <ClInclude Include="..\src\common.h" />
     <ClInclude Include="..\src\d3d11_fwd.h" />
     <ClInclude Include="..\src\gfx_common.h" />
+    <ClInclude Include="..\src\gfx_factory.h" />
     <ClInclude Include="..\src\handle.h" />
     <ClInclude Include="..\src\ini.h" />
     <ClInclude Include="..\src\input.h" />

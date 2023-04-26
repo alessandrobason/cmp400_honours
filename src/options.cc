@@ -36,6 +36,28 @@ void Options::load(const char *filename) {
 	}
 }
 
+void Options::save(const char *filename) {
+	file::fp fp(filename, "wb");
+
+#define B(b) (b) ? "true" : "false"
+
+	fp.puts("[gfx]\n");
+	fp.print("vsync = %s\n", B(vsync));
+	fp.print("resolution = %u %u\n", resolution.x, resolution.y);
+	fp.print("auto capture = %s\n", B(auto_capture));
+
+	fp.puts("\n[camera]\n");
+	fp.print("zoom sensitivity = %.3f\n", zoom_sensitivity);
+	fp.print("look sensitivity = %.3f\n", look_sensitivity);
+
+	fp.puts("\n[log]\n");
+	fp.print("print to file = %s\n", B(print_to_file));
+	fp.print("print to console = %s\n", B(print_to_console));
+	fp.print("quit on fatal = %s\n", B(quit_on_fatal));
+
+#undef B
+}
+
 static void tooltip(const char *msg, bool same_line = true) {
 	if (same_line) ImGui::SameLine();
 	ImGui::TextDisabled("(?)");
@@ -56,14 +78,14 @@ void Options::drawWidget() {
 	}
 
 	if (ImGui::Button("Save to file")) {
-
+		save("options.ini");
 	}
 
 	separatorText("Graphics");
 	ImGui::Checkbox("VSync enabled", &vsync);
 	if (imInputUint2("Game view resolution", resolution.data)) {
 		if (all(resolution != 0)) {
-			gfx::main_rtv.create(resolution.x, resolution.y);
+			gfx::main_rtv->resize(resolution.x, resolution.y);
 		}
 	}
 	ImGui::Checkbox("Auto Capture", &auto_capture);

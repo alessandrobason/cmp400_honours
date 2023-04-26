@@ -11,6 +11,7 @@
 
 static bool keys_state[KEY__COUNT] = { 0 };
 static bool prev_keys_state[KEY__COUNT] = { 0 };
+static Keys last_key_pressed = KEY_NONE;
 static uint32_t mouse_state = 0;
 static uint32_t prev_mouse_state = 0;
 static vec2i mouse_position;
@@ -21,13 +22,127 @@ static Keys actions[(int)Action::Count] = {
 	KEY_Z,      // ResetZoom
 	KEY_ESCAPE, // CloseProgram
 	KEY_P,      // TakeScreenshot
-	KEY_L,      // OpenLogger
 	KEY_LEFT,   // RotateCameraHorPos
 	KEY_RIGHT,  // RotateCameraHorNeg
 	KEY_UP,     // RotateCameraVerPos
 	KEY_DOWN,   // RotateCameraVerNeg
 	KEY_X,      // ZoomIn
 	KEY_C,      // ZoomOut
+};
+
+static const char *key_names[KEY__COUNT] = {
+	"(none)",      // KEY_NONE,
+	"0",           // KEY_0,
+	"1",           // KEY_1,
+	"2",           // KEY_2,
+	"3",           // KEY_3,
+	"4",           // KEY_4,
+	"5",           // KEY_5,
+	"6",           // KEY_6,
+	"7",           // KEY_7,
+	"8",           // KEY_8,
+	"9",           // KEY_9,
+	"A",           // KEY_A,
+	"B",           // KEY_B,
+	"C",           // KEY_C,
+	"D",           // KEY_D,
+	"E",           // KEY_E,
+	"F",           // KEY_F,
+	"G",           // KEY_G,
+	"H",           // KEY_H,
+	"I",           // KEY_I,
+	"J",           // KEY_J,
+	"K",           // KEY_K,
+	"L",           // KEY_L,
+	"M",           // KEY_M,
+	"N",           // KEY_N,
+	"O",           // KEY_O,
+	"P",           // KEY_P,
+	"Q",           // KEY_Q,
+	"R",           // KEY_R,
+	"S",           // KEY_S,
+	"T",           // KEY_T,
+	"U",           // KEY_U,
+	"V",           // KEY_V,
+	"W",           // KEY_W,
+	"X",           // KEY_X,
+	"Y",           // KEY_Y,
+	"Z",           // KEY_Z,
+	"F1",          // KEY_F1,
+	"F2",          // KEY_F2,
+	"F3",          // KEY_F3,
+	"F4",          // KEY_F4,
+	"F5",          // KEY_F5,
+	"F6",          // KEY_F6,
+	"F7",          // KEY_F7,
+	"F8",          // KEY_F8,
+	"F9",          // KEY_F9,
+	"F10",         // KEY_F10,
+	"F11",         // KEY_F11,
+	"F12",         // KEY_F12,
+	"F13",         // KEY_F13,
+	"F14",         // KEY_F14,
+	"F15",         // KEY_F15,
+	"F16",         // KEY_F16,
+	"F17",         // KEY_F17,
+	"F18",         // KEY_F18,
+	"F19",         // KEY_F19,
+	"F20",         // KEY_F20,
+	"F21",         // KEY_F21,
+	"F22",         // KEY_F22,
+	"F23",         // KEY_F23,
+	"F24",         // KEY_F24,
+	"TAB",         // KEY_TAB,
+	"LEFT",        // KEY_LEFT,
+	"RIGHT",       // KEY_RIGHT,
+	"UP",          // KEY_UP,
+	"DOWN",        // KEY_DOWN,
+	"PRIOR",       // KEY_PRIOR,
+	"NEXT",        // KEY_NEXT,
+	"HOME",        // KEY_HOME,
+	"END",         // KEY_END,
+	"INSERT",      // KEY_INSERT,
+	"DELETE",      // KEY_DELETE,
+	"BACK",        // KEY_BACK,
+	"(space)",     // KEY_SPACE,
+	"RETURN",      // KEY_RETURN,
+	"ESCAPE",      // KEY_ESCAPE,
+	"'",           // KEY_APOSTROPHE,
+	",",           // KEY_COMMA,
+	"-",           // KEY_MINUS,
+	".",           // KEY_PERIOD,
+	"/",           // KEY_SLASH,
+	";",           // KEY_SEMICOLON,
+	"=",           // KEY_EQUAL,
+	"[",           // KEY_LBRACKET,
+	"]",           // KEY_RBRACKER,
+	"\\",          // KEY_BACKSLASH,
+	"CAPSLOCK",    // KEY_CAPSLOCK,
+	"SCROLLLOCK",  // KEY_SCROLLLOCK,
+	"NUMLOCK",     // KEY_NUMLOCK,
+	"PRINT",       // KEY_PRINT,
+	"PAUSE",       // KEY_PAUSE,
+	"KEYPAD0",     // KEY_KEYPAD0,
+	"KEYPAD1",     // KEY_KEYPAD1,
+	"KEYPAD2",     // KEY_KEYPAD2,
+	"KEYPAD3",     // KEY_KEYPAD3,
+	"KEYPAD4",     // KEY_KEYPAD4,
+	"KEYPAD5",     // KEY_KEYPAD5,
+	"KEYPAD6",     // KEY_KEYPAD6,
+	"KEYPAD7",     // KEY_KEYPAD7,
+	"KEYPAD8",     // KEY_KEYPAD8,
+	"KEYPAD9",     // KEY_KEYPAD9,
+	"KEYPADENTER", // KEY_KEYPADENTER,
+	"DECIMAL",     // KEY_DECIMAL,
+	"MULTIPLY",    // KEY_MULTIPLY,
+	"SUBTRACT",    // KEY_SUBTRACT,
+	"ADD",         // KEY_ADD,
+	"SHIFT",       // KEY_SHIFT,
+	"CTRL",        // KEY_CTRL,
+	"ALT",         // KEY_ALT,
+	"LWIN",        // KEY_LWIN,
+	"RWIN",        // KEY_RWIN,
+	"APPS",        // KEY_APPS,
 };
 
 bool isActionDown(Action action) {
@@ -50,6 +165,10 @@ void setActionKey(Action action, Keys key) {
 	actions[(int)action] = key;
 }
 
+Keys getActionKey(Action action) {
+	assert((int)action < (int)Action::Count);
+	return actions[(int)action];
+}
 
 bool isKeyDown(Keys key) {
 	return keys_state[key];
@@ -94,6 +213,18 @@ vec2i getMousePosRel() {
 
 float getMouseWheel() {
 	return mouse_wheel;
+}
+
+const char *getKeyName(Keys key) {
+	return key_names[key];
+}
+
+void setLastKeyPressed(Keys key) {
+	last_key_pressed = key;
+}
+
+Keys getLastKeyPressed() {
+	return last_key_pressed;
 }
 
 Mouse win32ToMouse(uintptr_t virtual_key) {
@@ -226,6 +357,7 @@ Keys win32ToKeys(uintptr_t virtual_key) {
 void setKeyState(Keys key, bool is_down) {
 	prev_keys_state[key] = keys_state[key];
 	keys_state[key] = is_down;
+	if (is_down) last_key_pressed = key;
 }
 
 void setMousePosition(vec2i pos) {

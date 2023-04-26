@@ -43,6 +43,8 @@ bool StreamIn::read(void *data, size_t datalen) {
 // == string utils ================================================
 namespace str {
 	bool cmp(const char *a, const char *b) {
+		if (!a && !b) return true;
+		if (!a || !b) return false;
 		return strcmp(a, b) == 0;
 	}
 
@@ -655,6 +657,18 @@ namespace file {
 		return fwrite(data, 1, len, (FILE *)fptr) == len;
 	}
 
+	bool fp::puts(const char *msg) {
+		return fputs(msg, (FILE *)fptr) > EOF;
+	}
+
+	bool fp::print(const char *fmt, ...) {
+		va_list v;
+		va_start(v, fmt);
+		int written = vfprintf((FILE *)fptr, fmt, v);
+		va_end(v);
+		return written > EOF;
+	}
+
 } // namespace file
 
 // == allocators utils ============================================
@@ -667,7 +681,28 @@ static constexpr size_t arena_min_size = 1024 * 10;
 
 static DWORD win_page_size = 0;
 
-VirtualAllocator::VirtualAllocator() {
+VirtualAllocator::~VirtualAllocator() {
+	if (start) {
+		BOOL result = VirtualFree(start, 0, MEM_RELEASE);
+		assert(result);
+	}
+}
+
+VirtualAllocator::VirtualAllocator(VirtualAllocator &&v) {
+	*this = mem::move(v);
+}
+
+VirtualAllocator &VirtualAllocator::operator=(VirtualAllocator &&v) {
+	if (this != &v) {
+		mem::swap(start, v.start);
+		mem::swap(current, v.current);
+		mem::swap(next_page, v.next_page);
+	}
+
+	return *this;
+}
+
+void VirtualAllocator::init() {
 	if (!win_page_size) {
 		SYSTEM_INFO sys_info;
 		GetSystemInfo(&sys_info);
@@ -682,12 +717,9 @@ VirtualAllocator::VirtualAllocator() {
 	current = next_page = start;
 }
 
-VirtualAllocator::~VirtualAllocator() {
-	BOOL result = VirtualFree(start, 0, MEM_RELEASE);
-	assert(result);
-}
-
 void *VirtualAllocator::alloc(size_t n) {
+	if (!start) init();
+
 	if ((current + n) > next_page) {
 		size_t new_pages = n / win_page_size;
 		if (n % win_page_size) {
@@ -705,6 +737,7 @@ void *VirtualAllocator::alloc(size_t n) {
 }
 
 void VirtualAllocator::rewind(size_t size) {
-	assert(size < (size_t)(current - start));
+	assert(start);
+	assert(size <= (size_t)(current - start));
 	current -= size;
 }

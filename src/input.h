@@ -123,13 +123,7 @@ enum Keys {
 	KEY_SHIFT,
 	KEY_CTRL,
 	KEY_ALT,
-	//KEY_LSHIFT,
-	//KEY_LCTRL,
-	//KEY_LALT,
 	KEY_LWIN,
-	//KEY_RSHIFT,
-	//KEY_RCTRL,
-	//KEY_RALT,
 	KEY_RWIN,
 	KEY_APPS,
 	KEY__COUNT,
@@ -139,7 +133,6 @@ enum class Action {
 	ResetZoom,
 	CloseProgram,
 	TakeScreenshot,
-	OpenLogger,
 	RotateCameraHorPos,
 	RotateCameraHorNeg,
 	RotateCameraVerPos,
@@ -153,6 +146,7 @@ bool isActionDown(Action action);
 bool isActionUp(Action action);
 bool isActionPressed(Action action);
 void setActionKey(Action action, Keys key);
+Keys getActionKey(Action action);
 
 bool isKeyDown(Keys key);
 bool isKeyUp(Keys key);
@@ -164,6 +158,10 @@ vec2i getMousePos();
 vec2 getMousePosNorm();
 vec2i getMousePosRel();
 float getMouseWheel();
+
+const char *getKeyName(Keys key);
+void setLastKeyPressed(Keys key);
+Keys getLastKeyPressed();
 
 Mouse win32ToMouse(uintptr_t virtual_key);
 Keys win32ToKeys(uintptr_t virtual_key);

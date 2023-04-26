@@ -24,8 +24,8 @@ struct MaterialEditor {
 
 private:
 	struct TexNamePair {
-		TexNamePair(Texture2D &&tex, mem::ptr<char[]> &&name) : tex(mem::move(tex)), name(mem::move(name)) {}
-		Texture2D tex;
+		TexNamePair(Handle<Texture2D> handle, mem::ptr<char[]> &&name) : handle(handle), name(mem::move(name)) {}
+		Handle<Texture2D> handle;
 		mem::ptr<char[]> name;
 	};
 
@@ -38,9 +38,9 @@ private:
 	bool has_texture = true;
 	Handle<Buffer> mat_handle = nullptr;
 
-	size_t diffuse_handle = -1;
-	size_t background_handle = -1;
-	size_t irradiance_handle = -1;
+	size_t diffuse_handle;
+	size_t background_handle;
+	size_t irradiance_handle;
 
 	// widget data
 	bool is_open = true;

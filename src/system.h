@@ -4,13 +4,14 @@
 #include "texture.h"
 
 namespace str { struct tstr; }
+template<typename T> struct Handle;
 
 namespace gfx {
 	extern dxptr<ID3D11Device> device;
 	extern dxptr<ID3D11DeviceContext> context;
 	extern dxptr<IDXGISwapChain> swapchain;
-	extern RenderTexture imgui_rtv;
-	extern RenderTexture main_rtv;
+	extern Handle<RenderTexture> imgui_rtv;
+	extern Handle<RenderTexture> main_rtv;
 	extern void *tracy_ctx;
 
 	void init();
@@ -21,8 +22,6 @@ namespace gfx {
 
 	bool createDevice();
 	void cleanupDevice();
-	void createImGuiRTV();
-	void cleanupImGuiRTV();
 
 	const vec4 &getMainRTVBounds();
 	void setMainRTVBounds(const vec4 &bounds);

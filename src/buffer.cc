@@ -5,36 +5,14 @@
 #include "system.h"
 #include "utils.h"
 #include "tracelog.h"
+#include "gfx_factory.h"
 
-static arr<Buffer *> buffers;
-static VirtualAllocator buffer_arena;
+static GFXFactory<Buffer> buffer_factory;
 
 uint8_t operator&(Bind left, Bind right) { return (uint8_t)left & (uint8_t)right; }
 
 static bool bufMakeConstant(Buffer *buf, size_t type_size, Buffer::Usage usage, bool cpu_can_write, bool cpu_can_read, const void *initial_data, size_t data_count);
 static bool bufMakeStructured(Buffer *buf, size_t type_size, size_t count, Bind bind, const void *initial_data);
-
-static Buffer *getNewBuffer() {
-    Buffer *newbuf = (Buffer *)buffer_arena.alloc(sizeof(Buffer));
-    buffers.push(newbuf);
-    return newbuf;
-}
-
-static void removeBuf(Buffer *buf) {
-    if (!buf) return;
-    buf->cleanup();
-    for (size_t i = 0; i < buffers.len; ++i) {
-        if (buffers[i] == buf) {
-            buffers.remove(i);
-            break;
-        }
-    }
-}
-
-static void popLastBuffer() {
-    buffer_arena.rewind(sizeof(Buffer));
-    buffers.pop();
-}
 
 static D3D11_USAGE usage_to_d3d11[(size_t)Buffer::Usage::Count] = {
     D3D11_USAGE_DEFAULT,
@@ -62,7 +40,7 @@ Buffer &Buffer::operator=(Buffer &&buf) {
 }
 
 Handle<Buffer> Buffer::make() {
-    return getNewBuffer();
+    return buffer_factory.getNew();
 }
 
 Handle<Buffer> Buffer::makeConstant(
@@ -73,10 +51,10 @@ Handle<Buffer> Buffer::makeConstant(
     const void *initial_data, 
     size_t data_count
 ) {
-    Buffer *newbuf = getNewBuffer();
+    Buffer *newbuf = buffer_factory.getNew();
 
     if (!bufMakeConstant(newbuf, type_size, usage, cpu_can_write, cpu_can_read, initial_data, data_count)) {
-        popLastBuffer();
+        buffer_factory.popLast();
         return nullptr;
     }
 
@@ -89,32 +67,18 @@ Handle<Buffer> Buffer::makeStructured(
     Bind bind,
     const void *initial_data
 ) {
-    Buffer *newbuf = getNewBuffer();
+    Buffer *newbuf = buffer_factory.getNew();
 
     if (!bufMakeStructured(newbuf, type_size, count, bind, initial_data)) {
-        popLastBuffer();
+        buffer_factory.popLast();
         return nullptr;
     }
 
     return newbuf;
 }
 
-Buffer *Buffer::get(Handle<Buffer> handle) {
-    return (Buffer *)handle.value;
-}
-
-bool Buffer::isHandleValid(Handle<Buffer> handle) {
-    return (Buffer *)handle.value != nullptr;
-}
-
-void Buffer::destroy(Handle<Buffer> handle) {
-    removeBuf(handle.get());
-}
-
 void Buffer::cleanAll() {
-    for (Buffer *buf : buffers) {
-        buf->cleanup();
-    }
+    buffer_factory.cleanup();
 }
 
 void Buffer::cleanup() {
@@ -137,7 +101,7 @@ void Buffer::resize(size_t new_count) {
             gfx::context->CopySubresourceRegion(newbuf->buffer, 0, 0, 0, 0, buffer, 0, nullptr);
             *this = mem::move(*newbuf.get());
             newbuf->cleanup();
-            popLastBuffer();
+            buffer_factory.popLast();
         }
     }
     // it is a constant buffer

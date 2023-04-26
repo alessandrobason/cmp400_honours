@@ -50,6 +50,16 @@ struct vec2T {
 	constexpr vec2T<bool> operator!=(const vec2T& o) const { return { x != o.x, y != o.y }; }
 	constexpr vec2T<bool> operator!=(T o) const { return { x != o, y != o }; }
 
+	constexpr vec2T<bool> operator<(const vec2T &o) const { return { x < o.x, y < o.y }; }
+	constexpr vec2T<bool> operator>(const vec2T &o) const { return { x > o.x, y > o.y }; }
+	constexpr vec2T<bool> operator<=(const vec2T &o) const { return { x <= o.x, y <= o.y }; }
+	constexpr vec2T<bool> operator>=(const vec2T &o) const { return { x >= o.x, y >= o.y }; }
+
+	constexpr vec2T<bool> operator<(T o) const { return { x < o, y < o }; }
+	constexpr vec2T<bool> operator>(T o) const { return { x > o, y > o }; }
+	constexpr vec2T<bool> operator<=(T o) const { return { x <= o, y <= o }; }
+	constexpr vec2T<bool> operator>=(T o) const { return { x >= o, y >= o }; }
+
 	T& operator[](size_t ind) { return data[ind]; }
 	constexpr const T& operator[](size_t ind) const { return data[ind]; }
 
@@ -227,9 +237,19 @@ constexpr T saturate(const T &val) {
 	return math::clamp(val, T(0), T(1));
 }
 
-template<typename T> constexpr T dot(const vec2T<T>& v1, const vec2T<T>& v2) { return vec2T<T>::dot(v1, v2); }
-template<typename T> constexpr T dot(const vec3T<T>& v1, const vec3T<T>& v2) { return vec3T<T>::dot(v1, v2); }
-template<typename T> constexpr T dot(const vec4T<T>& v1, const vec4T<T>& v2) { return vec4T<T>::dot(v1, v2); }
+template<typename T> constexpr T dot(const vec2T<T> &v1, const vec2T<T> &v2) { return vec2T<T>::dot(v1, v2); }
+template<typename T> constexpr T dot(const vec3T<T> &v1, const vec3T<T> &v2) { return vec3T<T>::dot(v1, v2); }
+template<typename T> constexpr T dot(const vec4T<T> &v1, const vec4T<T> &v2) { return vec4T<T>::dot(v1, v2); }
+
+#define VEC_FUN(name) \
+	template<typename T> constexpr vec2T<T> name(const vec2T<T> &v) { return { name(v.x), name(v.y) }; } \
+	template<typename T> constexpr vec3T<T> name(const vec3T<T> &v) { return { name(v.x), name(v.y), name(v.z) }; } \
+	template<typename T> constexpr vec4T<T> name(const vec4T<T> &v) { return { name(v.x), name(v.y), name(v.z), name(v.w) }; }
+	
+VEC_FUN(abs)
+VEC_FUN(round)
+
+#undef VEC_FUN
 
 inline constexpr bool any(const vec2T<bool>& v) { return v.x || v.y; }
 inline constexpr bool any(const vec3T<bool>& v) { return v.x || v.y || v.z; }

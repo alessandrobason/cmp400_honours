@@ -59,6 +59,7 @@ struct GPUClock{
 	size_t end_timer = 0;
 };
 
+#if 0
 struct GPUTimer {
 	// -- handle stuff --
 	static Handle<GPUTimer> make(const char *name);
@@ -68,3 +69,4 @@ struct GPUTimer {
 	void start();
 	void end();
 };
+#endif

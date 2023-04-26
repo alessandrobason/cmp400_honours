@@ -1,11 +1,30 @@
 #pragma once
 
-// Right now handles are not stable, this is because underneath it is just a vector, which means
-// that the pointer is not stable.
-// To fix this, it could use an arena allocator.
-
 #include "tracelog.h"
+#include "common.h"
 
+template<typename T>
+struct Handle {
+	Handle() = default;
+	Handle(size_t) = delete;
+	Handle(T *ptr) : ptr(ptr) {}
+
+	T *get() { return ptr; }
+	T *getChecked() { if (!ptr) fatal("failed to get pointer from handle"); return ptr; }
+	T *operator->() { return getChecked(); }
+
+	const T *get() const { return ptr; }
+	const T *getChecked() const { if (!ptr) fatal("failed to get pointer from handle"); return ptr; }
+	const T *operator->() const { return getChecked(); }
+
+	bool operator==(const Handle &h) const { return ptr == h.ptr; }
+	bool operator!=(const Handle &h) const { return ptr != h.ptr; }
+	operator bool() const { return ptr != nullptr; }
+
+	T *ptr = nullptr;
+};
+
+#if 0
 template<typename T>
 struct Handle {
 	Handle() = default;
@@ -32,3 +51,4 @@ struct Handle {
 
 	size_t value = 0;
 };
+#endif

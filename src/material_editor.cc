@@ -10,14 +10,10 @@
 MaterialEditor::MaterialEditor() {
 	diffuse_handle    = addTexture("assets/testing_texture.png");
 	background_handle = addTexture("assets/rainforest_trail.png");
-	//background_handle = addTexture(*this, "assets/rainforest_trail_4k.hdr");
-	//irradiance_handle = addTexture(*this, "assets/irradiance_map.hdr");
-
-	if (diffuse_handle == -1) fatal("couldn't load default material texture");
-	if (background_handle == -1) fatal("couldn't load default background hdr texture");
-	//if (irradiance_handle == -1) fatal("couldn't load default irradiance texture");
-
 	mat_handle = Buffer::makeConstant<MaterialPS>(Buffer::Usage::Dynamic);
+
+	if (diffuse_handle == -1)    fatal("couldn't load default material texture");
+	if (background_handle == -1) fatal("couldn't load default background hdr texture");
 
 	if (!mat_handle) {
 		gfx::logD3D11messages();
@@ -45,7 +41,7 @@ void MaterialEditor::drawWidget() {
 
 	if (ImGui::BeginCombo("Textures", textures[diffuse_handle].name.get())) {
 		for (size_t i = 0; i < textures.len; ++i) {
-			bool is_selected = i == diffuse_handle;
+			bool is_selected = diffuse_handle == i;
 			if (ImGui::Selectable(textures[i].name.get(), is_selected)) {
 				diffuse_handle = i;
 			}
@@ -143,41 +139,45 @@ ID3D11ShaderResourceView *MaterialEditor::getIrradiance() {
 }
 
 Texture2D *MaterialEditor::get(size_t index) {
-	return index < textures.len ? &textures[index].tex : nullptr;
+	return index < textures.len ? textures[index].handle.get() : nullptr;
 }
 
 size_t MaterialEditor::addTexture(const char *path) {
-	Texture2D newtex;
 	mem::ptr<char[]> name = file::getFilename(path);
-	size_t ind = checkTextureAlreadyLoaded(name.get());
-	if (ind < textures.len) {
+	size_t index = checkTextureAlreadyLoaded(name.get());
+	if (index != -1) {
 		warn("texture %s is already loaded", name.get());
-		return ind;
+		return index;
 	}
-	if (!newtex.load(path)) {
+
+	Handle<Texture2D> newtex = Texture2D::load(path);
+	if (!newtex) {
 		err("couldn't load texture %s", name.get());
 		return -1;
 	}
-	ind = textures.len;
-	textures.push(mem::move(newtex), name);
-	return ind;
+
+	index = textures.len;
+	textures.push(newtex, mem::move(name));
+	return index;
 }
 
 size_t MaterialEditor::addTextureHDR(const char *path) {
-	Texture2D newtex;
 	mem::ptr<char[]> name = file::getFilename(path);
-	size_t ind = checkTextureAlreadyLoaded(name.get());
-	if (ind < textures.len) {
-		warn("HDR texture %s is already loaded", name.get());
-		return ind;
+	size_t index = checkTextureAlreadyLoaded(name.get());
+	if (index != -1) {
+		warn("texture %s is already loaded", name.get());
+		return index;
 	}
-	if (!newtex.loadHDR(path)) {
+
+	Handle<Texture2D> newtex = Texture2D::loadHDR(path);
+	if (!newtex) {
 		err("couldn't load HDR texture %s", name.get());
 		return -1;
 	}
-	ind = textures.len;
-	textures.push(mem::move(newtex), name);
-	return ind;
+
+	index = textures.len;
+	textures.push(newtex, mem::move(name));
+	return index;
 }
 
 size_t MaterialEditor::checkTextureAlreadyLoaded(const char *name) {

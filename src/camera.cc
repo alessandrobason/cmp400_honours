@@ -95,7 +95,7 @@ float Camera::getZoom() const {
 vec3 Camera::getMouseDir() const {
 	const vec4 &bounds = gfx::getMainRTVBounds();
 	const vec2 &mouse_pos = getMousePos();
-	const vec2 &win_size = gfx::main_rtv.size;
+	const vec2 &win_size = gfx::main_rtv->size;
 	const float aspect_ratio = win_size.x / win_size.y;
 
 	const vec2 rel_pos = mouse_pos - bounds.pos;
@@ -107,7 +107,14 @@ vec3 Camera::getMouseDir() const {
 }
 
 bool Camera::shouldSculpt() const {
-	return isMousePressed(MOUSE_LEFT) && isMouseInsideRTV() && gfx::isMainRTVActive();
+	constexpr float mouse_deadzone = 3.f;
+	static vec2 last_pos = 0;
+	vec2 mouse_pos = getMousePos();
+	bool has_mouse_moved = all(abs(mouse_pos - last_pos) > mouse_deadzone);
+	last_pos = mouse_pos;
+
+	return (has_mouse_moved || isMousePressed(MOUSE_LEFT)) && isMouseDown(MOUSE_LEFT) && gfx::isMainRTVActive() && isMouseInsideRTV();
+	//return isMousePressed(MOUSE_LEFT) && isMouseInsideRTV() && gfx::isMainRTVActive();
 }
 
 #if 0

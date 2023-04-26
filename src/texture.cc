@@ -8,11 +8,13 @@
 #include "system.h"
 #include "utils.h"
 #include "tracelog.h"
+#include "gfx_factory.h"
 
 /* ==========================================
    =============== TEXTURE 2D ===============
    ========================================== */
 
+static GFXFactory<Texture2D> tex2d_factory;
 
 Texture2D::Texture2D(Texture2D &&rt) {
 	*this = mem::move(rt);
@@ -31,7 +33,37 @@ Texture2D &Texture2D::operator=(Texture2D &&rt) {
 	return *this;
 }
 
-bool Texture2D::load(const char *filename) {
+Handle<Texture2D> Texture2D::make() {
+	return tex2d_factory.getNew();
+}
+
+Handle<Texture2D> Texture2D::load(const char *filename) {
+	Texture2D *tex = tex2d_factory.getNew();
+
+	if (!tex->loadFromFile(filename)) {
+		tex2d_factory.popLast();
+		return nullptr;
+	}
+
+	return tex;
+}
+
+Handle<Texture2D> Texture2D::loadHDR(const char *filename) {
+	Texture2D *tex = tex2d_factory.getNew();
+
+	if (!tex->loadFromHDRFile(filename)) {
+		tex2d_factory.popLast();
+		return nullptr;
+	}
+
+	return tex;
+}
+
+void Texture2D::cleanAll() {
+	tex2d_factory.cleanup();
+}
+
+bool Texture2D::loadFromFile(const char *filename) {
 	cleanup();
 
 	int channels = 0;
@@ -79,7 +111,7 @@ bool Texture2D::load(const char *filename) {
 	return true;
 }
 
-bool Texture2D::loadHDR(const char *filename) {
+bool Texture2D::loadFromHDRFile(const char *filename) {
 	cleanup();
 
 	int channels = 0;
@@ -135,6 +167,8 @@ void Texture2D::cleanup() {
 /* ==========================================
    =============== TEXTURE 3D ===============
    ========================================== */
+
+static GFXFactory<Texture3D> tex3d_factory;
 
 static DXGI_FORMAT to_dx_format[(int)Texture3D::Type::count] = {
 	DXGI_FORMAT_R8_UINT,         // uint8
@@ -197,11 +231,45 @@ Texture3D &Texture3D::operator=(Texture3D &&rt) {
 	return *this;
 }
 
-bool Texture3D::create(const vec3u &texsize, Type type, const void *initial_data) {
+Handle<Texture3D> Texture3D::make() {
+	return tex3d_factory.getNew();
+}
+
+Handle<Texture3D> Texture3D::create(const vec3u &texsize, Type type, const void *initial_data) {
 	return create(texsize.x, texsize.y, texsize.z, type, initial_data);
 }
 
-bool Texture3D::create(int width, int height, int depth, Type type, const void *initial_data) {
+Handle<Texture3D> Texture3D::create(int width, int height, int depth, Type type, const void *initial_data) {
+	Texture3D *tex = tex3d_factory.getNew();
+
+	if (!tex->init(width, height, depth, type, initial_data)) {
+		tex3d_factory.popLast();
+		return nullptr;
+	}
+
+	return tex;
+}
+
+Handle<Texture3D> Texture3D::load(const char *filename) {
+	Texture3D *tex = tex3d_factory.getNew();
+
+	if (!tex->loadFromFile(filename)) {
+		tex3d_factory.popLast();
+		return nullptr;
+	}
+
+	return tex;
+}
+
+void Texture3D::cleanAll() {
+	tex3d_factory.cleanup();
+}
+
+bool Texture3D::init(const vec3u &texsize, Type type, const void *initial_data) {
+	return init(texsize.x, texsize.y, texsize.z, type, initial_data);
+}
+
+bool Texture3D::init(int width, int height, int depth, Type type, const void *initial_data) {
 	cleanup();
 	
 	size = vec3i(width, height, depth);
@@ -263,7 +331,7 @@ bool Texture3D::create(int width, int height, int depth, Type type, const void *
 	return true;
 }
 
-bool Texture3D::load(const char *filename) {
+bool Texture3D::loadFromFile(const char *filename) {
 	file::MemoryBuf whole_file = file::read(filename);
 	if (!whole_file.data) {
 		err("couldn't read file (%s)", filename);
@@ -296,11 +364,8 @@ bool Texture3D::load(const char *filename) {
 
 	size_t type_size = type_to_size[(int)type];
 	size_t data_len = size.x * size.y * size.z * type_size;
-	mem::ptr<uint8_t[]> data = mem::ptr<uint8_t[]>::make(data_len);
 
-	if (!stream.read(data.get(), data_len)) { err("could not read texture data"); return false; }
-
-	create(size, type, data.get());
+	init(size, type, stream.cur);
 
 	return true;
 }
@@ -405,28 +470,10 @@ Texture3D::Type Texture3D::getType() {
    ============= RENDER TEXTURE =============
    ========================================== */
 
-RenderTexture::RenderTexture(RenderTexture &&rt) {
-	*this = mem::move(rt);
-}
+static GFXFactory<RenderTexture> rentex_factory;
 
-RenderTexture::~RenderTexture() {
-	cleanup();
-}
-
-RenderTexture &RenderTexture::operator=(RenderTexture &&rt) {
-	if (this != &rt) {
-		cleanup();
-		mem::copy(*this, rt);
-		mem::zero(rt);
-	}
-
-	return *this;
-}
-
-bool RenderTexture::create(int width, int height) {
-	cleanup();
-
-	size = { width, height };
+static bool rtCreate(RenderTexture *rt, int width, int height) {
+	rt->size = { width, height };
 
 	D3D11_TEXTURE2D_DESC td;
 	mem::zero(td);
@@ -438,8 +485,8 @@ bool RenderTexture::create(int width, int height) {
 	td.SampleDesc.Count = 1;
 	td.Usage = D3D11_USAGE_DEFAULT;
 	td.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
-		
-	HRESULT hr = gfx::device->CreateTexture2D(&td, nullptr, &texture);
+
+	HRESULT hr = gfx::device->CreateTexture2D(&td, nullptr, &rt->texture);
 	if (FAILED(hr)) {
 		err("couldn't create RTV's texture2D");
 		return false;
@@ -450,7 +497,7 @@ bool RenderTexture::create(int width, int height) {
 	vd.Format = td.Format;
 	vd.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
 
-	hr = gfx::device->CreateRenderTargetView(texture, &vd, &view);
+	hr = gfx::device->CreateRenderTargetView(rt->texture, &vd, &rt->view);
 	if (FAILED(hr)) {
 		err("couldn't create RTV");
 		return false;
@@ -462,7 +509,7 @@ bool RenderTexture::create(int width, int height) {
 	sd.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 	sd.Texture2D.MipLevels = 1;
 
-	hr = gfx::device->CreateShaderResourceView(texture, &sd, &resource);
+	hr = gfx::device->CreateShaderResourceView(rt->texture, &sd, &rt->resource);
 	if (FAILED(hr)) {
 		err("couldn't create RTV's shader resource view");
 		return false;
@@ -471,29 +518,81 @@ bool RenderTexture::create(int width, int height) {
 	return true;
 }
 
-bool RenderTexture::createFromBackbuffer() {
-	cleanup();
-		
-	HRESULT hr = gfx::swapchain->GetBuffer(0, IID_PPV_ARGS(&texture));
+static bool rtFromBackbuffer(RenderTexture *rt) {
+	HRESULT hr = gfx::swapchain->GetBuffer(0, IID_PPV_ARGS(&rt->texture));
 	if (FAILED(hr)) {
 		err("couldn't get backbuffer");
 		return false;
 	}
 
-	hr = gfx::device->CreateRenderTargetView(texture, nullptr, &view);
+	hr = gfx::device->CreateRenderTargetView(rt->texture, nullptr, &rt->view);
 	if (FAILED(hr)) {
 		err("couldn't create view from backbuffer's texture");;
 		return false;
 	}
 
-	size = win::getSize();
+	rt->size = win::getSize();
 
 	return true;
 }
 
+RenderTexture::RenderTexture(RenderTexture &&rt) {
+	*this = mem::move(rt);
+}
+
+RenderTexture::~RenderTexture() {
+	cleanup();
+}
+
+RenderTexture &RenderTexture::operator=(RenderTexture &&rt) {
+	if (this != &rt) {
+		mem::swap(size, rt.size);
+		mem::swap(texture, rt.texture);
+		mem::swap(view, rt.view);
+		mem::swap(resource, rt.resource);
+	}
+
+	return *this;
+}
+
+Handle<RenderTexture> RenderTexture::make() {
+	return rentex_factory.getNew();
+}
+
+Handle<RenderTexture> RenderTexture::create(int width, int height) {
+	RenderTexture *rt = rentex_factory.getNew();
+
+	if (!rtCreate(rt, width, height)) {
+		rentex_factory.popLast();
+		return nullptr;
+	}
+
+	return rt;
+}
+
+Handle<RenderTexture> RenderTexture::fromBackbuffer() {
+	RenderTexture *rt = rentex_factory.getNew();
+
+	if (!rtFromBackbuffer(rt)) {
+		rentex_factory.popLast();
+		return nullptr;
+	}
+
+	return rt;
+}
+
+void RenderTexture::cleanAll() {
+	rentex_factory.cleanup();
+}
+
 bool RenderTexture::resize(int new_width, int new_height) {
 	cleanup();
-	return create(new_width, new_height);
+	return rtCreate(this, new_width, new_height);
+}
+
+bool RenderTexture::reloadBackbuffer() {
+	cleanup();
+	return rtFromBackbuffer(this);
 }
 
 void RenderTexture::cleanup() {

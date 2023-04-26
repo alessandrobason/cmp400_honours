@@ -23,10 +23,13 @@
 #include "maths.h"
 #include "input.h"
 #include "timer.h"
+#include "shader.h"
 #include "buffer.h"
 #include "widgets.h"
 
 static LRESULT wndProc(HWND, UINT, WPARAM, LPARAM);
+
+VirtualAllocator g_gfx_arena;
 
 namespace gfx {
 	dxptr<ID3D11Device> device = nullptr;
@@ -39,8 +42,8 @@ namespace gfx {
 	dxptr<ID3D11DepthStencilState> depth_stencil_state = nullptr;
 	//TracyD3D11Ctx tracy_ctx = nullptr;
 
-	RenderTexture imgui_rtv;
-	RenderTexture main_rtv;
+	Handle<RenderTexture> imgui_rtv;
+	Handle<RenderTexture> main_rtv;
 	static vec4 main_rtv_bounds = 0;
 	static bool is_main_rtv_active = false;
 
@@ -75,14 +78,19 @@ namespace gfx {
 		ImGui_ImplDX11_Init(device, context);
 
 		vec2u resolution = Options::get().resolution;
-		bool rtv_success = main_rtv.create(resolution.x, resolution.y);
-		if (!rtv_success) {
+		main_rtv = RenderTexture::create(resolution.x, resolution.y);
+		if (!main_rtv) {
 			fatal("couldn't create main RTV");
 		}
 	}
 
 	void cleanup() {
+		Shader::cleanAll();
 		Buffer::cleanAll();
+		Texture2D::cleanAll();
+		Texture3D::cleanAll();
+		RenderTexture::cleanAll();
+
 		gpuTimerCleanup();
 
 		renderdocCleanup();
@@ -92,7 +100,6 @@ namespace gfx {
 		ImGui_ImplWin32_Shutdown();
 		ImGui::DestroyContext();
 
-		main_rtv.cleanup();
 		cleanupDevice();
 	}
 
@@ -100,7 +107,7 @@ namespace gfx {
 		gpuTimerBeginFrame();
 		logD3D11messages();
 
-		imgui_rtv.clear(Colour::black);
+		imgui_rtv->clear(Colour::black);
 
 		// Start the Dear ImGui frame
 		ImGui_ImplDX11_NewFrame();
@@ -193,7 +200,7 @@ namespace gfx {
 		}
 		context->OMSetDepthStencilState(depth_stencil_state, 0);
 
-		createImGuiRTV();
+		imgui_rtv = RenderTexture::fromBackbuffer();
 
 		//tracy_ctx = TracyD3D11Context(device, context);
 
@@ -207,7 +214,6 @@ namespace gfx {
 		// we need this as it doesn't report memory leaks otherwise
 		infodev->PushEmptyStorageFilter();
 #endif
-		cleanupImGuiRTV();
 		depth_stencil_state.destroy();
 		swapchain.destroy();
 		context.destroy();
@@ -217,14 +223,6 @@ namespace gfx {
 		debugdev->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL | D3D11_RLDO_IGNORE_INTERNAL);
 		debugdev.destroy();
 #endif
-	}
-
-	void createImGuiRTV() {
-		imgui_rtv.createFromBackbuffer();
-	}
-
-	void cleanupImGuiRTV() {
-		imgui_rtv.cleanup();
 	}
 
 	const vec4 &getMainRTVBounds() {
@@ -326,8 +324,8 @@ namespace win {
 
 		if (Options::get().update()) {
 			vec2i resolution = (vec2i)Options::get().resolution;
-			if (any(gfx::main_rtv.size != resolution)) {
-				gfx::main_rtv.create(resolution.x, resolution.y);
+			if (any(gfx::main_rtv->size != resolution)) {
+				gfx::main_rtv->resize(resolution.x, resolution.y);
 			}
 		}
 	}
@@ -337,8 +335,8 @@ namespace win {
 	}
 
 	void create(const char *name, int width, int height) {
-		Options::get().load();
 		timerInit();
+		Options::get().load();
 
 		size = { width, height };
 		
@@ -420,7 +418,7 @@ LRESULT wndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 		if (gfx::device && wparam != SIZE_MINIMIZED) {
 			win::size = { LOWORD(lparam), HIWORD(lparam) };
 			
-			gfx::cleanupImGuiRTV();
+			gfx::imgui_rtv->cleanup();
 			gfx::swapchain->ResizeBuffers(
 				0, 
 				(UINT)win::size.x,
@@ -428,7 +426,7 @@ LRESULT wndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 				DXGI_FORMAT_UNKNOWN,
 				0
 			);
-			gfx::createImGuiRTV();
+			gfx::imgui_rtv->reloadBackbuffer();
 		}
 		return 0;
 

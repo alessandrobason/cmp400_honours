@@ -275,6 +275,9 @@
     <ClInclude Include="..\libs\imgui\backends\imgui_impl_win32.h">
       <Filter>Libraries\ImGui\backends</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\gfx_factory.h">
+      <Filter>Header Files\gfx</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="..\shaders\base_ps.hlsl">

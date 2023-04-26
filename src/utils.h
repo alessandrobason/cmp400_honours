@@ -24,6 +24,7 @@ namespace mem {
 	template<typename T> struct RemRef<T &>  { using Type = T; };
 	template<typename T> struct RemRef<T &&> { using Type = T; };
 	template<typename T> using RemRefT = typename RemRef<T>::Type;
+
 	template<typename T> struct RemArr       { using Type = T; };
 	template<typename T> struct RemArr<T[]>  { using Type = T; };
 	template<typename T> using RemArrT = typename RemArr<T>::Type;
@@ -237,9 +238,9 @@ struct arr {
 template<typename T>
 struct Slice {
 	Slice() = default;
-	Slice(const T *data, size_t len) : data(data), len(len) {}
+	Slice(T *data, size_t len) : data(data), len(len) {}
 	template<size_t size>
-	Slice(const T(&data)[size]) : data(data), len(size) {}
+	Slice(T(&data)[size]) : data(data), len(size) {}
 	Slice(std::initializer_list<T> list) : data(list.begin()), len(list.size()) {}
 
 	bool empty() const {
@@ -271,8 +272,12 @@ struct Slice {
 		return true;
 	}
 
+	operator bool() const { return data != nullptr && len > 0; }
+
 	const T *begin() const { return data; }
 	const T *end() const { return data + len; }
+	const T &front() const { assert(data); return data[0]; }
+	const T &back() const { assert(data); return data[len - 1]; }
 
 	const T *data = nullptr;
 	size_t len = 0;
@@ -357,6 +362,7 @@ namespace str {
 namespace file {
 	struct MemoryBuf {
 		void destroy() { data.destroy(); data = nullptr; size = 0; }
+		operator bool() const { return data.get() != nullptr; }
 		mem::ptr<uint8_t[]> data = nullptr;
 		size_t size = 0;
 	};
@@ -427,6 +433,9 @@ namespace file {
 		bool read(void *data, size_t len);
 		bool write(const void *data, size_t len);
 
+		bool puts(const char *msg);
+		bool print(const char *fmt, ...);
+
 		void *fptr = nullptr;
 	};
 
@@ -441,9 +450,12 @@ namespace file {
 // == allocators utils ============================================
 
 struct VirtualAllocator {
-	VirtualAllocator();
+	VirtualAllocator() = default;
 	~VirtualAllocator();
+	VirtualAllocator(VirtualAllocator &&v);
+	VirtualAllocator &operator=(VirtualAllocator &&v);
 
+	void init();
 	void *alloc(size_t size);
 	void rewind(size_t size);
 

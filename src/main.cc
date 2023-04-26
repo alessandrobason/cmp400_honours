@@ -29,7 +29,6 @@
 
 bool is_dirty = true;
 constexpr vec3u maintex_size = 512;
-constexpr vec3u threads = maintex_size / 8;
 constexpr unsigned int initial_material_count = 10;
 
 static_assert(all(maintex_size % 8 == 0));
@@ -43,13 +42,6 @@ struct PSShaderData {
 	float cam_zoom;
 	vec3 cam_pos;
 	float padding__0;
-};
-
-struct BrushData {
-	vec3 position;
-	float radius;
-	vec3 normal;
-	float padding__1;
 };
 
 struct BrushFindData {
@@ -90,30 +82,21 @@ int main() {
 		Camera cam;
 		BrushEditor brush_editor;
 		MaterialEditor material_editor;
-		Texture3D main_texture, scaled_texture;
 		DynamicShader sh_manager;
-		int main_ps_ind, main_vs_ind, sculpt_ind, gen_brush_ind, empty_texture_ind, find_brush_ind, scale_ind;
-		Shader *main_ps, *main_vs, *sculpt, *gen_brush, *empty_texture, *find_brush, *scale_cs;
-		Handle<Buffer> brush_data_handle;
 
-		if (!main_texture.create(maintex_size, Texture3D::Type::float16)) gfxErrorExit();
-		if (!scaled_texture.create(64, Texture3D::Type::float16)) gfxErrorExit();
+		Handle<Texture3D> main_texture = Texture3D::create(maintex_size, Texture3D::Type::float16);
+		Handle<Texture3D> scaled_texture = Texture3D::create(64, Texture3D::Type::float16);
 
-		main_vs_ind       = sh_manager.add("base_vs",          ShaderType::Vertex);
-		main_ps_ind       = sh_manager.add("base_ps",          ShaderType::Fragment);
-		sculpt_ind        = sh_manager.add("sculpt_cs",        ShaderType::Compute);
-		gen_brush_ind     = sh_manager.add("gen_brush_cs",     ShaderType::Compute);
-		empty_texture_ind = sh_manager.add("empty_texture_cs", ShaderType::Compute);
-		find_brush_ind    = sh_manager.add("find_brush_cs",    ShaderType::Compute);
-		scale_ind         = sh_manager.add("scale_cs",         ShaderType::Compute);
+		if (!main_texture) gfxErrorExit();
+		if (!scaled_texture) gfxErrorExit();
 
-		main_vs       = sh_manager.get(main_vs_ind);
-		main_ps       = sh_manager.get(main_ps_ind);
-		sculpt        = sh_manager.get(sculpt_ind);
-		gen_brush     = sh_manager.get(gen_brush_ind);
-		empty_texture = sh_manager.get(empty_texture_ind);
-		find_brush    = sh_manager.get(find_brush_ind);
-		scale_cs      = sh_manager.get(scale_ind);
+		Handle<Shader> main_vs       = sh_manager.add("base_vs",          ShaderType::Vertex);
+		Handle<Shader> main_ps       = sh_manager.add("base_ps",          ShaderType::Fragment);
+		Handle<Shader> sculpt        = sh_manager.add("sculpt_cs",        ShaderType::Compute);
+		Handle<Shader> gen_brush     = sh_manager.add("gen_brush_cs",     ShaderType::Compute);
+		Handle<Shader> empty_texture = sh_manager.add("empty_texture_cs", ShaderType::Compute);
+		Handle<Shader> find_brush    = sh_manager.add("find_brush_cs",    ShaderType::Compute);
+		Handle<Shader> scale_cs      = sh_manager.add("scale_cs",         ShaderType::Compute);
 
 		if (!main_vs)       gfxErrorExit();
 		if (!main_ps)       gfxErrorExit();
@@ -128,11 +111,8 @@ int main() {
 		Handle<Buffer> shader_data_handle    = Buffer::makeConstant<PSShaderData>(Buffer::Usage::Dynamic);
 		Handle<Buffer> find_data_handle      = Buffer::makeConstant<BrushFindData>(Buffer::Usage::Dynamic);
 
-		brush_data_handle = Buffer::makeStructured<BrushData>();
-
 		if (!shader_data_handle)    gfxErrorExit();
 		if (!find_data_handle)      gfxErrorExit();
-		if (!brush_data_handle)     gfxErrorExit();
 
 		Mesh triangle = makeFullScreenTriangle();
 
@@ -140,7 +120,7 @@ int main() {
 		gen_brush->dispatch(brush_editor.getBrushSize() / 8, {}, {}, {brush_editor.getBrushUAV()});
 
 		// fill texture
-		empty_texture->dispatch(threads, {}, {}, { main_texture.uav });
+		empty_texture->dispatch(main_texture->size / 8, {}, {}, { main_texture->uav });
 
 		GPUClock sculpt_clock("Sculpt");
 
@@ -154,7 +134,7 @@ int main() {
 			}
 		}
 		
-		sculpt->dispatch(threads, { brush_editor.getOperHandle() }, {brush_editor.getBrushSRV(), brush_data_handle->srv}, {main_texture.uav});
+		sculpt->dispatch(main_texture->size / 8, { brush_editor.getOperHandle() }, { brush_editor.getBrushSRV(), brush_editor.getDataSRV()}, {main_texture->uav});
 
 		while (win::isOpen()) {
 			sh_manager.poll();
@@ -166,14 +146,6 @@ int main() {
 
 			if (sculpt_clock.isReady()) sculpt_clock.print();
 			if (isActionPressed(Action::CloseProgram)) win::close();
-
-			// if (isKeyPressed(KEY_T)) {
-			// 	info("running scale shader");
-			// 	gfx::captureFrame();
-			// 	scale_cs->dispatch(scaled_texture.size / 8, {}, { main_texture.srv }, { scaled_texture.uav });
-			// 	scaled_texture.save("test_brush.bin");
-			// 	brush_editor.texture.load("test_brush.bin");
-			// }
 
 			cam.update();
 			brush_editor.update();
@@ -189,15 +161,13 @@ int main() {
 				}
 			}
 
-			find_brush->dispatch(1, { find_data_handle }, { main_texture.srv }, { brush_data_handle->uav });
+			find_brush->dispatch(1, { find_data_handle }, { main_texture->srv }, { brush_editor.getDataUAV() });
 
 			if (cam.shouldSculpt()) {
 				if (Options::get().auto_capture) {
 					gfx::captureFrame();
 				}
-				sculpt_clock.start();
-				sculpt->dispatch(threads, { brush_editor.getOperHandle() }, {brush_editor.getBrushSRV(), brush_data_handle->srv}, {main_texture.uav});
-				sculpt_clock.end();
+				sculpt->dispatch(main_texture->size / 8, { brush_editor.getOperHandle() }, { brush_editor.getBrushSRV(), brush_editor.getDataSRV() }, { main_texture->uav });
 			}
 
 			if (sh_manager.hasUpdated()) {
@@ -222,14 +192,14 @@ int main() {
 				}
 			}
 
-			gfx::main_rtv.clear(Colour::dark_grey);
-			gfx::main_rtv.bind();
+			gfx::main_rtv->clear(Colour::dark_grey);
+			gfx::main_rtv->bind();
 			main_vs->bind();
 			main_ps->bind(
 				{ shader_data_handle, material_editor.getBuffer() },
 				{ 
-					brush_data_handle->srv, 
-					main_texture.srv, 
+					brush_editor.getDataSRV(),
+					main_texture->srv,
 					material_editor.getDiffuse(),
 					material_editor.getBackground(),
 					material_editor.getIrradiance()
@@ -239,11 +209,12 @@ int main() {
 			main_ps->unbind(2, 3);
 			main_ps->unbindCBuffers(2);
 
-			gfx::imgui_rtv.bind();
+			gfx::imgui_rtv->bind();
 				fpsWidget();
-				mainMenuBar(brush_editor, material_editor);
+				mainMenuBar(brush_editor, material_editor, main_texture, sculpt);
 				mainTargetWidget();
 				messagesWidget();
+				keyRemapper();
 				drawLogger();
 				brush_editor.drawWidget();
 				material_editor.drawWidget();
@@ -252,7 +223,7 @@ int main() {
 			gfx::end();
 
 			if (isActionPressed(Action::TakeScreenshot)) {
-				gfx::main_rtv.takeScreenshot();
+				gfx::main_rtv->takeScreenshot();
 			}
 
 			gfx::logD3D11messages();

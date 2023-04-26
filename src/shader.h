@@ -9,15 +9,27 @@ struct Buffer;
 template<typename T> struct vec3T;
 using vec3u = vec3T<unsigned int>;
 
+struct ShaderMacro {
+	const char *name = nullptr;
+	const char *value = nullptr;
+};
+
 struct Shader {
-	Shader() = default;
+	Shader() = delete;
 	Shader(const Shader &s) = delete;
 	Shader(Shader &&s);
 	~Shader();
-
 	Shader &operator=(Shader &&s);
 
-	bool load(const char *filename, ShaderType type);
+	// -- handle stuff --
+	static Handle<Shader> make();
+	static Handle<Shader> load(const char *filename, ShaderType type);
+	static Handle<Shader> compile(const char *filename, ShaderType type, Slice<ShaderMacro> macros = {});
+	static void cleanAll();
+	// ------------------
+
+	// bool load(const char *filename, ShaderType type);
+	// bool compile(const char *filename, ShaderType type, Slice<ShaderMacro> macros = {});
 
 	bool loadVertex(const void *data, size_t len);
 	bool loadFragment(const void *data, size_t len);
@@ -49,24 +61,17 @@ struct DynamicShader {
 	DynamicShader() = default;
 	DynamicShader(const DynamicShader &s) = delete;
 	DynamicShader(DynamicShader &&s);
-	~DynamicShader();
 
 	DynamicShader &operator=(DynamicShader &&s);
-
-	int add(const char *name, ShaderType type);
-	void cleanup();
+	
+	Handle<Shader> add(const char *name, ShaderType type);
 
 	void poll();
 	bool hasUpdated() const { return has_updated; }
-	bool hasUpdated(int index) const;
-
-	Shader *get(int index);
 
 private:
-	bool addFileWatch(const char *name, ShaderType type);
+	Handle<Shader> addFileWatch(const char *name, ShaderType type);
 
-	arr<Shader> shaders;
-	arr<bool> update_list;
 	file::Watcher watcher = "shaders/";
 	bool has_updated = false;
 };

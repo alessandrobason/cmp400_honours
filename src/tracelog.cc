@@ -157,7 +157,6 @@ void Logger::endLine(LogLevel level, int minutes, int seconds, int millis) {
 }
 
 void Logger::draw() {
-    if (isActionPressed(Action::OpenLogger)) is_open = true;
     if (!is_open) return;
     if (!ImGui::Begin("Logger", &is_open)) {
         ImGui::End();

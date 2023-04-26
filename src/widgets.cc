@@ -6,6 +6,7 @@
 #include <nfd.hpp>
 
 #include "system.h"
+#include "input.h"
 #include "tracelog.h"
 #include "shader.h"
 #include "texture.h"
@@ -38,7 +39,7 @@ void fpsWidget() {
 }
 
 void mainTargetWidget() {
-	mainTargetWidget(gfx::main_rtv.size, gfx::main_rtv.resource);
+	mainTargetWidget(gfx::main_rtv->size, gfx::main_rtv->resource);
 }
 
 void mainTargetWidget(vec2 size, ID3D11ShaderResourceView *srv) {
@@ -166,16 +167,107 @@ void addMessageToWidget(LogLevel severity, const char* message) {
 	messages.push(severity, str::dup(message));
 }
 
+static bool is_remapper_open = false;
+
+void keyRemapper() {
+	if (!is_remapper_open) return;
+	if (!ImGui::Begin("Key Remapping", &is_remapper_open)) {
+		ImGui::End();
+		return;
+	}
+
+	static Action cur_action = Action::Count;
+	static bool is_popup_open = false;
+
+	const auto &remapAction = [](Action action, const char *name, Action &selected) {
+		ImGui::Text(name);
+		ImGui::SameLine();
+		if (ImGui::Button(getKeyName(getActionKey(action)), vec2(50, 20))) {
+			selected = action;
+			setLastKeyPressed(KEY_NONE);
+			is_popup_open = true;
+			ImGui::OpenPopup("Remap");
+		}
+	};
+
+	remapAction(Action::ResetZoom, "Reset Zoom", cur_action);
+	remapAction(Action::CloseProgram, "Close Program", cur_action);
+	remapAction(Action::TakeScreenshot, "Take Screenshot", cur_action);
+	remapAction(Action::RotateCameraHorPos, "Rotate Camera Horizontal Positive", cur_action);
+	remapAction(Action::RotateCameraHorNeg, "Rotate Camera Horizontal Negative", cur_action);
+	remapAction(Action::RotateCameraVerPos, "Rotate Camera Vertical Positive", cur_action);
+	remapAction(Action::RotateCameraVerNeg, "Rotate Camera Vertical Negative", cur_action);
+	remapAction(Action::ZoomIn, "Zoom In", cur_action);
+	remapAction(Action::ZoomOut, "Zoom Out", cur_action);
+
+	if (ImGui::BeginPopupModal("Remap", &is_popup_open)) {
+		Keys last_pressed = getLastKeyPressed();
+		ImGui::Text("Press any key: ");
+		ImGui::SameLine();
+		ImGui::Text(getKeyName(last_pressed));
+
+		if (ImGui::Button("Accept")) {
+			is_popup_open = false;
+			setActionKey(cur_action, last_pressed);
+			ImGui::CloseCurrentPopup();
+		}
+
+		ImGui::SameLine();
+
+		if (ImGui::Button("Cancel")) {
+			is_popup_open = false;
+			ImGui::CloseCurrentPopup();
+		}
+		ImGui::EndPopup();
+	}
+
+	ImGui::End();
+}
+
+struct FillShader {
+	Handle<Shader> shader = nullptr;
+	const char *macro = nullptr;
+};
+
 static bool should_load_file = false;
 static bool should_save_file = false;
-static unsigned int save_quality = 64;
+static vec3u save_quality = 64;
+static arr<FillShader> fill_shaders;
+static Handle<Buffer> fill_buffer;
 
-void mainMenuBar(BrushEditor &be, MaterialEditor &me) {
+Handle<Shader> ensureShaderExists(const char *macro) {
+	if (!fill_buffer) {
+		fill_buffer = Buffer::makeConstant<vec4>(Buffer::Usage::Dynamic);
+	}
+
+	for (FillShader &fill : fill_shaders) {
+		if (str::cmp(fill.macro, macro)) {
+			return fill.shader;
+		}
+	}
+
+	FillShader newfill;
+	newfill.macro = macro;
+	newfill.shader = Shader::compile("fill_texture_cs.hlsl", ShaderType::Compute, { { macro }, { nullptr } });
+	if (!newfill.shader) {
+		return nullptr;
+	}
+	
+	fill_shaders.push(mem::move(newfill));
+	return fill_shaders.back().shader;
+}
+
+void mainMenuBar(BrushEditor &be, MaterialEditor &me, Handle<Texture3D> main_tex, Handle<Shader> sculpt) {
 	static bool open_save_popup = false;
+	static bool open_new_popup = false;
 	static bool is_saving = false;
+	static bool is_creating = false;
 
 	if (ImGui::BeginMainMenuBar()) {
 		if (ImGui::BeginMenu("File")) {
+			if (ImGui::MenuItem("New")) {
+				open_new_popup = true;
+			}
 
 			if (ImGui::MenuItem("Save")) {
 				open_save_popup = true;
@@ -194,7 +286,7 @@ void mainMenuBar(BrushEditor &be, MaterialEditor &me) {
 			if (ImGui::MenuItem("Main View", nullptr, is_game_view_open)) {
 				is_game_view_open = !is_game_view_open;
 			}
-			
+
 			if (ImGui::MenuItem("Brush Editor", nullptr, be.isOpen())) {
 				be.setOpen(!be.isOpen());
 			}
@@ -211,6 +303,10 @@ void mainMenuBar(BrushEditor &be, MaterialEditor &me) {
 				options.setOpen(!options.isOpen());
 			}
 
+			if (ImGui::MenuItem("Key Remapper", nullptr, is_remapper_open)) {
+				is_remapper_open = !is_remapper_open;
+			}
+
 			ImGui::EndMenu();
 		}
 
@@ -220,24 +316,32 @@ void mainMenuBar(BrushEditor &be, MaterialEditor &me) {
 	if (open_save_popup) {
 		open_save_popup = false;
 		is_saving = true;
-		ImGui::OpenPopup("SaveToFile");
+		ImGui::OpenPopup("Save To File");
 	}
 
-	if (ImGui::BeginPopupModal("SaveToFile", &is_saving, ImGuiWindowFlags_AlwaysAutoResize)) {
-		static const char *quality_levels[] = { "Low", "Medium", "High", "Very High", "Maximum", "Custom"};
-		static int quality_sizes[] = { 32, 64, 128, 256, 512, 0 };
+	if (open_new_popup) {
+		open_new_popup = false;
+		is_creating = true;
+		ImGui::OpenPopup("New File");
+	}
+
+	const auto &qualityDecision = [](Handle<Texture3D> tex, vec3u &quality) {
+		static const char *quality_levels[] = { "Low", "Medium", "High", "Very High", "Maximum", "Original", "Custom" };
+		vec3u quality_sizes[] = { 32, 64, 128, 256, 512, tex->size, 0 };
 		static int cur_level_ind = 1;
 
 		if (ImGui::Combo("Quality Level", &cur_level_ind, quality_levels, ARRLEN(quality_levels))) {
-			save_quality = quality_sizes[cur_level_ind];
+			quality = quality_sizes[cur_level_ind];
 		}
-		
-		if (sliderUInt("Size", &save_quality, 0, 1024)) {
-			unsigned int remainder = save_quality % 8;
-			if (remainder < 4) save_quality -= remainder;
-			else			   save_quality += remainder;
+
+		if (sliderUInt3("Size", quality.data, 0, 1024)) {
+			quality = vec3u(round(vec3(quality) / 8.f)) * 8;
 			cur_level_ind = ARRLEN(quality_levels) - 1;
 		}
+	};
+
+	if (ImGui::BeginPopupModal("Save To File", &is_saving, ImGuiWindowFlags_AlwaysAutoResize)) {
+		qualityDecision(main_tex, save_quality);
 
 		if (ImGui::Button("Save")) {
 			should_save_file = true;
@@ -246,9 +350,54 @@ void mainMenuBar(BrushEditor &be, MaterialEditor &me) {
 
 		ImGui::EndPopup();
 	}
+
+	if (ImGui::BeginPopupModal("New File", &is_creating, ImGuiWindowFlags_AlwaysAutoResize)) {
+		enum Shapes : int { SHAPE_SPHERE, SHAPE_BOX, SHAPE_CYLINDER, SHAPE_NONE, SHAPE__COUNT };
+		static const char *shape_macros[SHAPE__COUNT] = { "SHAPE_SPHERE", "SHAPE_BOX", "SHAPE_CYLINDER", nullptr };
+		static vec3u quality = 64;
+		static Shapes cur_shape = SHAPE_SPHERE;
+		static vec4 shader_data = 0;
+
+		qualityDecision(main_tex, quality);
+
+		ImGui::Combo("Initial Shape", (int *)&cur_shape, "Sphere\0Box\0Cylinder\0None");
+
+		switch (cur_shape) {
+		case SHAPE_SPHERE:
+			ImGui::DragFloat("Radius##shape", shader_data.data);
+			break;
+		case SHAPE_BOX:
+			ImGui::DragFloat3("Size##shape", shader_data.data);
+			break;
+		case SHAPE_CYLINDER:
+			ImGui::DragFloat("Radius##shape", &shader_data.x);
+			ImGui::DragFloat("Height##shape", &shader_data.y);
+			break;
+		}
+
+		if (ImGui::Button("New")) {
+			if (Handle<Shader> fill_texture = ensureShaderExists(shape_macros[cur_shape])) {
+				gfx::captureFrame();
+				if (cur_shape != SHAPE_NONE) {
+					if (vec4 *data = fill_buffer->map<vec4>()) {
+						*data = shader_data;
+						fill_buffer->unmap();
+					}
+				}
+
+				main_tex->init(quality, main_tex->getType());
+				fill_texture->dispatch(main_tex->size / 8, { fill_buffer }, {}, { main_tex->uav });
+				sculpt->dispatch(main_tex->size / 8, { be.getOperHandle() }, { be.getBrushSRV(), be.getDataSRV() }, { main_tex->uav });
+			}
+			
+			ImGui::CloseCurrentPopup();
+		}
+
+		ImGui::EndPopup();
+	}
 }
 
-void saveLoadFileDialog(Texture3D &main_texture, Shader *scale_cs) {
+void saveLoadFileDialog(Handle<Texture3D> main_texture, Handle<Shader> scale_cs) {
 	if (should_save_file) {
 		should_save_file = false;
 
@@ -256,10 +405,10 @@ void saveLoadFileDialog(Texture3D &main_texture, Shader *scale_cs) {
 		nfdu8filteritem_t filter[] = { { "Tex3D", "bin" } };
 		nfdresult_t result = NFD::SaveDialog(path, filter, ARRLEN(filter));
 		if (result == NFD_OKAY) {
-			Texture3D out_text;
-			out_text.create(save_quality, main_texture.getType());
-			scale_cs->dispatch(save_quality / 8, {}, { main_texture.srv }, { out_text.uav });
-			out_text.save(path.get(), true);
+			Handle<Texture3D> out_text = Texture3D::create(save_quality, main_texture->getType());
+			scale_cs->dispatch(save_quality / 8, {}, { main_texture->srv }, { out_text->uav });
+			out_text->save(path.get(), true);
+			out_text->cleanup();
 			return;
 		}
 		else if (result == NFD_CANCEL) {
@@ -278,7 +427,7 @@ void saveLoadFileDialog(Texture3D &main_texture, Shader *scale_cs) {
 		nfdu8filteritem_t filter[] = { { "Tex3D", "bin" } };
 		nfdresult_t result = NFD::OpenDialog(path, filter, ARRLEN(filter));
 		if (result == NFD_OKAY) {
-			main_texture.load(path.get());
+			main_texture->loadFromFile(path.get());
 			return;
 		}
 		else if (result == NFD_CANCEL) {
@@ -389,8 +538,12 @@ bool sliderUInt(const char *label, unsigned int *v, unsigned int vmin, unsigned 
 	return ImGui::SliderScalar(label, ImGuiDataType_U32, v, &vmin, &vmax, "%u", flags);
 }
 
-bool sliderUInt2(const char *label, unsigned int *v, unsigned int vmin, unsigned int vmax, int flags) {
+bool sliderUInt2(const char *label, unsigned int v[2], unsigned int vmin, unsigned int vmax, int flags) {
 	return ImGui::SliderScalarN(label, ImGuiDataType_U32, v, 2, &vmin, &vmax, "%u", flags);
+}
+
+bool sliderUInt3(const char *label, unsigned int v[3], unsigned int vmin, unsigned int vmax, int flags) {
+	return ImGui::SliderScalarN(label, ImGuiDataType_U32, v, 3, &vmin, &vmax, "%u", flags);
 }
 
 void separatorTextEx(ImGuiID id, const char *label, const char *label_end, float extra_w) {

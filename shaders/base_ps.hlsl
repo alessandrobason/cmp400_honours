@@ -145,7 +145,6 @@ float3 getIrradiance(float3 dir) {
 	float2 uv;
 	uv.x = atan2(dir.x, dir.z) / (2 * PI) + 0.5;
 	uv.y = -(dir.y * 0.5 + 0.5);
-
 	return irradiance_map.SampleLevel(tex_sampler, uv, 0).rgb;
 }
 
@@ -155,7 +154,7 @@ float3 fresnelSchlickRoughness(float cosTheta, float3 F0, float roughness) {
 
 float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 	float distance_traveled = 0;
-	const int MAX_STEPS = 300;
+	const int MAX_STEPS = 500;
 	const float ROUGH_MIN_HIT_DISTANCE = 1;
 	const float MIN_HIT_DISTANCE = .005;
 	const float MAX_TRACE_DISTANCE = 3000;
@@ -198,7 +197,9 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 					const float3 normal = calcNormal(tex_pos);
 					const float3 albedo = getAlbedo(tex_pos, normal);
 					const float diffuse_intensity = max(0, dot(normal, light_dir));
-					final_colour *= albedo * saturate(diffuse_intensity + 0.2);
+					const float ambient_intensity = 0.05;
+					// const float ambient_occlusion = (float)step_count / MAX_STEPS;
+					final_colour *= albedo * saturate(diffuse_intensity + ambient_intensity);
 					break;
 				}
 			}

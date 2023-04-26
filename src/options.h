@@ -19,6 +19,7 @@ struct Options {
 	bool quit_on_fatal    = true;
 
 	void load(const char *filename = "options.ini");
+	void save(const char *filename);
 	void drawWidget();
 	bool update();
 	void cleanup();

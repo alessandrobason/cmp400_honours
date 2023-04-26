@@ -10,8 +10,11 @@
 #include "utils.h"
 #include "mesh.h"
 #include "buffer.h"
+#include "gfx_factory.h"
 
-static dxptr<ID3DBlob> compileShader(const char *filename, ShaderType type);
+static GFXFactory<Shader> shader_factory;
+
+static dxptr<ID3DBlob> compileShader(const char *filename, ShaderType type, Slice<ShaderMacro> macros = {});
 
 Shader::Shader(Shader &&s) {
 	*this = mem::move(s);
@@ -31,6 +34,60 @@ Shader &Shader::operator=(Shader &&s) {
 	return *this;
 }
 
+Handle<Shader> Shader::make() {
+	return shader_factory.getNew();
+}
+
+Handle<Shader> Shader::load(const char *filename, ShaderType type) {
+	Shader *shader = shader_factory.getNew();
+	bool success = false;
+
+	if (file::MemoryBuf buf = file::read(str::format("shaders/bin/%s.cso", filename))) {
+		switch (type) {
+			case ShaderType::Vertex:	success = shader->loadVertex(buf.data.get(), buf.size);   break;
+			case ShaderType::Fragment:	success = shader->loadFragment(buf.data.get(), buf.size); break;
+			case ShaderType::Compute:	success = shader->loadCompute(buf.data.get(), buf.size);  break;
+		}
+	}
+
+	if (!success) {
+		err("couldn't load shader from file %s", filename);
+		shader_factory.popLast();
+		return nullptr;
+	}
+
+	return shader;
+}
+
+Handle<Shader> Shader::compile(const char *filename, ShaderType type, Slice<ShaderMacro> macros) {
+	Shader *shader = shader_factory.getNew();
+	bool success = false;
+
+	if (dxptr<ID3DBlob> blob = compileShader(filename, type, macros)) {
+		void *data = blob->GetBufferPointer();
+		size_t len = blob->GetBufferSize();
+
+		switch (type) {
+			case ShaderType::Vertex:	success = shader->loadVertex(data, len);   break;
+			case ShaderType::Fragment:	success = shader->loadFragment(data, len); break;
+			case ShaderType::Compute:	success = shader->loadCompute(data, len);  break;
+		}
+	}
+
+	if (!success) {
+		err("couldn't compile shader from file %s", filename);
+		shader_factory.popLast();
+		return nullptr;
+	}
+
+	return shader;
+}
+
+void Shader::cleanAll() {
+	shader_factory.cleanup();
+}
+
+#if 0
 bool Shader::load(const char* filename, ShaderType type) {
 	assert(shader_type == ShaderType::None);
 	shader_type = type;
@@ -43,13 +100,35 @@ bool Shader::load(const char* filename, ShaderType type) {
 	}
 
 	switch (type) {
-	case ShaderType::Vertex:	return loadVertex(buf.data.get(), buf.size);
-	case ShaderType::Fragment:	return loadFragment(buf.data.get(), buf.size);
-	case ShaderType::Compute:	return loadCompute(buf.data.get(), buf.size);
+		case ShaderType::Vertex:	return loadVertex(buf.data.get(), buf.size);
+		case ShaderType::Fragment:	return loadFragment(buf.data.get(), buf.size);
+		case ShaderType::Compute:	return loadCompute(buf.data.get(), buf.size);
 	}
 
 	return false;
 }
+
+bool Shader::compile(const char *filename, ShaderType type, Slice<ShaderMacro> macros) {
+	bool success = false;
+	
+	if (dxptr<ID3DBlob> blob = compileShader(filename, type, macros)) {
+		void *data = blob->GetBufferPointer();
+		size_t len = blob->GetBufferSize();
+
+		switch (type) {
+			case ShaderType::Vertex:	success = loadVertex(data, len);   break;
+			case ShaderType::Fragment:	success = loadFragment(data, len); break;
+			case ShaderType::Compute:	success = loadCompute(data, len);  break;
+		}
+
+		if (!success) {
+			err("couldn't load shader %s from file", filename);
+		}
+	}
+
+	return success;
+}
+#endif
 
 bool Shader::loadVertex(const void *data, size_t len) {
 	cleanup();
@@ -202,7 +281,12 @@ void Shader::unbindCBuffers(int count, unsigned int slot) {
 	Buffer::unbindCBuffer(shader_type, slot, count);
 }
 
-void Shader::dispatch(const vec3u &threads, Slice<Handle<Buffer>> cbuffers, Slice<ID3D11ShaderResourceView *> srvs, Slice<ID3D11UnorderedAccessView *> uavs) {
+void Shader::dispatch(
+	const vec3u &threads, 
+	Slice<Handle<Buffer>> cbuffers, 
+	Slice<ID3D11ShaderResourceView *> srvs, 
+	Slice<ID3D11UnorderedAccessView *> uavs
+) {
 	if (!shader) return;
 
 	gfx::context->CSSetShader((ID3D11ComputeShader *)shader.get(), nullptr, 0);
@@ -216,6 +300,7 @@ void Shader::dispatch(const vec3u &threads, Slice<Handle<Buffer>> cbuffers, Slic
 				}
 			}
 		}
+
 		if (!srvs.empty()) gfx::context->CSSetShaderResources(0, (UINT)srvs.len, srvs.data);
 		if (!uavs.empty()) gfx::context->CSSetUnorderedAccessViews(0, (UINT)uavs.len, uavs.data, nullptr);
 
@@ -236,39 +321,24 @@ DynamicShader::DynamicShader(DynamicShader &&s) {
 	*this = mem::move(s);
 }
 
-DynamicShader::~DynamicShader() {
-	cleanup();
-}
-
 DynamicShader &DynamicShader::operator=(DynamicShader &&s) {
 	if (this != &s) {
-		mem::swap(shaders, s.shaders);
 		mem::swap(watcher, s.watcher);
 	}
 	return *this;
 }
 
-int DynamicShader::add(const char* name, ShaderType type) {
-	if (!name || type == ShaderType::None) return false;
-	
-	int index = (int)shaders.size();
-	bool success = addFileWatch(name, type);
-	return success ? index : -1;
+Handle<Shader> DynamicShader::add(const char *name, ShaderType type) {
+	if (!name || type == ShaderType::None) return nullptr;
+	return addFileWatch(name, type);
 }
 
-Shader* DynamicShader::get(int index) {
-	if (index < 0 || index >= shaders.size()) return nullptr;
-	return &shaders[index];
-}
-
-bool DynamicShader::addFileWatch(const char *name, ShaderType type) {
+Handle<Shader> DynamicShader::addFileWatch(const char *name, ShaderType type) {
 	const char *filename = str::format("%s.hlsl", name);
-	watcher.watchFile(filename, (void *)shaders.size());
-	update_list.push(false);
 
-	Shader new_shader;
+	Handle<Shader> new_shader = Shader::compile(filename, type);
 
-#ifdef NDEBUG
+#if 0 && defined(NDEBUG)
 	if (file::exists(str::format("shaders/bin/%s.cso", name))) {
 		if (!new_shader.load(name, type)) {
 			err("couldn't load shader %s from file", name);
@@ -281,9 +351,9 @@ bool DynamicShader::addFileWatch(const char *name, ShaderType type) {
 		size_t len = blob->GetBufferSize();
 
 		switch (type) {
-			case ShaderType::Vertex:   success = new_shader.loadVertex(data, len);   break;
-			case ShaderType::Fragment: success = new_shader.loadFragment(data, len); break;
-			case ShaderType::Compute:  success = new_shader.loadCompute(data, len);  break;
+		case ShaderType::Vertex:   success = new_shader.loadVertex(data, len);   break;
+		case ShaderType::Fragment: success = new_shader.loadFragment(data, len); break;
+		case ShaderType::Compute:  success = new_shader.loadCompute(data, len);  break;
 		}
 
 		if (!success) {
@@ -295,76 +365,56 @@ bool DynamicShader::addFileWatch(const char *name, ShaderType type) {
 		return true;
 	}
 #else
-	if (dxptr<ID3DBlob> blob = compileShader(filename, type)) {
-		bool success = false;
-		void *data = blob->GetBufferPointer();
-		size_t len = blob->GetBufferSize();
-
-		switch (type) {
-			case ShaderType::Vertex:	success = new_shader.loadVertex(data, len);   break;
-			case ShaderType::Fragment:	success = new_shader.loadFragment(data, len); break;
-			case ShaderType::Compute:	success = new_shader.loadCompute(data, len);  break;
-		}
-
-		if (!success) {
-			err("couldn't load shader %s from file", name);
-			return false;
-		}
-	}
-	else {
-		return false;
+	if (!new_shader) {
+		return nullptr;
 	}
 #endif
 
-	shaders.push(mem::move(new_shader));
-	return true;
-}
+	watcher.watchFile(filename, new_shader.get());
 
-void DynamicShader::cleanup() {
-	for (Shader &sh : shaders) sh.cleanup();
-	shaders.clear();
+	return new_shader;
 }
 
 extern void addMessageToWidget(LogLevel severity, const char* message);
 
 void DynamicShader::poll() {
-	update_list.fill(false);
 	has_updated = false;
 	watcher.update();
 
 	auto file = watcher.getChangedFiles();
 	while (file) {
-		size_t index = (size_t)((uintptr_t)file->custom_data);
-		assert(index < shaders.size());
-		Shader &shader = shaders[index];
+		Shader *shader = (Shader *)file->custom_data;
 
-		if (dxptr<ID3DBlob> blob = compileShader(file->name.get(), shader.shader_type)) {
+		if (dxptr<ID3DBlob> blob = compileShader(file->name.get(), shader->shader_type)) {
 			info("re-compiled shader %s successfully", file->name.get());
 			addMessageToWidget(LogLevel::Info, str::format("re-compiled shader %s successfully", file->name.get()));
 
 			void *data = blob->GetBufferPointer();
 			size_t len = blob->GetBufferSize();
 
-			switch (shader.shader_type) {
-				case ShaderType::Vertex:   shader.loadVertex(data, len);   break;
-				case ShaderType::Fragment: shader.loadFragment(data, len); break;
-				case ShaderType::Compute:  shader.loadCompute(data, len);  break;
+			switch (shader->shader_type) {
+				case ShaderType::Vertex:   shader->loadVertex(data, len);   break;
+				case ShaderType::Fragment: shader->loadFragment(data, len); break;
+				case ShaderType::Compute:  shader->loadCompute(data, len);  break;
 			}
 
 			has_updated = true;
-			update_list[index] = true;
 		}
 
 		file = watcher.getChangedFiles(file);
 	}
 }
 
-bool DynamicShader::hasUpdated(int index) const {
-	if (index < 0 || index >= update_list.size()) return false;
-	return update_list[index];
-}
-
-static dxptr<ID3DBlob> compileShader(const char *filename, ShaderType type) {
+static dxptr<ID3DBlob> compileShader(const char *filename, ShaderType type, Slice<ShaderMacro> macros) {
+	// check that macros is null-terminated
+	if (macros) {
+		const ShaderMacro &null_macro = macros.back();
+		if (null_macro.name != nullptr || null_macro.value != nullptr) {
+			err("macros should be null terminated");
+			return nullptr;
+		}
+	}
+	
 	const char *type_str = "";
 	switch (type) {
 		case ShaderType::Vertex:   type_str = "vs"; break;
@@ -393,9 +443,9 @@ static dxptr<ID3DBlob> compileShader(const char *filename, ShaderType type) {
 	HRESULT hr = D3DCompile(
 		filedata.data.get(),
 		filedata.size,
-		nullptr, 
-		nullptr, 
-		nullptr, 
+		filename,
+		(D3D_SHADER_MACRO *)macros.data, 
+		D3D_COMPILE_STANDARD_FILE_INCLUDE,
 		"main",
 		str::format("%s_5_0", type_str), 
 		flags,
