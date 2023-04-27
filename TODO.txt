@@ -1,7 +1,7 @@
 [X] Key remapping
 [X] add "new" button in file, where we can create a new scene, let the user decide if it should have a default shape (sphere, maybe more?) in it
 [X] support sizes that are not constant (not all values are the same)
-[ ] load background image from file
+[X] load background image from file
 [ ] If you hold shift, a bar appears over the mouse for changing the size,
     could have the same thing with the ctrl key and the alt key for depth and
     smoothness
@@ -11,7 +11,13 @@
 [ ] Antialiasing
 [ ] make GPUTimer handle-based (look at half-implemented version in timer.h)
 
-[ ] investigate better sculpting
+[ ] help screen with all the controls
+[X] use SDF box in brush
+[X] hot-reload material texture
+[ ] add default brushes
+[ ] fix weird UV issues
+
+[X] investigate better sculpting
 
 [ ] when user makes a change and hasn't saved, change window name to "filename *"
 

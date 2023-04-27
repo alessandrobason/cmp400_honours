@@ -85,10 +85,8 @@ int main() {
 		DynamicShader sh_manager;
 
 		Handle<Texture3D> main_texture = Texture3D::create(maintex_size, Texture3D::Type::float16);
-		Handle<Texture3D> scaled_texture = Texture3D::create(64, Texture3D::Type::float16);
 
 		if (!main_texture) gfxErrorExit();
-		if (!scaled_texture) gfxErrorExit();
 
 		Handle<Shader> main_vs       = sh_manager.add("base_vs",          ShaderType::Vertex);
 		Handle<Shader> main_ps       = sh_manager.add("base_ps",          ShaderType::Fragment);
@@ -211,7 +209,7 @@ int main() {
 
 			gfx::imgui_rtv->bind();
 				fpsWidget();
-				mainMenuBar(brush_editor, material_editor, main_texture, sculpt);
+				mainMenuBar(brush_editor, material_editor, main_texture);
 				mainTargetWidget();
 				messagesWidget();
 				keyRemapper();

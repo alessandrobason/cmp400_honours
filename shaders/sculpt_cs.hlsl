@@ -1,3 +1,5 @@
+#include "shaders/common.hlsl"
+
 cbuffer OperationData : register(b0) {
     uint operation;
     float smooth_amount;
@@ -23,7 +25,7 @@ RWTexture3D<float> vol_tex : register(u0);
 static float3 brush_size = 0;
 static float3 volume_tex_size = 0;
 
-#define MAX_DIST 10000.
+// #define MAX_DIST 10000.
 
 // operation is a 32 bit unsigned integer used for flags,
 // the left-most 3 bits are used as the operation mask
@@ -31,8 +33,6 @@ static float3 volume_tex_size = 0;
 // ^--- is smooth
 //  ^-- is union
 //   ^- is subtraction
-// then, there are 8 bits used for the material index
-// 0000 0000 0000 0000 0000 0000 1111 1111
 
 #define OP_MASK                 (3758096384)
 #define OP_SUBTRACTION          (1 << 29)
@@ -41,10 +41,8 @@ static float3 volume_tex_size = 0;
 #define OP_SMOOTH_UNION         (SMOOTH_OP | OP_UNION)
 #define OP_SMOOTH_SUBTRACTION   (SMOOTH_OP | OP_SUBTRACTION)
 
-// #define MAT_MASK                (255)
-
 float trilinearInterpolation(float3 pos, float3 size, Texture3D<float> tex_to_sample) {
-    int3 start = max(min(int3(pos), int3(size) - 2), 0);
+    int3 start = max(min(int3(round(pos)), int3(size) - 2), 0);
     int3 end = start + 1;
 
     float3 delta = pos - start;
@@ -110,20 +108,10 @@ inline void op_smooth_subtraction(float vold, float vnew, float k, uint3 id, out
     // }
 }
 
-// #define FIRST_INDEX_MASK    (255)
-// #define FIRST_INDEX_SHIFT   (0)
-// #define SECOND_INDEX_MASK   (65280)
-// #define SECOND_INDEX_SHIFT  (8)
-// #define WEIGHT_MAX          (65536.)
-
-// #define GET_FIRST_INDEX(ind)  ((ind & FIRST_INDEX_MASK)  >> FIRST_INDEX_SHIFT)
-// #define GET_SECOND_INDEX(ind) ((ind & SECOND_INDEX_MASK) >> SECOND_INDEX_SHIFT)
-
-// #define SET_MATERIAL(id1, id2, w) uint2((w), (id1) | ((id2) << SECOND_INDEX_SHIFT))
-
 inline void setVTSkipRead(uint3 id, float old_value, float new_value, float3 pos) {
 	const float ROUGH_MIN_HIT_DISTANCE = 1;
     bool changed;
+    old_value = min(old_value, 100.);
     
     switch (operation & OP_MASK) {
         case OP_UNION:               op_union(old_value, new_value, id, changed);                             break;                   
@@ -161,10 +149,15 @@ inline void writeApproximateDistance(float3 pos, uint3 id) {
     // make the distance slightly smaller, this is to avoid the distance from being
     // way too large and skipping the actual shape. it will slightly lower performance
     // but not by much (hopefully lol)
-    distance *= 0.7;
+    distance *= 0.9;
     
     bool changed;
     op_union(sampleWorld(id), distance, id, changed);
+}
+
+inline float texBoundarySDF(float3 pos) {
+	float3 q = abs(pos - brush_data[0].brush_pos) - brush_size * brush_scale * 0.5;
+	return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
 }
 
 [numthreads(8, 8, 8)]
@@ -172,13 +165,66 @@ void main(uint3 id : SV_DispatchThreadID) {
     vol_tex.GetDimensions(volume_tex_size.x, volume_tex_size.y, volume_tex_size.z);
     brush.GetDimensions(brush_size.x, brush_size.y, brush_size.z);
     
-    const float3 pos = worldToBrush(idToWorld(id));
+#if 0
+    float3 pos = idToWorld(id);
+    float dist = texBoundarySDF(pos);
 
-    // if the cell is outside the brush
-    if (isOutsideTexture(pos)) {
-        writeApproximateDistance(pos, id);
+    if (dist > 0) {
+        if ((operation & OP_MASK) == OP_UNION) {
+            float world = sampleWorld(id);
+            if (world == MAX_DIST) {
+                bool changed;
+                op_union(sampleWorld(id), dist, id, changed);
+            }
+        }
         return;
     }
+
+    pos = worldToBrush(pos);
+    setVolumeTexture(id, sampleBrush(pos), pos);
+
+
+    return;
+
+    if (dist <= 0) {
+        if ((operation & OP_MASK) == OP_UNION) {
+            bool changed;
+            op_union(sampleWorld(id), dist, id, changed);
+        }
+        //writeApproximateDistance(pos, dist, id);
+    }
+    else {
+        pos = worldToBrush(pos);
+        setVolumeTexture(id, sampleBrush(pos), pos);
+    }
+    //if (dist <= 0.) {
+    //    // pos = worldToBrush(pos);
+    //    dist = sampleBrush(worldToBrush(pos));
+    //    //setVolumeTexture(id, sampleBrush(pos), pos);
+    //}
+    //// else {
+    //bool changed;
+    //op_union(sampleWorld(id), dist, id, changed);
+    // }
+#endif
+
+    float3 pos = idToWorld(id);
+    float dist_from_tex = texBoundarySDF(pos);
+    pos = worldToBrush(pos);
+
+    if (dist_from_tex > 0) {
+        if (dist_from_tex < MAX_STEP && operation & OP_UNION) {
+            writeApproximateDistance(pos, id);
+        }
+        return;
+    }
+
+    // const float3 pos = worldToBrush(idToWorld(id));
+
+    // if (isOutsideTexture(pos)) {
+        //writeApproximateDistance(pos, id);
+        // return;
+    // }
 
     setVolumeTexture(id, sampleBrush(pos), pos);
 }

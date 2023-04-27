@@ -1,3 +1,5 @@
+#include "shaders/common.hlsl"
+
 struct PixelInput {
 	float4 pos : SV_POSITION;
 	float2 uv : TEXCOORDS0;
@@ -16,7 +18,7 @@ cbuffer ShaderData : register(b0) {
 
 cbuffer Material : register(b1) {
 	float3 albedo;
-	int has_texture;
+	uint texture_mode;
 };
 
 struct BrushData {
@@ -25,9 +27,6 @@ struct BrushData {
 	float3 norm;
 	float padding__4;
 };
-
-#define MAX_DIST 10000.
-#define PI 3.14159265
 
 StructuredBuffer<BrushData> brush : register(t0);
 Texture3D<float> vol_tex : register(t1);
@@ -39,6 +38,9 @@ sampler tex_sampler;
 
 static float3 vol_tex_size = 0;
 static float3 vol_tex_centre = 0;
+
+#define TRIPLANAR_BLEND (1)
+#define SPHERE_COODS    (2)
 
 // == scene functions ================================
 
@@ -115,7 +117,7 @@ float getMouseDist(float3 pos) {
 float3 getTriplanarBlend(float3 pos, float3 normal) {
 	const float3 blend = abs(normal);
 	const float3 weights = blend / dot(blend, 1.);
-	const float3 tex_coords = pos / vol_tex_size;
+	float3 tex_coords = pos / vol_tex_size;
 
 	const float3 blend_r = material_tex.SampleLevel(tex_sampler, tex_coords.yz, 0).rgb * weights.x;
 	const float3 blend_g = material_tex.SampleLevel(tex_sampler, tex_coords.xz, 0).rgb * weights.y;
@@ -124,9 +126,19 @@ float3 getTriplanarBlend(float3 pos, float3 normal) {
 	return blend_r + blend_g + blend_b;
 }
 
+float3 getSphereCoordsBlend(float3 normal) {
+	float2 uv;
+	uv.x = atan2(normal.x, normal.z) / (2 * PI) + 0.5;
+	uv.y = -(normal.y * 0.5 + 0.5);
+	return material_tex.SampleLevel(tex_sampler, uv, 0).rgb;
+}
+
 float3 getAlbedo(float3 pos, float3 normal) {
 	float3 colour = albedo;
-	if (has_texture) colour *= getTriplanarBlend(pos, normal);
+	switch (texture_mode) {
+		case TRIPLANAR_BLEND: colour *= getTriplanarBlend(pos, normal); break;
+		case SPHERE_COODS:    colour *= getSphereCoordsBlend(normal);   break;
+	}
 	return colour;
 }
 
@@ -150,9 +162,53 @@ float3 getIrradiance(float3 dir) {
 
 float3 fresnelSchlickRoughness(float cosTheta, float3 F0, float roughness) {
     return F0 + (max(1.0 - roughness, F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
-}   
+}
 
-float3 rayMarch(float3 ray_origin, float3 ray_dir) {
+bool isInMouse(float3 ro, float3 rd, out float3 p) {
+	const int MAX_STEPS = 500;
+	const float MAX_TRACE_DISTANCE = 3000;
+	float t = 0;
+	for (int s = 0; s < MAX_STEPS; ++s) {
+		p = ro + rd * t;
+		float d = getMouseDist(p);
+		if (d <= 1.) return true;
+		t += d;
+		if (d > MAX_TRACE_DISTANCE) break;
+	}
+	return false;
+}
+
+float getMat2(float2 uv) {
+    int ix = int(uv.x) % 4;
+    int iy = int(uv.y) % 4;
+    
+    matrix vals = matrix(
+        0.,  8.,  2.,  10.,
+        12., 4.,  14., 6.,
+        3.,  11., 1.,  9.,
+        15., 7.,  13., 5.
+    ) / 16.;
+    
+    return vals[ix][iy];
+}
+
+// //Alternative smaller matrix
+float getMat(float2 uv) {
+	int ix = int(uv.x) % 3;
+	int iy = int(uv.y) % 3;
+	
+	float2x2 vals = float2x2(
+		0., 3., 2., 1.
+	) / 4.;
+	
+	return vals[ix][iy];
+}
+
+float3 dither(float2 uv, float3 col) {
+	return col > getMat2(uv) ? 1. : 0.;
+}
+
+float3 rayMarch(float3 ray_origin, float3 ray_dir, float2 uv) {
 	float distance_traveled = 0;
 	const int MAX_STEPS = 500;
 	const float ROUGH_MIN_HIT_DISTANCE = 1;
@@ -160,6 +216,12 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 	const float MAX_TRACE_DISTANCE = 3000;
 	const int MAX_BOUNCES = 0;
 	float3 current_pos;
+
+	const float3 mouse_colours[3] = {
+		float3(.8, .4, .4), // outside the volume texture
+		float3(.4, .8, .4), // outside the brush
+		float3(.6, .7, 1.), // inside the brush
+	};
 
 	const float3 inside_mouse_colour  = float3(.4, .4, .8);
 	const float3 outside_mouse_colour = float3(.8, .4, .4);
@@ -205,13 +267,13 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 			}
 		}
 
-		if (!is_mouse) {
-			float mouse_close = getMouseDist(current_pos);
-			// mouse brush doesn't have to be perfect, just has to give the idea of where the 
-			// new brush will be added so lets use ROUGH_MIN_HIT_DISTANCE
-			is_mouse = mouse_close < ROUGH_MIN_HIT_DISTANCE;
-			closest = min(mouse_close, closest);
-		}
+		// if (!is_mouse) {
+		// 	float mouse_close = getMouseDist(current_pos);
+		// 	// mouse brush doesn't have to be perfect, just has to give the idea of where the 
+		// 	// new brush will be added so lets use ROUGH_MIN_HIT_DISTANCE
+		// 	is_mouse = mouse_close < ROUGH_MIN_HIT_DISTANCE;
+		// 	closest = min(mouse_close, closest);
+		// }
 
 #if 0
 		if (isOutsideTexture(tex_pos)) {
@@ -286,8 +348,15 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 		final_colour *= getBackground(ray_dir);
 	}
 
-	if (is_mouse) {
-		final_colour *= is_inside ? inside_mouse_colour : outside_mouse_colour;
+	float3 mouse_pos = 0;
+	if (isInMouse(ray_origin, ray_dir, mouse_pos)) {
+		bool is_inside_tex = texBoundarySDF(mouse_pos) <= 0;
+
+		float3 mouse_to_ro = mouse_pos - ray_origin;
+		float3 surface_to_ro = current_pos - ray_origin;
+		bool is_inside_shape = dot(mouse_to_ro, mouse_to_ro) > dot(surface_to_ro, surface_to_ro);
+
+		final_colour *= mouse_colours[(int)is_inside_tex + is_inside_shape];
 	}
 
 	return final_colour;
@@ -304,7 +373,7 @@ float4 main(PixelInput input) : SV_TARGET {
 	float3 ray_dir = normalize(cam_fwd + cam_right * uv.x + cam_up * uv.y);
 	float3 ray_origin = cam_pos + cam_fwd * cam_zoom;
 
-	float3 colour = rayMarch(ray_origin, ray_dir);
+	float3 colour = rayMarch(ray_origin, ray_dir, input.uv);
 	
 	return float4(sqrt(colour), 1.0);
 }

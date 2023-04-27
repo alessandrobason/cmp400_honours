@@ -21,7 +21,7 @@ void addMessageToWidget(LogLevel severity, const char *message);
 
 void keyRemapper();
 
-void mainMenuBar(BrushEditor &be, MaterialEditor &me, Handle<Texture3D> main_tex, Handle<Shader> sculpt);
+void mainMenuBar(BrushEditor &be, MaterialEditor &me, Handle<Texture3D> main_tex);
 void saveLoadFileDialog(Handle<Texture3D> main_texture, Handle<Shader> scale_cs);
 
 bool filledSlider(const char *str_id, float *data, float vmin, float vmax, const char *fmt = "%.3f");

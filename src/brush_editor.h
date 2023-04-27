@@ -7,6 +7,24 @@
 #include "utils.h"
 
 struct Buffer;
+struct Shader;
+
+enum class Shapes : int {
+	Sphere, Box, Cylinder, None, Count
+};
+
+union ShapeData {
+	struct {
+		float radius;
+	} sphere;
+	struct {
+		vec3 size;
+	} box;
+	struct {
+		float radius, height;
+	} cylinder;
+	vec4 data = 0;
+};
 
 enum class Operations : uint32_t {
 	None               = 0,
@@ -48,6 +66,8 @@ struct BrushEditor {
 	float getDepth() const;
 	Handle<Buffer> getOperHandle();
 
+	void runFillShader(Shapes shape, const ShapeData &data, Handle<Texture3D> destination);
+
 	enum class State { Brush, Eraser, Count };
 
 private:
@@ -60,7 +80,7 @@ private:
 	Texture3D *get(size_t index);
 	const Texture3D *get(size_t index) const;
 	size_t addTexture(const char *name);
-	size_t checkTextureAlreadyLoaded(const char *name);
+	size_t checkTextureAlreadyLoaded(str::view name);
 
 	vec3 position = 0.f;
 	float depth = 0.f;
@@ -71,6 +91,10 @@ private:
 	size_t brush_index = 0;
 	Handle<Buffer> oper_handle;
 	Handle<Buffer> data_handle;
+
+	// fill stuff
+	Handle<Buffer> fill_buffer;
+	Handle<Shader> fill_shaders[(int)Shapes::Count];
 
 	// widget data
 	Handle<Texture2D> brush_icon;

@@ -5,9 +5,15 @@
 #include "buffer.h"
 #include "texture.h"
 
+enum class TextureMode : uint32_t {
+	None,
+	TriplanarBlend,
+	SphereCoords,
+};
+
 struct MaterialPS {
 	vec3 albedo;
-	int has_texture;
+	TextureMode texture_mode;
 };
 
 struct MaterialEditor {
@@ -31,11 +37,10 @@ private:
 
 	Texture2D *get(size_t index);
 	size_t addTexture(const char *name);
-	size_t addTextureHDR(const char *name);
-	size_t checkTextureAlreadyLoaded(const char *name);
+	size_t checkTextureAlreadyLoaded(str::view name);
 
 	vec3 albedo = 1;
-	bool has_texture = true;
+	TextureMode texture_mode = TextureMode::TriplanarBlend;
 	Handle<Buffer> mat_handle = nullptr;
 
 	size_t diffuse_handle;
@@ -46,6 +51,7 @@ private:
 	bool is_open = true;
 	bool has_changed = true;
 	arr<TexNamePair> textures;
+	file::Watcher watcher = "assets/";
 
 	bool should_open_nfd = false;
 };

@@ -238,10 +238,11 @@ struct arr {
 template<typename T>
 struct Slice {
 	Slice() = default;
-	Slice(T *data, size_t len) : data(data), len(len) {}
+	Slice(const T *data, size_t len) : data(data), len(len) {}
 	template<size_t size>
-	Slice(T(&data)[size]) : data(data), len(size) {}
+	Slice(const T(&data)[size]) : data(data), len(size) {}
 	Slice(std::initializer_list<T> list) : data(list.begin()), len(list.size()) {}
+	Slice(const arr<T> &list) : data(list.data()), len(list.size()) {}
 
 	bool empty() const {
 		return len == 0;
@@ -334,6 +335,20 @@ namespace str {
 		bool is_owned = false;
 	};
 
+	struct view : public Slice<char> {
+		using Super = typename Slice<char>;
+		using Super::Super;
+
+		view(const char *cstr, size_t len = 0);
+
+		bool compare(view v) const;
+		mem::ptr<char[]> dup();
+
+		bool operator==(view v) const;
+		bool operator!=(view v) const;
+	};
+
+	bool ncmp(const char *a, size_t alen, const char *b, size_t blen);
 	bool cmp(const char *a, const char *b);
 
 	mem::ptr<wchar_t[]> ansiToWide(const char *cstr, size_t len = 0);
@@ -392,6 +407,7 @@ namespace file {
 
 		void update();
 		WatchedFile *getChangedFiles(WatchedFile *previous = nullptr);
+		const char *getWatcherDir() const;
 
 	private:
 		void tryUpdate();
@@ -404,6 +420,7 @@ namespace file {
 		uint8_t change_buf[1024]{};
 		win32_overlapped_t overlapped;
 		win32_handle_t handle = nullptr;
+		mem::ptr<char[]> dir;
 	};
 
 	struct fp {
@@ -443,8 +460,9 @@ namespace file {
 	MemoryBuf read(const char *filename);
 	bool write(const char *filename, const void *data, size_t len);
 	mem::ptr<char[]> findFirstAvailable(const char *dir = ".", const char *name_fmt = "name_%d.txt");
-	mem::ptr<char[]> getFilename(const char *path);
+	str::view getFilename(const char *path);
 	const char *getExtension(const char *path);
+	const char *getNameAndExt(const char *path);
 } // namespace file 
 
 // == allocators utils ============================================

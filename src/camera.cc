@@ -107,6 +107,33 @@ vec3 Camera::getMouseDir() const {
 }
 
 bool Camera::shouldSculpt() const {
+	constexpr float mouse_deadzone = 5.f;
+	static vec2 start_pos = 0;
+	static bool is_pressed = false;
+
+	if (!is_pressed) {
+		if (isMousePressed(MOUSE_LEFT)) {
+			is_pressed = true;
+			start_pos = getMousePos();
+		}
+		return is_pressed;
+	}
+
+	if (!isMouseDown(MOUSE_LEFT)) {
+		is_pressed = false;
+		return false;
+	}
+
+	vec2 mouse_pos = getMousePos();
+	float offset = (mouse_pos - start_pos).mag();
+	if (offset >= mouse_deadzone) {
+		start_pos = mouse_pos;
+		return true;
+	}
+
+	return false;
+
+#if 0
 	constexpr float mouse_deadzone = 3.f;
 	static vec2 last_pos = 0;
 	vec2 mouse_pos = getMousePos();
@@ -114,7 +141,7 @@ bool Camera::shouldSculpt() const {
 	last_pos = mouse_pos;
 
 	return (has_mouse_moved || isMousePressed(MOUSE_LEFT)) && isMouseDown(MOUSE_LEFT) && gfx::isMainRTVActive() && isMouseInsideRTV();
-	//return isMousePressed(MOUSE_LEFT) && isMouseInsideRTV() && gfx::isMainRTVActive();
+#endif
 }
 
 #if 0

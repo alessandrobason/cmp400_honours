@@ -1,3 +1,5 @@
+#include "shaders/common.hlsl"
+
 RWTexture3D<float> brush : register(u0);
 
 float sdf_sphere(float3 pos, float3 centre, float radius) {

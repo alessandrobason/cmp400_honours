@@ -22,12 +22,18 @@ void gpuTimerPoll();
 
 // Used to run an action only once
 struct OnceClock {
-	OnceClock();
 	bool after(float seconds);
 	bool once();
 
 	uint64_t start = 0;
 	bool finished = false;
+};
+
+// Used to run a task multiple times at intervals
+struct IntervalClock {
+	bool every(float seconds);
+
+	uint64_t start = 0;
 };
 
 // Used to get nanosecond accurate CPU performance

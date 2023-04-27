@@ -42,6 +42,34 @@ bool StreamIn::read(void *data, size_t datalen) {
 
 // == string utils ================================================
 namespace str {
+	view::view(const char *cstr, size_t len) 
+		: Super(cstr, len ? len : strlen(cstr)) 
+	{
+	}
+
+	bool view::compare(view v) const {
+		return str::ncmp(data, len, v.data, v.len);
+	}
+
+	mem::ptr<char[]> view::dup() {
+		return str::dup(data, len);
+	}
+
+	bool view::operator==(view v) const {
+		return compare(v);
+	}
+
+	bool view::operator!=(view v) const {
+		return !compare(v);
+	}
+
+	bool ncmp(const char *a, size_t alen, const char *b, size_t blen) {
+		if (!a && !b) return true;
+		if (!a || !b) return false;
+		if (alen != blen) return false;
+		return memcmp(a, b, alen) == 0;
+	}
+
 	bool cmp(const char *a, const char *b) {
 		if (!a && !b) return true;
 		if (!a || !b) return false;
@@ -353,12 +381,12 @@ namespace file {
 		return str::dup(name);
 	}
 
-	mem::ptr<char[]> getFilename(const char *path) {
+	str::view getFilename(const char *path) {
 		if (!path || *path == '\0') return nullptr;
 		size_t len = strlen(path);
 		const char *cur = path;
 
-		for (cur = path + len - 1; *cur; --cur) {
+		for (cur = path + len - 1; *cur && cur >= path; --cur) {
 			if (*cur == '.') {
 				break;
 			}
@@ -366,7 +394,7 @@ namespace file {
 
 		size_t end = cur - path;
 
-		for (cur = path + end - 1; *cur; --cur) {
+		for (cur = path + end - 1; *cur && cur >= path; --cur) {
 			if (*cur == '/' || *cur == '\\') {
 				break;
 			}
@@ -377,20 +405,33 @@ namespace file {
 		if (beg >= len) beg = 0;
 		if (end <= beg) end = len;
 
-		size_t newlen = end - beg;
-
-		mem::ptr<char[]> ptr = mem::ptr<char[]>::make(newlen + 1);
-		memcpy(ptr.get(), path + beg, newlen);
-		ptr[newlen] = '\0';
-		return ptr;
+		// size_t newlen = end - beg;
+		// mem::ptr<char[]> ptr = mem::ptr<char[]>::make(newlen + 1);
+		// memcpy(ptr.get(), path + beg, newlen);
+		// ptr[newlen] = '\0';
+		// return ptr;
+		return str::view(path + beg, end - beg);
 	}
 
 	const char *getExtension(const char *path) {
 		if (!path || *path == '\0') return nullptr;
 		size_t len = strlen(path);
 
-		for (const char *cur = path + len - 1; *cur; --cur) {
+		for (const char *cur = path + len - 1; *cur && cur >= path; --cur) {
 			if (*cur == '.') {
+				return cur + 1;
+			}
+		}
+
+		return path;
+	}
+
+	const char *getNameAndExt(const char *path) {
+		if (!path || *path == '\0') return nullptr;
+		size_t len = strlen(path);
+
+		for (const char *cur = path + len - 1; *cur && cur >= path; --cur) {
+			if (*cur == '/' || *cur == '\\') {
 				return cur + 1;
 			}
 		}
@@ -424,6 +465,7 @@ namespace file {
 	bool Watcher::init(const char *watch_folder) {
 		if (!watch_folder) return false;
 
+		dir = str::dup(watch_folder);
 		str::tstr dir_name = watch_folder;
 
 		HANDLE dir_handle = CreateFile(
@@ -470,7 +512,8 @@ namespace file {
 		watched.clear();
 	}
 
-	void Watcher::watchFile(const char *name, void *custom_data) {
+	void Watcher::watchFile(const char *filename, void *custom_data) {
+		const char *name = file::getNameAndExt(filename);
 		// don't add if it is already there
 		for (const auto &file : watched) {
 			if (strcmp(file.name.get(), name) == 0) {
@@ -507,23 +550,23 @@ namespace file {
 
 		while (true) {
 			switch (event->Action) {
-				case FILE_ACTION_MODIFIED:
-				{
-					char namebuf[1024];
-					if (!str::wideToAnsi(event->FileName, event->FileNameLength / sizeof(WCHAR), namebuf, sizeof(namebuf))) {
-						err("name too long: %S -- %u", event->FileName, event->FileNameLength);
-						break;
-					}
-
-					for (size_t i = 0; i < watched.size(); ++i) {
-						if (strcmp(watched[i].name.get(), namebuf) == 0) {
-							addChanged(i);
-							break;
-						}
-					}
-
+			case FILE_ACTION_MODIFIED:
+			{
+				char namebuf[1024];
+				if (!str::wideToAnsi(event->FileName, event->FileNameLength / sizeof(WCHAR), namebuf, sizeof(namebuf))) {
+					err("name too long: %S -- %u", event->FileName, event->FileNameLength);
 					break;
 				}
+
+				for (size_t i = 0; i < watched.size(); ++i) {
+					if (strcmp(watched[i].name.get(), namebuf) == 0) {
+						addChanged(i);
+						break;
+					}
+				}
+
+				break;
+			}
 			}
 
 			if (event->NextEntryOffset) {
@@ -560,6 +603,10 @@ namespace file {
 		}
 
 		return getNextChanged();
+	}
+
+	const char *Watcher::getWatcherDir() const {
+		return dir.get();
 	}
 
 	void Watcher::tryUpdate() {

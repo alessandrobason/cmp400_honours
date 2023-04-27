@@ -1,10 +1,12 @@
+#include "shaders/common.hlsl"
+
 RWTexture3D<float> tex : register(u0);
 
 cbuffer ShapeData : register(b0) {
     float4 data;
 };
 
-#define MAX_DIST 10000.
+// #define MAX_DIST 10000.
 
 float sdf_sphere(float3 position, float radius) {
 	return length(position) - radius;
@@ -38,12 +40,12 @@ void main(uint3 id : SV_DispatchThreadID) {
     const float3 pos = id - size * 0.5;
 
 #if   defined(SHAPE_SPHERE)
-    tex[id] = sdf_sphere(pos, data.x);
+    tex[id] = min(sdf_sphere(pos, data.x), MAX_STEP);
 #elif defined(SHAPE_BOX)
-    tex[id] = sdf_box(pos, data.xyz);
+    tex[id] = min(sdf_box(pos, data.xyz), MAX_STEP);
 #elif defined(SHAPE_CYLINDER)
-    tex[id] = sdf_cylinder(pos, data.x, data.y);
+    tex[id] = min(sdf_cylinder(pos, data.x, data.y), MAX_STEP);
 #else
-    tex[id] = MAX_DIST;
+    tex[id] = MAX_STEP;
 #endif
 }

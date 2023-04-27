@@ -87,16 +87,14 @@ static double gpuTimerUs(uint64_t time);
 
 // == ONCE CLOCK ========================================================================================
 
-OnceClock::OnceClock() {
-	start = timerNow();
-}
-
 bool OnceClock::after(float seconds) {
+	if (!start) start = timerNow();
+	
 	if (finished) {
 		return false;
 	}
 
-	finished = timerSince(start) >= seconds;
+	finished = (float)timerToSec(timerSince(start)) >= seconds;
 	return finished;
 }
 
@@ -106,6 +104,19 @@ bool OnceClock::once() {
 	}
 	finished = true;
 	return true;
+}
+
+// == INTERVAL CLOCK ====================================================================================
+
+bool IntervalClock::every(float seconds) {
+	if (!start) start = timerNow();
+
+	if ((float)timerToSec(timerSince(start)) >= seconds) {
+		start = timerNow();
+		return true;
+	}
+	
+	return false;
 }
 
 // == CPU CLOCK =========================================================================================

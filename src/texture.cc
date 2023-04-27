@@ -14,6 +14,10 @@
    =============== TEXTURE 2D ===============
    ========================================== */
 
+static bool isHDR(const char *filename) {
+	return str::cmp("hdr", file::getExtension(filename));
+}
+
 static GFXFactory<Texture2D> tex2d_factory;
 
 Texture2D::Texture2D(Texture2D &&rt) {
@@ -64,6 +68,8 @@ void Texture2D::cleanAll() {
 }
 
 bool Texture2D::loadFromFile(const char *filename) {
+	if (isHDR(filename)) return loadFromHDRFile(filename);
+
 	cleanup();
 
 	int channels = 0;
@@ -112,6 +118,8 @@ bool Texture2D::loadFromFile(const char *filename) {
 }
 
 bool Texture2D::loadFromHDRFile(const char *filename) {
+	if (!isHDR(filename)) return loadFromFile(filename);
+
 	cleanup();
 
 	int channels = 0;
@@ -443,8 +451,8 @@ bool Texture3D::save(const char *filename, bool overwrite) {
 
 	double ratio = (double)compressed.len / stream.getLen();
 	info(
-		"(%s.%s) size: %.2f%s, compressed size: %.2f%s, compression ratio: %.3f",
-		file::getFilename(filename).get(), file::getExtension(filename),
+		"(%s) size: %.2f%s, compressed size: %.2f%s, compression ratio: %.3f",
+		file::getNameAndExt(filename),
 		asByteSize(stream.getLen()), getUnit(stream.getLen()),
 		asByteSize(compressed.len), getUnit(compressed.len),
 		ratio

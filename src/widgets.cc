@@ -224,40 +224,55 @@ void keyRemapper() {
 	ImGui::End();
 }
 
-struct FillShader {
-	Handle<Shader> shader = nullptr;
-	const char *macro = nullptr;
-};
+//struct FillShader {
+//	Handle<Shader> shader = nullptr;
+//	const char *macro = nullptr;
+//};
 
 static bool should_load_file = false;
 static bool should_save_file = false;
 static vec3u save_quality = 64;
-static arr<FillShader> fill_shaders;
-static Handle<Buffer> fill_buffer;
+//static arr<FillShader> fill_shaders;
+//static Handle<Buffer> fill_buffer;
+//
+//Handle<Shader> ensureShaderExists(const char *macro) {
+//	if (!fill_buffer) {
+//		fill_buffer = Buffer::makeConstant<vec4>(Buffer::Usage::Dynamic);
+//	}
+//
+//	for (FillShader &fill : fill_shaders) {
+//		if (str::cmp(fill.macro, macro)) {
+//			return fill.shader;
+//		}
+//	}
+//
+//	FillShader newfill;
+//	newfill.macro = macro;
+//	newfill.shader = Shader::compile("fill_texture_cs.hlsl", ShaderType::Compute, { { macro }, { nullptr } });
+//	if (!newfill.shader) {
+//		return nullptr;
+//	}
+//	
+//	fill_shaders.push(mem::move(newfill));
+//	return fill_shaders.back().shader;
+//}
+//
+//static void makeNewScene(const char *shape_macro, const vec4 &shape_data, Handle<Texture3D> handle) {
+//	if (Handle<Shader> fill_texture = ensureShaderExists(shape_macro)) {
+//		gfx::captureFrame();
+//		if (shape_macro) {
+//			if (vec4 *data = fill_buffer->map<vec4>()) {
+//				*data = shape_data;
+//				fill_buffer->unmap();
+//			}
+//		}
+//
+//		handle->init(handle->size, handle->getType());
+//		fill_texture->dispatch(handle->size / 8, { fill_buffer }, {}, { handle->uav });
+//	}
+//};
 
-Handle<Shader> ensureShaderExists(const char *macro) {
-	if (!fill_buffer) {
-		fill_buffer = Buffer::makeConstant<vec4>(Buffer::Usage::Dynamic);
-	}
-
-	for (FillShader &fill : fill_shaders) {
-		if (str::cmp(fill.macro, macro)) {
-			return fill.shader;
-		}
-	}
-
-	FillShader newfill;
-	newfill.macro = macro;
-	newfill.shader = Shader::compile("fill_texture_cs.hlsl", ShaderType::Compute, { { macro }, { nullptr } });
-	if (!newfill.shader) {
-		return nullptr;
-	}
-	
-	fill_shaders.push(mem::move(newfill));
-	return fill_shaders.back().shader;
-}
-
-void mainMenuBar(BrushEditor &be, MaterialEditor &me, Handle<Texture3D> main_tex, Handle<Shader> sculpt) {
+void mainMenuBar(BrushEditor &be, MaterialEditor &me, Handle<Texture3D> main_tex) {
 	static bool open_save_popup = false;
 	static bool open_new_popup = false;
 	static bool is_saving = false;
@@ -275,6 +290,10 @@ void mainMenuBar(BrushEditor &be, MaterialEditor &me, Handle<Texture3D> main_tex
 
 			if (ImGui::MenuItem("Load")) {
 				should_load_file = true;
+			}
+
+			if (ImGui::MenuItem("Clear Canvas")) {
+
 			}
 
 			ImGui::EndMenu();
@@ -352,43 +371,35 @@ void mainMenuBar(BrushEditor &be, MaterialEditor &me, Handle<Texture3D> main_tex
 	}
 
 	if (ImGui::BeginPopupModal("New File", &is_creating, ImGuiWindowFlags_AlwaysAutoResize)) {
-		enum Shapes : int { SHAPE_SPHERE, SHAPE_BOX, SHAPE_CYLINDER, SHAPE_NONE, SHAPE__COUNT };
-		static const char *shape_macros[SHAPE__COUNT] = { "SHAPE_SPHERE", "SHAPE_BOX", "SHAPE_CYLINDER", nullptr };
+		//enum Shapes : int { SHAPE_SPHERE, SHAPE_BOX, SHAPE_CYLINDER, SHAPE_NONE, SHAPE__COUNT };
+		//static const char *shape_macros[SHAPE__COUNT] = { "SHAPE_SPHERE", "SHAPE_BOX", "SHAPE_CYLINDER", nullptr };
 		static vec3u quality = 64;
-		static Shapes cur_shape = SHAPE_SPHERE;
-		static vec4 shader_data = 0;
+		static Shapes cur_shape = Shapes::Sphere;
+		static ShapeData shader_data;
+		//static Shapes cur_shape = SHAPE_SPHERE;
+		//static vec4 shader_data = 0;
 
 		qualityDecision(main_tex, quality);
 
 		ImGui::Combo("Initial Shape", (int *)&cur_shape, "Sphere\0Box\0Cylinder\0None");
 
 		switch (cur_shape) {
-		case SHAPE_SPHERE:
-			ImGui::DragFloat("Radius##shape", shader_data.data);
+		case Shapes::Sphere:
+			ImGui::DragFloat("Radius##shape", &shader_data.sphere.radius);
 			break;
-		case SHAPE_BOX:
-			ImGui::DragFloat3("Size##shape", shader_data.data);
+		case Shapes::Box:
+			ImGui::DragFloat3("Size##shape", shader_data.box.size.data);
 			break;
-		case SHAPE_CYLINDER:
-			ImGui::DragFloat("Radius##shape", &shader_data.x);
-			ImGui::DragFloat("Height##shape", &shader_data.y);
+		case Shapes::Cylinder:
+			ImGui::DragFloat("Radius##shape", &shader_data.cylinder.radius);
+			ImGui::DragFloat("Height##shape", &shader_data.cylinder.height);
 			break;
 		}
 
 		if (ImGui::Button("New")) {
-			if (Handle<Shader> fill_texture = ensureShaderExists(shape_macros[cur_shape])) {
-				gfx::captureFrame();
-				if (cur_shape != SHAPE_NONE) {
-					if (vec4 *data = fill_buffer->map<vec4>()) {
-						*data = shader_data;
-						fill_buffer->unmap();
-					}
-				}
-
-				main_tex->init(quality, main_tex->getType());
-				fill_texture->dispatch(main_tex->size / 8, { fill_buffer }, {}, { main_tex->uav });
-				sculpt->dispatch(main_tex->size / 8, { be.getOperHandle() }, { be.getBrushSRV(), be.getDataSRV() }, { main_tex->uav });
-			}
+			main_tex->init(quality, main_tex->getType());
+			be.runFillShader(cur_shape, shader_data, main_tex);
+			// makeNewScene(shape_macros[cur_shape], shader_data, main_tex);
 			
 			ImGui::CloseCurrentPopup();
 		}

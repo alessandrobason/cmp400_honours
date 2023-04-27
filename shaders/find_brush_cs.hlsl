@@ -1,3 +1,5 @@
+#include "shaders/common.hlsl"
+
 #define BASE_RADIUS 21.
 
 Texture3D<float> vol_tex : register(t0);
@@ -78,10 +80,10 @@ float3 calcNormal(float3 pos) {
 	const float2 k = float2(1, -1);
 
 	return normalize(
-		k.xyy * roughMap(pos + k.xyy * step) +
-		k.yyx * roughMap(pos + k.yyx * step) +
-		k.yxy * roughMap(pos + k.yxy * step) +
-		k.xxx * roughMap(pos + k.xxx * step)
+		k.xyy * preciseMap(pos + k.xyy * step) +
+		k.yyx * preciseMap(pos + k.yyx * step) +
+		k.yxy * preciseMap(pos + k.yxy * step) +
+		k.xxx * preciseMap(pos + k.xxx * step)
 	);
 }
 

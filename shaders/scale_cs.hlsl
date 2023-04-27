@@ -1,3 +1,5 @@
+#include "shaders/common.hlsl"
+
 Texture3D<float> source : register(t0);
 RWTexture3D<float> destination : register(u0);
 

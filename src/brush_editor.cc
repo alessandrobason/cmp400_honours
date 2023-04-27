@@ -7,9 +7,11 @@
 #include "input.h"
 #include "widgets.h"
 #include "buffer.h"
+#include "shader.h"
 
 constexpr vec3u brush_tex_size = 64;
 constexpr Texture3D::Type brush_type = Texture3D::Type::float16;
+constexpr const char *shape_macros[(int)Shapes::Count] = { "SHAPE_SPHERE", "SHAPE_BOX", "SHAPE_CYLINDER", nullptr };
 
 static_assert(all(brush_tex_size % 8 == 0));
 
@@ -37,6 +39,18 @@ BrushEditor::BrushEditor() {
 	eraser_icon = Texture2D::load("assets/eraser_icon.png");
 	oper_handle = Buffer::makeConstant<OperationData>(Buffer::Usage::Dynamic);
 	data_handle = Buffer::makeStructured<BrushData>();
+	fill_buffer = Buffer::makeConstant<vec4>(Buffer::Usage::Dynamic);
+
+	for (int i = 0; i < (int)Shapes::Count; ++i) {
+		fill_shaders[i] = Shader::compile(
+			"fill_texture_cs.hlsl", 
+			ShaderType::Compute, 
+			{ { shape_macros[i]}, {nullptr}}
+		);
+		if (!fill_shaders[i]) {
+			err("couldn't compile fill_shader with macro %s", shape_macros[i]);
+		}
+	}
 
 	if (!brush_handle) gfxErrorExit("initialize brush");
 	if (!brush_icon)   gfxErrorExit("load brush icon");
@@ -75,7 +89,10 @@ void BrushEditor::drawWidget() {
 		style.Colors[ImGuiCol_Button] = state == State::Brush ? btn_active_col : btn_base_col;
 
 		if (ImGui::ImageButton((ImTextureID)brush_icon->srv, brush_size)) {
-			has_changed |= state != State::Brush;
+			if (state != State::Brush) {
+				has_changed = true;
+				depth = -depth;
+			}
 			state = State::Brush;
 		}
 
@@ -86,7 +103,10 @@ void BrushEditor::drawWidget() {
 		style.Colors[ImGuiCol_Button] = state == State::Eraser ? btn_active_col : btn_base_col;
 
 		if (ImGui::ImageButton((ImTextureID)eraser_icon->srv, brush_size)) {
-			has_changed |= state != State::Eraser;
+			if (state != State::Eraser) {
+				has_changed = true;
+				depth = -depth;
+			}
 			state = State::Eraser;
 		}
 
@@ -214,6 +234,17 @@ Handle<Buffer> BrushEditor::getOperHandle() {
 	return oper_handle;
 }
 
+void BrushEditor::runFillShader(Shapes shape, const ShapeData &shape_data, Handle<Texture3D> destination) {
+	if (shape != Shapes::None) {
+		if (vec4 *data = fill_buffer->map<vec4>()) {
+			*data = shape_data.data;
+			fill_buffer->unmap();
+		}
+	}
+	
+	fill_shaders[(int)shape]->dispatch(destination->size / 8, { fill_buffer }, {}, { destination->uav });
+}
+
 Texture3D *BrushEditor::get(size_t index) {
 	return index < textures.len ? textures[index].handle.get() : nullptr;
 }
@@ -223,28 +254,28 @@ const Texture3D *BrushEditor::get(size_t index) const {
 }
 
 size_t BrushEditor::addTexture(const char *path) {
-	mem::ptr<char[]> name = file::getFilename(path);
+	str::view name = file::getFilename(path);
 
-	size_t index = checkTextureAlreadyLoaded(name.get());
+	size_t index = checkTextureAlreadyLoaded(name);
 	if (index != -1) {
-		warn("texture %s is already loaded", name.get());
+		warn("texture %s is already loaded", name.data);
 		return index;
 	}
 
 	Handle<Texture3D> newtex = Texture3D::load(path);
 	if (!newtex) {
-		err("couldn't load texture %s", name.get());
+		err("couldn't load texture %s", name.data);
 		return -1;
 	}
 
 	index = textures.len;
-	textures.push(newtex, mem::move(name));
+	textures.push(newtex, name.dup());
 	return index;
 }
 
-size_t BrushEditor::checkTextureAlreadyLoaded(const char *name) {
+size_t BrushEditor::checkTextureAlreadyLoaded(str::view name) {
 	for (size_t i = 0; i < textures.len; ++i) {
-		if (str::cmp(name, textures[i].name.get())) {
+		if (name == textures[i].name.get()) {
 			return i;
 		}
 	}
