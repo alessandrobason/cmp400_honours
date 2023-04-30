@@ -10,14 +10,15 @@ struct Shader;
 
 struct BrushEditor;
 struct MaterialEditor;
+struct Texture2D;
 
 template<typename T> struct Handle;
 
 void fpsWidget();
 void mainTargetWidget();
-void mainTargetWidget(vec2 size, ID3D11ShaderResourceView *srv);
+void mainTargetWidget(Handle<Texture2D> texture);
 void messagesWidget();
-void addMessageToWidget(LogLevel severity, const char *message);
+void addMessageToWidget(LogLevel severity, const char *message, float show_time = 3.f);
 
 void keyRemapper();
 
@@ -33,3 +34,5 @@ bool sliderUInt(const char *label, unsigned int *v, unsigned int vmin, unsigned 
 bool sliderUInt2(const char *label, unsigned int v[2], unsigned int vmin, unsigned int vmax, int flags = 0);
 bool sliderUInt3(const char *label, unsigned int v[3], unsigned int vmin, unsigned int vmax, int flags = 0);
 void separatorText(const char *label);
+
+void tooltip(const char *msg, bool same_line = true);

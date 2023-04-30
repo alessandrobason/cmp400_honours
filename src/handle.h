@@ -21,6 +21,9 @@ struct Handle {
 	bool operator!=(const Handle &h) const { return ptr != h.ptr; }
 	operator bool() const { return ptr != nullptr; }
 
+	template<typename Q>
+	operator Handle<Q>() const { return static_cast<Q *>(ptr); }
+
 	T *ptr = nullptr;
 };
 

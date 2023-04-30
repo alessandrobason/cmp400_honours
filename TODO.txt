@@ -14,8 +14,10 @@
 [ ] help screen with all the controls
 [X] use SDF box in brush
 [X] hot-reload material texture
-[ ] add default brushes
+[X] add default brushes
 [ ] fix weird UV issues
+[X] move saving to another thread
+[ ] camera with panning
 
 [X] investigate better sculpting
 

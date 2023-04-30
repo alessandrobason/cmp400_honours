@@ -55,6 +55,7 @@ struct Logger {
     ImVector<Line> lines;
     bool auto_scrool = true;
     bool is_open = true;
+    CRITICAL_SECTION mutex;
 };
 
 static Logger logger;
@@ -67,6 +68,8 @@ void logMessage(LogLevel level, const char *fmt, ...) {
 }
 
 void logMessageV(LogLevel level, const char *fmt, va_list vlist) {
+    EnterCriticalSection(&logger.mutex);
+
     double time_millis = timerToMilli(timerNow());
     double time_seconds = time_millis / 1000.0;
     int minutes = (int)(time_seconds / 60.0);
@@ -105,6 +108,8 @@ void logMessageV(LogLevel level, const char *fmt, va_list vlist) {
         MessageBox((HWND)win::hwnd, temp, TEXT("FATAL ERROR"), MB_OK);
         exit(1);
     }
+
+    LeaveCriticalSection(&logger.mutex);
 }
 
 void drawLogger() {
@@ -122,11 +127,13 @@ bool logIsOpen() {
 // == LOGGER FUNCTIONS ========================================================================================================
 
 Logger::Logger() {
+    InitializeCriticalSection(&mutex);
     SetConsoleOutputCP(CP_UTF8);
     clear();
 }
 
 Logger::~Logger() {
+    DeleteCriticalSection(&mutex);
     if (Options::get().print_to_file) {
         if (!fp) {
             mem::ptr<char[]> filename = file::findFirstAvailable("logs", "log_%d.txt");

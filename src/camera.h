@@ -4,7 +4,7 @@
 
 struct Camera {
 	Camera();
-	void update();
+	bool update();
 	void updateVectors();
 	float getZoom() const;
 	vec3 getMouseDir() const;

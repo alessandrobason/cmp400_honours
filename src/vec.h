@@ -248,6 +248,7 @@ template<typename T> constexpr T dot(const vec4T<T> &v1, const vec4T<T> &v2) { r
 	
 VEC_FUN(abs)
 VEC_FUN(round)
+VEC_FUN(ceil)
 
 #undef VEC_FUN
 

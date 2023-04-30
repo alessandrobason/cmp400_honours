@@ -15,6 +15,11 @@ constexpr const char *shape_macros[(int)Shapes::Count] = { "SHAPE_SPHERE", "SHAP
 
 static_assert(all(brush_tex_size % 8 == 0));
 
+ShapeData::ShapeData(const vec3 &p, float x, float y, float z, float w) {
+	position = p;
+	data = vec4(x, y, z, w);
+}
+
 Operations operator|=(Operations &a, Operations b) {
 	a = (Operations)((uint32_t)a | (uint32_t)b);
 	return a;
@@ -27,38 +32,32 @@ static const Operations state_to_oper[(int)BrushEditor::State::Count] = {
 
 static void centreButton(float width, float padding);
 
-static void gfxErrorExit(const char *ctx) {
-	err("Failed to %s", ctx);
-	gfx::logD3D11messages();
-	exit(1);
-}
-
 BrushEditor::BrushEditor() {
-	Handle<Texture3D> brush_handle = Texture3D::create(brush_tex_size, brush_type);
 	brush_icon  = Texture2D::load("assets/brush_icon.png");
 	eraser_icon = Texture2D::load("assets/eraser_icon.png");
 	oper_handle = Buffer::makeConstant<OperationData>(Buffer::Usage::Dynamic);
 	data_handle = Buffer::makeStructured<BrushData>();
-	fill_buffer = Buffer::makeConstant<vec4>(Buffer::Usage::Dynamic);
+	fill_buffer = Buffer::makeConstant<ShapeData>(Buffer::Usage::Dynamic);
+
+	if (!brush_icon)   gfx::errorExit("failed to load brush icon");
+	if (!eraser_icon)  gfx::errorExit("failed to load eraser icon");
+	if (!oper_handle)  gfx::errorExit("failed to create operation buffer");
+	if (!data_handle)  gfx::errorExit("failed to create data buffer");
 
 	for (int i = 0; i < (int)Shapes::Count; ++i) {
 		fill_shaders[i] = Shader::compile(
-			"fill_texture_cs.hlsl", 
-			ShaderType::Compute, 
-			{ { shape_macros[i]}, {nullptr}}
+			"fill_texture_cs.hlsl",
+			ShaderType::Compute,
+			{ { shape_macros[i]}, {nullptr} }
 		);
 		if (!fill_shaders[i]) {
 			err("couldn't compile fill_shader with macro %s", shape_macros[i]);
 		}
 	}
 
-	if (!brush_handle) gfxErrorExit("initialize brush");
-	if (!brush_icon)   gfxErrorExit("load brush icon");
-	if (!eraser_icon)  gfxErrorExit("load eraser icon");
-	if (!oper_handle)  gfxErrorExit("create operation buffer");
-	if (!data_handle)  gfxErrorExit("create data buffer");
-	
-	textures.push(brush_handle, str::dup("default"));
+	addBrush("Sphere", Shapes::Sphere, ShapeData(vec3(0), 21));
+	addBrush("Box", Shapes::Box, ShapeData(vec3(0), 21, 21, 21));
+	addBrush("Cylinder", Shapes::Cylinder, ShapeData(vec3(0), 21, 42));
 }
 
 void BrushEditor::drawWidget() {
@@ -236,8 +235,8 @@ Handle<Buffer> BrushEditor::getOperHandle() {
 
 void BrushEditor::runFillShader(Shapes shape, const ShapeData &shape_data, Handle<Texture3D> destination) {
 	if (shape != Shapes::None) {
-		if (vec4 *data = fill_buffer->map<vec4>()) {
-			*data = shape_data.data;
+		if (ShapeData *data = fill_buffer->map<ShapeData>()) {
+			*data = shape_data;
 			fill_buffer->unmap();
 		}
 	}
@@ -270,6 +269,14 @@ size_t BrushEditor::addTexture(const char *path) {
 
 	index = textures.len;
 	textures.push(newtex, name.dup());
+	return index;
+}
+
+size_t BrushEditor::addBrush(const char *name, Shapes shape, const ShapeData &data) {
+	Handle<Texture3D> newtex = Texture3D::create(brush_tex_size, brush_type);
+	runFillShader(shape, data, newtex);
+	size_t index = textures.len;
+	textures.push(newtex, str::dup(name));
 	return index;
 }
 

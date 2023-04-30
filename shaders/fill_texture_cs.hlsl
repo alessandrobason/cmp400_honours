@@ -3,21 +3,23 @@
 RWTexture3D<float> tex : register(u0);
 
 cbuffer ShapeData : register(b0) {
+	float3 shape_pos;
+	float padding;
     float4 data;
 };
 
-// #define MAX_DIST 10000.
-
 float sdf_sphere(float3 position, float radius) {
-	return length(position) - radius;
+	return length(position - shape_pos) - radius;
 }
 
 float sdf_box(float3 position, float3 size) {
-	float3 q = abs(position) - size;
+	float3 q = abs(position - shape_pos) - size;
 	return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
 }
 
 float sdf_cylinder(float3 position, float radius, float height) {
+	position -= shape_pos;
+
     float3 top = float3(0, height * 0.5, 0);
     float3 bottom = -top;
 

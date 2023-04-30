@@ -39,10 +39,10 @@ void fpsWidget() {
 }
 
 void mainTargetWidget() {
-	mainTargetWidget(gfx::main_rtv->size, gfx::main_rtv->resource);
+	mainTargetWidget(gfx::main_rtv);
 }
 
-void mainTargetWidget(vec2 size, ID3D11ShaderResourceView *srv) {
+void mainTargetWidget(Handle<Texture2D> texture) {
 	if (!is_game_view_open) return;
 	if (!ImGui::Begin("Main", &is_game_view_open)) {
 		ImGui::End();
@@ -63,6 +63,7 @@ void mainTargetWidget(vec2 size, ID3D11ShaderResourceView *srv) {
 
 	win_size -= win_padding;
 
+	vec2 size = texture->size;
 	float dx = win_size.x / size.x;
 	float dy = win_size.y / size.y;
 
@@ -80,7 +81,7 @@ void mainTargetWidget(vec2 size, ID3D11ShaderResourceView *srv) {
 	gfx::setMainRTVBounds(vec4(position + win_pos, size));
 
 	ImGui::SetCursorPos(position);
-	ImGui::Image((ImTextureID)srv, size);
+	ImGui::Image((ImTextureID)texture->srv, size);
 	ImGui::End();
 }
 
@@ -94,8 +95,6 @@ bool imInputUint3(const char *label, unsigned int v[3], int flags) {
 	return ImGui::InputScalarN(label, ImGuiDataType_U32, v, 3, &step, nullptr, "%u", flags);
 }
 
-// how long will the message be shown for
-constexpr float show_time = 3.f;
 // how long before the messagge starts disappearing
 constexpr float falloff_time = 2.f;
 
@@ -110,10 +109,10 @@ static const ImColor level_to_colour[(int)LogLevel::Count] = {
 
 struct Message {
 	Message() = default;
-	Message(LogLevel l, mem::ptr<char[]>&& m) : severity(l), message(mem::move(m)) {}
+	Message(LogLevel l, mem::ptr<char[]>&& m, float t) : severity(l), message(mem::move(m)), timer(t) {}
 	LogLevel severity;
 	mem::ptr<char[]> message;
-	float timer = show_time;
+	float timer = 0.f;
 };
 
 static arr<Message> messages;
@@ -134,12 +133,11 @@ void messagesWidget() {
 	for (size_t i = 0; i < messages.size(); ++i) {
 		Message &msg = messages[i];
 		
-		const float alpha = msg.timer / (show_time - falloff_time);
+		const float alpha = msg.timer / falloff_time;
 		ImVec4 border_colour = ImGui::GetStyleColorVec4(ImGuiCol_Border);
 		border_colour.w = alpha;
 
 		ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, vec2(0.f));
-		//ImGui::SetNextWindowViewport(viewport->ID);
 		ImGui::SetNextWindowBgAlpha(alpha);
 		ImGui::PushStyleColor(ImGuiCol_Border, border_colour);
 
@@ -163,8 +161,8 @@ void messagesWidget() {
 	}
 }
 
-void addMessageToWidget(LogLevel severity, const char* message) {
-	messages.push(severity, str::dup(message));
+void addMessageToWidget(LogLevel severity, const char* message, float show_time) {
+	messages.push(severity, str::dup(message), show_time);
 }
 
 static bool is_remapper_open = false;
@@ -224,53 +222,9 @@ void keyRemapper() {
 	ImGui::End();
 }
 
-//struct FillShader {
-//	Handle<Shader> shader = nullptr;
-//	const char *macro = nullptr;
-//};
-
 static bool should_load_file = false;
 static bool should_save_file = false;
 static vec3u save_quality = 64;
-//static arr<FillShader> fill_shaders;
-//static Handle<Buffer> fill_buffer;
-//
-//Handle<Shader> ensureShaderExists(const char *macro) {
-//	if (!fill_buffer) {
-//		fill_buffer = Buffer::makeConstant<vec4>(Buffer::Usage::Dynamic);
-//	}
-//
-//	for (FillShader &fill : fill_shaders) {
-//		if (str::cmp(fill.macro, macro)) {
-//			return fill.shader;
-//		}
-//	}
-//
-//	FillShader newfill;
-//	newfill.macro = macro;
-//	newfill.shader = Shader::compile("fill_texture_cs.hlsl", ShaderType::Compute, { { macro }, { nullptr } });
-//	if (!newfill.shader) {
-//		return nullptr;
-//	}
-//	
-//	fill_shaders.push(mem::move(newfill));
-//	return fill_shaders.back().shader;
-//}
-//
-//static void makeNewScene(const char *shape_macro, const vec4 &shape_data, Handle<Texture3D> handle) {
-//	if (Handle<Shader> fill_texture = ensureShaderExists(shape_macro)) {
-//		gfx::captureFrame();
-//		if (shape_macro) {
-//			if (vec4 *data = fill_buffer->map<vec4>()) {
-//				*data = shape_data;
-//				fill_buffer->unmap();
-//			}
-//		}
-//
-//		handle->init(handle->size, handle->getType());
-//		fill_texture->dispatch(handle->size / 8, { fill_buffer }, {}, { handle->uav });
-//	}
-//};
 
 void mainMenuBar(BrushEditor &be, MaterialEditor &me, Handle<Texture3D> main_tex) {
 	static bool open_save_popup = false;
@@ -293,7 +247,7 @@ void mainMenuBar(BrushEditor &be, MaterialEditor &me, Handle<Texture3D> main_tex
 			}
 
 			if (ImGui::MenuItem("Clear Canvas")) {
-
+				be.runFillShader(Shapes::None, ShapeData(), main_tex);
 			}
 
 			ImGui::EndMenu();
@@ -371,17 +325,15 @@ void mainMenuBar(BrushEditor &be, MaterialEditor &me, Handle<Texture3D> main_tex
 	}
 
 	if (ImGui::BeginPopupModal("New File", &is_creating, ImGuiWindowFlags_AlwaysAutoResize)) {
-		//enum Shapes : int { SHAPE_SPHERE, SHAPE_BOX, SHAPE_CYLINDER, SHAPE_NONE, SHAPE__COUNT };
-		//static const char *shape_macros[SHAPE__COUNT] = { "SHAPE_SPHERE", "SHAPE_BOX", "SHAPE_CYLINDER", nullptr };
 		static vec3u quality = 64;
 		static Shapes cur_shape = Shapes::Sphere;
 		static ShapeData shader_data;
-		//static Shapes cur_shape = SHAPE_SPHERE;
-		//static vec4 shader_data = 0;
 
 		qualityDecision(main_tex, quality);
 
 		ImGui::Combo("Initial Shape", (int *)&cur_shape, "Sphere\0Box\0Cylinder\0None");
+
+		ImGui::DragFloat3("Position##shape", shader_data.position.data);
 
 		switch (cur_shape) {
 		case Shapes::Sphere:
@@ -397,9 +349,10 @@ void mainMenuBar(BrushEditor &be, MaterialEditor &me, Handle<Texture3D> main_tex
 		}
 
 		if (ImGui::Button("New")) {
-			main_tex->init(quality, main_tex->getType());
+			if (all(quality != main_tex->size)) {
+				main_tex->init(quality, main_tex->getType());
+			}
 			be.runFillShader(cur_shape, shader_data, main_tex);
-			// makeNewScene(shape_macros[cur_shape], shader_data, main_tex);
 			
 			ImGui::CloseCurrentPopup();
 		}
@@ -616,4 +569,16 @@ void separatorText(const char *label) {
 	// Otherwise, we can decide that users wanting to drag this would layout a dedicated drag-item,
 	// and then we can turn this into a format function.
 	separatorTextEx(0, label, ImGui::FindRenderedTextEnd(label), 0.0f);
+}
+
+void tooltip(const char *msg, bool same_line) {
+	if (same_line) ImGui::SameLine();
+	ImGui::TextDisabled("(?)");
+	if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort)) {
+		ImGui::BeginTooltip();
+		ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+		ImGui::TextUnformatted(msg);
+		ImGui::PopTextWrapPos();
+		ImGui::EndTooltip();
+	}
 }

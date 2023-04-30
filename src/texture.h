@@ -14,18 +14,25 @@ struct Texture2D {
 
 	// -- handle stuff --
 	static Handle<Texture2D> make();
-	static Handle<Texture2D> load(const char *filename);
-	static Handle<Texture2D> loadHDR(const char *filename);
+	static Handle<Texture2D> create(const vec2i &size, bool can_gpu_read = false);
+	static Handle<Texture2D> load(const char *filename, bool can_gpu_read = false);
+	static Handle<Texture2D> loadHDR(const char *filename, bool can_gpu_read = false);
 	static void cleanAll();
 	// ------------------
 
-	bool loadFromFile(const char *filename);
-	bool loadFromHDRFile(const char *filename);
+	bool init(const vec2i &size, bool can_gpu_read = false);
+	bool loadFromFile(const char *filename, bool can_gpu_read = false);
+	bool loadFromHDRFile(const char *filename, bool can_gpu_read = false);
 	void cleanup();
+
+	bool takeScreenshot(const char *base_name = "screenshot");
+	void clear(Colour colour);
+	void copyInto(Handle<Texture2D> handle);
 
 	vec2i size = 0;
 	dxptr<ID3D11Texture2D> texture = nullptr;
 	dxptr<ID3D11ShaderResourceView> srv = nullptr;
+	dxptr<ID3D11UnorderedAccessView> uav = nullptr;
 };
 
 struct Texture3D {
@@ -70,7 +77,7 @@ struct Texture3D {
 	dxptr<ID3D11ShaderResourceView> srv = nullptr;
 };
 
-struct RenderTexture {
+struct RenderTexture : Texture2D {
 	RenderTexture() = delete;
 	RenderTexture(const RenderTexture &rt) = delete;
 	RenderTexture(RenderTexture &&rt);
@@ -91,10 +98,5 @@ struct RenderTexture {
 	void bind(ID3D11DepthStencilView *dsv = nullptr);
 	void clear(Colour colour, ID3D11DepthStencilView *dsv = nullptr);
 
-	bool takeScreenshot(const char *base_name = "screenshot");
-
-	vec2i size;
-	dxptr<ID3D11Texture2D> texture = nullptr;
-	dxptr<ID3D11RenderTargetView> view = nullptr;
-	dxptr<ID3D11ShaderResourceView> resource = nullptr;
+	dxptr<ID3D11RenderTargetView> rtv = nullptr;
 };

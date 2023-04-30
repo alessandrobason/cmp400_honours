@@ -15,6 +15,7 @@ void Options::load(const char *filename) {
 	if (auto gfx = doc.get("gfx")) {
 		gfx->get("vsync").trySet(vsync);
 		gfx->get("auto capture").trySet(auto_capture);
+		gfx->get("show fps").trySet(show_fps);
 		if (ini::Value res = gfx->get("resolution")) {
 			arr<std::string_view> vec = res.asVec();
 			if (vec.size() == 2) {
@@ -45,6 +46,7 @@ void Options::save(const char *filename) {
 	fp.print("vsync = %s\n", B(vsync));
 	fp.print("resolution = %u %u\n", resolution.x, resolution.y);
 	fp.print("auto capture = %s\n", B(auto_capture));
+	fp.print("show fps = %s\n", B(show_fps));
 
 	fp.puts("\n[camera]\n");
 	fp.print("zoom sensitivity = %.3f\n", zoom_sensitivity);
@@ -56,18 +58,6 @@ void Options::save(const char *filename) {
 	fp.print("quit on fatal = %s\n", B(quit_on_fatal));
 
 #undef B
-}
-
-static void tooltip(const char *msg, bool same_line = true) {
-	if (same_line) ImGui::SameLine();
-	ImGui::TextDisabled("(?)");
-	if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort)) {
-		ImGui::BeginTooltip();
-		ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-		ImGui::TextUnformatted(msg);
-		ImGui::PopTextWrapPos();
-		ImGui::EndTooltip();
-	}
 }
 
 void Options::drawWidget() {
@@ -90,6 +80,7 @@ void Options::drawWidget() {
 	}
 	ImGui::Checkbox("Auto Capture", &auto_capture);
 	tooltip("(Debugging only) Captures the frame every time a sculpting operation happens, only useful if the application is being debugged with RenderDoc");
+	ImGui::Checkbox("Show FPS", &show_fps);
 
 	separatorText("Camera");
 	ImGui::SliderFloat("Zoom sensitivity", &zoom_sensitivity, 1, 50);

@@ -13,17 +13,17 @@ enum class Shapes : int {
 	Sphere, Box, Cylinder, None, Count
 };
 
-union ShapeData {
-	struct {
-		float radius;
-	} sphere;
-	struct {
-		vec3 size;
-	} box;
-	struct {
-		float radius, height;
-	} cylinder;
-	vec4 data = 0;
+struct ShapeData {
+	ShapeData(const vec3 &p = 0, float x = 0, float y = 0, float z = 0, float w = 0);
+
+	vec3 position;
+	float padding;
+	union {
+		struct { float radius;         } sphere;
+		struct { vec3 size;            } box;
+		struct { float radius, height; } cylinder;
+		vec4 data;
+	};
 };
 
 enum class Operations : uint32_t {
@@ -80,6 +80,7 @@ private:
 	Texture3D *get(size_t index);
 	const Texture3D *get(size_t index) const;
 	size_t addTexture(const char *name);
+	size_t addBrush(const char *name, Shapes shape, const ShapeData &data);
 	size_t checkTextureAlreadyLoaded(str::view name);
 
 	vec3 position = 0.f;

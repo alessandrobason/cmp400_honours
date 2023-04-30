@@ -32,6 +32,7 @@ namespace gfx {
 	void captureFrame();
 
 	void logD3D11messages();
+	void errorExit(const char *msg = nullptr);
 } // namespace gfx
 
 namespace win {

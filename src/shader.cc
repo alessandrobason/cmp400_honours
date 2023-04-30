@@ -87,51 +87,8 @@ void Shader::cleanAll() {
 	shader_factory.cleanup();
 }
 
-#if 0
-bool Shader::load(const char* filename, ShaderType type) {
-	assert(shader_type == ShaderType::None);
-	shader_type = type;
-
-	file::MemoryBuf buf = file::read(str::format("shaders/bin/%s.cso", filename));
-
-	if (!buf.data) {
-		err("couldn't read shader file %s", filename);
-		return false;
-	}
-
-	switch (type) {
-		case ShaderType::Vertex:	return loadVertex(buf.data.get(), buf.size);
-		case ShaderType::Fragment:	return loadFragment(buf.data.get(), buf.size);
-		case ShaderType::Compute:	return loadCompute(buf.data.get(), buf.size);
-	}
-
-	return false;
-}
-
-bool Shader::compile(const char *filename, ShaderType type, Slice<ShaderMacro> macros) {
-	bool success = false;
-	
-	if (dxptr<ID3DBlob> blob = compileShader(filename, type, macros)) {
-		void *data = blob->GetBufferPointer();
-		size_t len = blob->GetBufferSize();
-
-		switch (type) {
-			case ShaderType::Vertex:	success = loadVertex(data, len);   break;
-			case ShaderType::Fragment:	success = loadFragment(data, len); break;
-			case ShaderType::Compute:	success = loadCompute(data, len);  break;
-		}
-
-		if (!success) {
-			err("couldn't load shader %s from file", filename);
-		}
-	}
-
-	return success;
-}
-#endif
-
 bool Shader::loadVertex(const void *data, size_t len) {
-	cleanup();
+	shader.destroy();
 	shader_type = ShaderType::Vertex;
 	HRESULT hr = gfx::device->CreateVertexShader(data, len, nullptr, (ID3D11VertexShader **)&shader);
 	if (FAILED(hr)) {
@@ -163,7 +120,7 @@ bool Shader::loadVertex(const void *data, size_t len) {
 }
 
 bool Shader::loadFragment(const void *data, size_t len) {
-	cleanup();
+	shader.destroy();
 	shader_type = ShaderType::Fragment;
 	HRESULT hr = gfx::device->CreatePixelShader(data, len, nullptr, (ID3D11PixelShader **)&shader);
 	if (FAILED(hr)) {
@@ -175,7 +132,7 @@ bool Shader::loadFragment(const void *data, size_t len) {
 }
 
 bool Shader::loadCompute(const void *data, size_t len) {
-	cleanup();
+	shader.destroy();
 	shader_type = ShaderType::Compute;
 	HRESULT hr = gfx::device->CreateComputeShader(data, len, nullptr, (ID3D11ComputeShader**)&shader);
 	if (FAILED(hr)) {
@@ -187,7 +144,6 @@ bool Shader::loadCompute(const void *data, size_t len) {
 }
 
 bool Shader::addSampler() {
-	assert(shader_type == ShaderType::Fragment);
 	extra.destroy();
 
 	D3D11_SAMPLER_DESC desc;
@@ -242,6 +198,7 @@ void Shader::bind() {
 		gfx::context->PSSetShader((ID3D11PixelShader *)shader.get(), nullptr, 0);
 		break;
 	case ShaderType::Compute:
+		if (extra) gfx::context->CSSetSamplers(0, 1, (ID3D11SamplerState **)&extra);
 		gfx::context->CSSetShader((ID3D11ComputeShader*)shader.get(), nullptr, 0);
 		break;
 	}
@@ -289,6 +246,8 @@ void Shader::dispatch(
 ) {
 	if (!shader) return;
 
+	if (extra) gfx::context->CSSetSamplers(0, 1, (ID3D11SamplerState **)&extra);
+
 	gfx::context->CSSetShader((ID3D11ComputeShader *)shader.get(), nullptr, 0);
 
 		UINT cbuffers_count = 0;
@@ -310,6 +269,8 @@ void Shader::dispatch(
 		Buffer::unbindSRV(ShaderType::Compute, 0, srvs.len);
 		Buffer::unbindUAV(0, uavs.len);
 
+	ID3D11SamplerState *null_sampler[] = { nullptr };
+	gfx::context->CSSetSamplers(0, 1, null_sampler);
 	gfx::context->CSSetShader(nullptr, nullptr, 0);
 }
 
@@ -375,7 +336,7 @@ Handle<Shader> DynamicShader::addFileWatch(const char *name, ShaderType type) {
 	return new_shader;
 }
 
-extern void addMessageToWidget(LogLevel severity, const char* message);
+extern void addMessageToWidget(LogLevel severity, const char* message, float show_time = 3.f);
 
 void DynamicShader::poll() {
 	has_updated = false;

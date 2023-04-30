@@ -41,30 +41,6 @@ static float3 volume_tex_size = 0;
 #define OP_SMOOTH_UNION         (SMOOTH_OP | OP_UNION)
 #define OP_SMOOTH_SUBTRACTION   (SMOOTH_OP | OP_SUBTRACTION)
 
-float trilinearInterpolation(float3 pos, float3 size, Texture3D<float> tex_to_sample) {
-    int3 start = max(min(int3(round(pos)), int3(size) - 2), 0);
-    int3 end = start + 1;
-
-    float3 delta = pos - start;
-    float3 rem = 1 - delta;
-
-#define map(x, y, z) tex_to_sample.Load(int4((x), (y), (z), 0))
-
-    float4 c = float4(
-        map(start.x, start.y, start.z) * rem.x + map(end.x, start.y, start.z) * delta.x,
-        map(start.x, end.y,   start.z) * rem.x + map(end.x, end.y,   start.z) * delta.x,
-        map(start.x, start.y, end.z)   * rem.x + map(end.x, start.y, end.z)   * delta.x,
-        map(start.x, end.y,   end.z)   * rem.x + map(end.x, end.y,   end.z)   * delta.x
-    );
-
-#undef map
-
-    float c0 = c.x * rem.y + c.y * delta.y;
-    float c1 = c.z * rem.y + c.w * delta.y;
-
-    return c0 * rem.z + c1 * delta.z;
-}
-
 inline float sampleBrush(float3 position) {
     return trilinearInterpolation(position / brush_scale, brush_size, brush);
 }
@@ -90,28 +66,21 @@ inline void op_subtraction(float vold, float vnew, uint3 id, out bool changed) {
 inline void op_smooth_union(float vold, float vnew, float k, uint3 id, out bool changed) {
 	const float h = clamp(0.5 + 0.5 * (vnew - vold) / k, 0.0, 1.0);
 	const float result = lerp(vnew, vold, h) - k * h * (1.0 - h);
-    // IF SOMETHING IS WRONG CHECK THIS LINE BROTHER vvvvvvv
-    // changed = result < vold;
-    // if (changed) {
-        vol_tex[id] = result;
-        changed = true;
-    // }
+    vol_tex[id] = result;
+    changed = true;
 }
 
 inline void op_smooth_subtraction(float vold, float vnew, float k, uint3 id, out bool changed) {
 	const float h = clamp(0.5 - 0.5 * (vold + vnew) / k, 0.0, 1.0);
 	const float result = lerp(vold, -vnew, h) + k * h * (1.0 - h);
-    // IF SOMETHING IS WRONG CHECK THIS LINE BROTHER vvvvvvv
-    // if (result < vold) {
-        changed = true;
-        vol_tex[id] = result;
-    // }
+    changed = true;
+    vol_tex[id] = result;
 }
 
 inline void setVTSkipRead(uint3 id, float old_value, float new_value, float3 pos) {
 	const float ROUGH_MIN_HIT_DISTANCE = 1;
     bool changed;
-    old_value = min(old_value, 100.);
+    // old_value = min(old_value, MAX_STEP);
     
     switch (operation & OP_MASK) {
         case OP_UNION:               op_union(old_value, new_value, id, changed);                             break;                   
@@ -124,10 +93,6 @@ inline void setVTSkipRead(uint3 id, float old_value, float new_value, float3 pos
 inline void setVolumeTexture(uint3 id, float new_value, float3 pos) {
     const float old_value = sampleWorld(id);
     setVTSkipRead(id, old_value, new_value, pos);
-}
-
-inline bool isOutsideTexture(float3 pos) {
-    return any(pos < 0) || any(pos >= brush_size * brush_scale);
 }
 
 inline float3 idToWorld(uint3 id) {
@@ -164,49 +129,6 @@ inline float texBoundarySDF(float3 pos) {
 void main(uint3 id : SV_DispatchThreadID) {
     vol_tex.GetDimensions(volume_tex_size.x, volume_tex_size.y, volume_tex_size.z);
     brush.GetDimensions(brush_size.x, brush_size.y, brush_size.z);
-    
-#if 0
-    float3 pos = idToWorld(id);
-    float dist = texBoundarySDF(pos);
-
-    if (dist > 0) {
-        if ((operation & OP_MASK) == OP_UNION) {
-            float world = sampleWorld(id);
-            if (world == MAX_DIST) {
-                bool changed;
-                op_union(sampleWorld(id), dist, id, changed);
-            }
-        }
-        return;
-    }
-
-    pos = worldToBrush(pos);
-    setVolumeTexture(id, sampleBrush(pos), pos);
-
-
-    return;
-
-    if (dist <= 0) {
-        if ((operation & OP_MASK) == OP_UNION) {
-            bool changed;
-            op_union(sampleWorld(id), dist, id, changed);
-        }
-        //writeApproximateDistance(pos, dist, id);
-    }
-    else {
-        pos = worldToBrush(pos);
-        setVolumeTexture(id, sampleBrush(pos), pos);
-    }
-    //if (dist <= 0.) {
-    //    // pos = worldToBrush(pos);
-    //    dist = sampleBrush(worldToBrush(pos));
-    //    //setVolumeTexture(id, sampleBrush(pos), pos);
-    //}
-    //// else {
-    //bool changed;
-    //op_union(sampleWorld(id), dist, id, changed);
-    // }
-#endif
 
     float3 pos = idToWorld(id);
     float dist_from_tex = texBoundarySDF(pos);
@@ -218,13 +140,6 @@ void main(uint3 id : SV_DispatchThreadID) {
         }
         return;
     }
-
-    // const float3 pos = worldToBrush(idToWorld(id));
-
-    // if (isOutsideTexture(pos)) {
-        //writeApproximateDistance(pos, id);
-        // return;
-    // }
 
     setVolumeTexture(id, sampleBrush(pos), pos);
 }

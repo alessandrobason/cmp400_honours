@@ -6,11 +6,13 @@
 
 #include "maths.h"
 #include "system.h"
+#include "widgets.h"
 
 MaterialEditor::MaterialEditor() {
 	diffuse_handle    = addTexture("assets/testing_texture.png");
 	background_handle = addTexture("assets/rainforest_trail.png");
 	mat_handle = Buffer::makeConstant<MaterialPS>(Buffer::Usage::Dynamic);
+	light_buf  = Buffer::makeConstant<LightData>(Buffer::Usage::Dynamic);
 
 	if (diffuse_handle == -1)    fatal("couldn't load default material texture");
 	if (background_handle == -1) fatal("couldn't load default background hdr texture");
@@ -28,18 +30,42 @@ void MaterialEditor::drawWidget() {
 		return;
 	}
 
+	is_ray_tracing_dirty = false;
+
+	separatorText("Material");
+
 	has_changed |= ImGui::ColorPicker3("Albedo", albedo.data);
+	has_changed |= ImGui::ColorPicker3("Specular colour", specular.data);
+	has_changed |= ImGui::ColorPicker3("Emissive colour", emissive.data);
+	has_changed |= ImGui::SliderFloat("Smoothness", &smoothness, 0.f, 1.f);
+	has_changed |= ImGui::SliderFloat("Specular probability", &specular_probability, 0.f, 1.f);
+
+	separatorText("Light");
+
+	bool render_light = light_data.render_light;
+
+	has_changed |= ImGui::SliderFloat3("Position", light_data.light_pos.data, -1000, 1000);
+	has_changed |= ImGui::ColorPicker3("Colour", light_data.light_colour.data);
+	has_changed |= ImGui::SliderFloat("Strength", &light_strength, 1.f, 100.f);
+	has_changed |= ImGui::SliderFloat("Radius", &light_data.light_radius, 0.1f, 1000);
+	has_changed |= ImGui::Checkbox("Render", &render_light);
+
+	light_data.render_light = render_light;
+	
+	separatorText("Textures");
+	
 	ImGui::Text("Uses texture");
 
 	ImGui::SameLine();
 	has_changed |= ImGui::Combo("##TexMode", (int *)&texture_mode, "No Texture\0Default\0Spherical");
 
-	const auto &texChooser = [](const char *label, size_t &handle, Slice<TexNamePair> textures) {
+	const auto &texChooser = [](const char *label, size_t &handle, Slice<TexNamePair> textures, bool &is_dirty) {
 		if (ImGui::BeginCombo(label, textures[handle].name.get())) {
 			for (size_t i = 0; i < textures.len; ++i) {
 				bool is_selected = handle == i;
 				if (ImGui::Selectable(textures[i].name.get(), is_selected)) {
 					handle = i;
+					is_dirty = true;
 				}
 
 				if (is_selected) {
@@ -72,8 +98,8 @@ void MaterialEditor::drawWidget() {
 		}
 	};
 
-	texChooser("Diffuse", diffuse_handle, textures);
-	texChooser("Background", background_handle, textures);
+	texChooser("Diffuse", diffuse_handle, textures, is_ray_tracing_dirty);
+	texChooser("Background", background_handle, textures, is_ray_tracing_dirty);
 
 	if (ImGui::Button("Load Image From File")) {
 		should_open_nfd = true;
@@ -88,7 +114,7 @@ void MaterialEditor::drawWidget() {
 	ImGui::End();
 }
 
-void MaterialEditor::update() {
+bool MaterialEditor::update() {
 	watcher.update();
 	auto changed = watcher.getChangedFiles();
 	while (changed) {
@@ -123,15 +149,25 @@ void MaterialEditor::update() {
 		}
 	}
 
-	if (!has_changed) return;
+	if (!has_changed) return is_ray_tracing_dirty;
 	if (Buffer *buf = mat_handle.get()) {
 		if (MaterialPS *data = buf->map<MaterialPS>()) {
-			data->albedo = albedo;
-			data->texture_mode = texture_mode;
+			data->albedo               = albedo;
+			data->texture_mode         = texture_mode;
+			data->specular_colour      = specular;
+			data->smoothness           = smoothness;
+			data->emissive_colour      = emissive;
+			data->specular_probability = specular_probability;
 			buf->unmap();
 		}
 	}
+	if (LightData *data = light_buf->map<LightData>()) {
+		*data = light_data;
+		data->light_colour *= light_strength;
+		light_buf->unmap();
+	}
 	has_changed = false;
+	return true;
 }
 
 void MaterialEditor::setOpen(bool new_is_open) {

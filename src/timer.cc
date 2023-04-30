@@ -151,18 +151,22 @@ double CPUClock::getSeconds() {
 }
 
 void CPUClock::print(LogLevel level) {
+	print(debug_name, level);
+}
+
+void CPUClock::print(const char *name_overload, LogLevel level) {
 	uint64_t time_passed = timerSince(start);
 	if (timerToSec(time_passed) >= 1.0) {
-		logMessage(level, "[%s] time passed: %.3fsec", debug_name, timerToSec(time_passed));
+		logMessage(level, "[%s] time passed: %.3fsec", name_overload, timerToSec(time_passed));
 	}
 	else if (timerToMilli(time_passed) >= 1.0) {
-		logMessage(level, "[%s] time passed: %.3fms", debug_name, timerToMilli(time_passed));
+		logMessage(level, "[%s] time passed: %.3fms", name_overload, timerToMilli(time_passed));
 	}
 	else if (timerToMicro(time_passed) >= 1.0) {
-		logMessage(level, "[%s] time passed: %.3fus", debug_name, timerToMicro(time_passed));
+		logMessage(level, "[%s] time passed: %.3fus", name_overload, timerToMicro(time_passed));
 	}
 	else {
-		logMessage(level, "[%s] time passed: %.3fns", debug_name, timerToNano(time_passed));
+		logMessage(level, "[%s] time passed: %.3fns", name_overload, timerToNano(time_passed));
 	}
 	start = timerNow();
 }

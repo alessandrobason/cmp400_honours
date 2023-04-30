@@ -10,6 +10,8 @@
 #include "tracelog.h"
 #include "gfx_factory.h"
 
+extern void addMessageToWidget(LogLevel level, const char *msg, float show_time = 3.f);
+
 /* ==========================================
    =============== TEXTURE 2D ===============
    ========================================== */
@@ -41,10 +43,10 @@ Handle<Texture2D> Texture2D::make() {
 	return tex2d_factory.getNew();
 }
 
-Handle<Texture2D> Texture2D::load(const char *filename) {
+Handle<Texture2D> Texture2D::create(const vec2i &size, bool can_gpu_read) {
 	Texture2D *tex = tex2d_factory.getNew();
 
-	if (!tex->loadFromFile(filename)) {
+	if (!tex->init(size, can_gpu_read)) {
 		tex2d_factory.popLast();
 		return nullptr;
 	}
@@ -52,10 +54,21 @@ Handle<Texture2D> Texture2D::load(const char *filename) {
 	return tex;
 }
 
-Handle<Texture2D> Texture2D::loadHDR(const char *filename) {
+Handle<Texture2D> Texture2D::load(const char *filename, bool can_gpu_read) {
 	Texture2D *tex = tex2d_factory.getNew();
 
-	if (!tex->loadFromHDRFile(filename)) {
+	if (!tex->loadFromFile(filename, can_gpu_read)) {
+		tex2d_factory.popLast();
+		return nullptr;
+	}
+
+	return tex;
+}
+
+Handle<Texture2D> Texture2D::loadHDR(const char *filename, bool can_gpu_read) {
+	Texture2D *tex = tex2d_factory.getNew();
+
+	if (!tex->loadFromHDRFile(filename, can_gpu_read)) {
 		tex2d_factory.popLast();
 		return nullptr;
 	}
@@ -67,7 +80,58 @@ void Texture2D::cleanAll() {
 	tex2d_factory.cleanup();
 }
 
-bool Texture2D::loadFromFile(const char *filename) {
+bool Texture2D::init(const vec2i &newsize, bool can_gpu_read) {
+	cleanup();
+
+	size = newsize;
+
+	D3D11_TEXTURE2D_DESC desc;
+	mem::zero(desc);
+	desc.Width = size.x;
+	desc.Height = size.y;
+	desc.MipLevels = 1;
+	desc.ArraySize = 1;
+	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc.SampleDesc.Count = 1;
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+	if (can_gpu_read) desc.BindFlags |= D3D11_BIND_UNORDERED_ACCESS;
+
+	HRESULT hr = gfx::device->CreateTexture2D(&desc, nullptr, &texture);
+	if (FAILED(hr)) {
+		err("couldn't create 2D texture");
+		return false;
+	}
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc;
+	mem::zero(srv_desc);
+	srv_desc.Format = desc.Format;
+	srv_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	srv_desc.Texture2D.MipLevels = 1;
+
+	hr = gfx::device->CreateShaderResourceView(texture, &srv_desc, &srv);
+	if (FAILED(hr)) {
+		err("couldn't create 2D texture's SRV");
+		cleanup();
+		return false;
+	}
+
+	if (can_gpu_read) {
+		D3D11_UNORDERED_ACCESS_VIEW_DESC uav_desc;
+		mem::zero(uav_desc);
+		uav_desc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
+		uav_desc.Format = desc.Format;
+		hr = gfx::device->CreateUnorderedAccessView(texture, &uav_desc, &uav);
+		if (FAILED(hr)) {
+			err("couldn't create 2D texture's uav");
+			return false;
+		}
+	}
+
+	return true;
+}
+
+bool Texture2D::loadFromFile(const char *filename, bool can_gpu_read) {
 	if (isHDR(filename)) return loadFromHDRFile(filename);
 
 	cleanup();
@@ -88,6 +152,7 @@ bool Texture2D::loadFromFile(const char *filename) {
 	desc.SampleDesc.Count = 1;
 	desc.Usage = D3D11_USAGE_IMMUTABLE;
 	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+	if (can_gpu_read) desc.BindFlags |= D3D11_BIND_UNORDERED_ACCESS;
 
 	D3D11_SUBRESOURCE_DATA data_desc;
 	mem::zero(data_desc);
@@ -114,10 +179,22 @@ bool Texture2D::loadFromFile(const char *filename) {
 		return false;
 	}
 
+	if (can_gpu_read) {
+		D3D11_UNORDERED_ACCESS_VIEW_DESC uav_desc;
+		mem::zero(uav_desc);
+		uav_desc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
+		uav_desc.Format = desc.Format;
+		hr = gfx::device->CreateUnorderedAccessView(texture, &uav_desc, &uav);
+		if (FAILED(hr)) {
+			err("couldn't create 2D texture's uav");
+			return false;
+		}
+	}
+
 	return true;
 }
 
-bool Texture2D::loadFromHDRFile(const char *filename) {
+bool Texture2D::loadFromHDRFile(const char *filename, bool can_gpu_read) {
 	if (!isHDR(filename)) return loadFromFile(filename);
 
 	cleanup();
@@ -138,6 +215,7 @@ bool Texture2D::loadFromHDRFile(const char *filename) {
 	desc.SampleDesc.Count = 1;
 	desc.Usage = D3D11_USAGE_IMMUTABLE;
 	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+	if (can_gpu_read) desc.BindFlags |= D3D11_BIND_UNORDERED_ACCESS;
 
 	D3D11_SUBRESOURCE_DATA data_desc;
 	mem::zero(data_desc);
@@ -164,12 +242,74 @@ bool Texture2D::loadFromHDRFile(const char *filename) {
 		return false;
 	}
 
+	if (can_gpu_read) {
+		D3D11_UNORDERED_ACCESS_VIEW_DESC uav_desc;
+		mem::zero(uav_desc);
+		uav_desc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
+		uav_desc.Format = desc.Format;
+		hr = gfx::device->CreateUnorderedAccessView(texture, &uav_desc, &uav);
+		if (FAILED(hr)) {
+			err("couldn't create 2D texture's uav");
+			return false;
+		}
+	}
+
 	return true;
 }
 
 void Texture2D::cleanup() {
 	texture.destroy();
 	srv.destroy();
+}
+
+bool Texture2D::takeScreenshot(const char *base_name) {
+	// create a temporary texture that we can read from
+	D3D11_TEXTURE2D_DESC desc;
+	mem::zero(desc);
+	texture->GetDesc(&desc);
+	desc.Usage = D3D11_USAGE_STAGING;
+	desc.BindFlags = 0;
+	desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+
+	dxptr<ID3D11Texture2D> temp = nullptr;
+	HRESULT hr = gfx::device->CreateTexture2D(&desc, nullptr, &temp);
+	if (FAILED(hr)) {
+		err("couldn't create temporary texture2D");
+		return false;
+	}
+
+	// copy the texture to the temporary texture
+	gfx::context->CopyResource(temp, texture);
+
+	// map texture data
+	D3D11_MAPPED_SUBRESOURCE mapped;
+	hr = gfx::context->Map(temp, 0, D3D11_MAP_READ, 0, &mapped);
+	if (FAILED(hr)) {
+		err("couldn't map temporary texture2D");
+		return false;
+	}
+
+	char base_fmt[64];
+	str::formatBuf(base_fmt, sizeof(base_fmt), "%s_%%03d.png", base_name);
+	mem::ptr<char[]> name = file::findFirstAvailable("screenshots", base_fmt);
+	bool success = stbi_write_png(name.get(), size.x, size.y, 4, mapped.pData, mapped.RowPitch);
+
+	if (success) {
+		info("saved screenshot as %s", name.get());
+		addMessageToWidget(LogLevel::Info, str::format("saved screenshot as %s", name.get()));
+	}
+
+	gfx::context->Unmap(temp, 0);
+
+	return success;
+}
+
+void Texture2D::clear(Colour colour) {
+	gfx::context->ClearUnorderedAccessViewFloat(uav, colour.data);
+}
+
+void Texture2D::copyInto(Handle<Texture2D> handle) {
+	gfx::context->CopyResource(handle->texture, texture);
 }
 
 /* ==========================================
@@ -378,6 +518,8 @@ bool Texture3D::loadFromFile(const char *filename) {
 	return true;
 }
 
+#include <thread>
+
 bool Texture3D::save(const char *filename, bool overwrite) {
 	if (!overwrite && file::exists(filename)) {
 		err("trying to save a Texture3D but file (%s) already exists", filename);
@@ -423,43 +565,60 @@ bool Texture3D::save(const char *filename, bool overwrite) {
 
 	gfx::context->Unmap(temp, 0);
 
-	zstd::Buf compressed = zstd::compress(stream.getData(), stream.getLen());
-	if (!compressed) {
-		err("could not compress texture data: %s", compressed.getErrorString());
-		return false;
-	}
+	info("Saving texture in another thread");
 
-	const auto &getUnit = [](size_t s) {
-		constexpr size_t kb = 1024;
-		constexpr size_t mb = kb * 1024;
-		constexpr size_t gb = mb * 1024;
-		if (s > gb) return "GB";
-		if (s > mb) return "MB";
-		if (s > kb) return "KB";
-		return "B";
-	};
+	std::thread(
+		[](StreamOut &&stream, mem::ptr<char[]> filename) {
+			zstd::Buf compressed = zstd::compress(stream.getData(), stream.getLen());
+			if (!compressed) {
+				err("could not compress texture data: %s", compressed.getErrorString());
+				return;
+			}
 
-	const auto &asByteSize = [](size_t s) {
-		constexpr size_t kb = 1024;
-		constexpr size_t mb = kb * 1024;
-		constexpr size_t gb = mb * 1024;
-		if (s > gb) return (double)s / gb;
-		if (s > mb) return (double)s / mb;
-		if (s > kb) return (double)s / kb;
-		return (double)s;
-	};
+			const auto &getUnit = [](size_t s) {
+				constexpr size_t kb = 1024;
+				constexpr size_t mb = kb * 1024;
+				constexpr size_t gb = mb * 1024;
+				if (s > gb) return "GB";
+				if (s > mb) return "MB";
+				if (s > kb) return "KB";
+				return "B";
+			};
 
-	double ratio = (double)compressed.len / stream.getLen();
-	info(
-		"(%s) size: %.2f%s, compressed size: %.2f%s, compression ratio: %.3f",
-		file::getNameAndExt(filename),
-		asByteSize(stream.getLen()), getUnit(stream.getLen()),
-		asByteSize(compressed.len), getUnit(compressed.len),
-		ratio
-	);
-	info("the compressed file is %.0f%% smaller", round((1.0 - ratio) * 100.0));
+			const auto &asByteSize = [](size_t s) {
+				constexpr size_t kb = 1024;
+				constexpr size_t mb = kb * 1024;
+				constexpr size_t gb = mb * 1024;
+				if (s > gb) return (double)s / gb;
+				if (s > mb) return (double)s / mb;
+				if (s > kb) return (double)s / kb;
+				return (double)s;
+			};
 
-	return file::write(filename, compressed.data, compressed.len);
+			double ratio = (double)compressed.len / stream.getLen();
+			info(
+				"(%s) size: %.2f%s, compressed size: %.2f%s, compression ratio: %.3f",
+				file::getNameAndExt(filename.get()),
+				asByteSize(stream.getLen()), getUnit(stream.getLen()),
+				asByteSize(compressed.len), getUnit(compressed.len),
+				ratio
+			);
+			info("the compressed file is %.0f%% smaller", round((1.0 - ratio) * 100.0));
+
+			if (!file::write(filename.get(), compressed.data, compressed.len)) {
+				info("failed to save file (%s)", filename.get());
+				addMessageToWidget(LogLevel::Error, "Failed to save sculpture to file!");
+			}
+			else {
+				addMessageToWidget(LogLevel::Info, "Saved sculpture to file!");
+			}
+		},
+		mem::move(stream), str::dup(filename)
+	).detach();
+
+	addMessageToWidget(LogLevel::Warning, "Saving sculpture to file, this could take a while!", 6.f);
+
+	return true;
 }
 
 void Texture3D::cleanup() {
@@ -505,7 +664,7 @@ static bool rtCreate(RenderTexture *rt, int width, int height) {
 	vd.Format = td.Format;
 	vd.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
 
-	hr = gfx::device->CreateRenderTargetView(rt->texture, &vd, &rt->view);
+	hr = gfx::device->CreateRenderTargetView(rt->texture, &vd, &rt->rtv);
 	if (FAILED(hr)) {
 		err("couldn't create RTV");
 		return false;
@@ -517,7 +676,7 @@ static bool rtCreate(RenderTexture *rt, int width, int height) {
 	sd.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 	sd.Texture2D.MipLevels = 1;
 
-	hr = gfx::device->CreateShaderResourceView(rt->texture, &sd, &rt->resource);
+	hr = gfx::device->CreateShaderResourceView(rt->texture, &sd, &rt->srv);
 	if (FAILED(hr)) {
 		err("couldn't create RTV's shader resource view");
 		return false;
@@ -533,7 +692,7 @@ static bool rtFromBackbuffer(RenderTexture *rt) {
 		return false;
 	}
 
-	hr = gfx::device->CreateRenderTargetView(rt->texture, nullptr, &rt->view);
+	hr = gfx::device->CreateRenderTargetView(rt->texture, nullptr, &rt->rtv);
 	if (FAILED(hr)) {
 		err("couldn't create view from backbuffer's texture");;
 		return false;
@@ -544,7 +703,7 @@ static bool rtFromBackbuffer(RenderTexture *rt) {
 	return true;
 }
 
-RenderTexture::RenderTexture(RenderTexture &&rt) {
+RenderTexture::RenderTexture(RenderTexture &&rt) : Texture2D(mem::move(rt)) {
 	*this = mem::move(rt);
 }
 
@@ -556,8 +715,8 @@ RenderTexture &RenderTexture::operator=(RenderTexture &&rt) {
 	if (this != &rt) {
 		mem::swap(size, rt.size);
 		mem::swap(texture, rt.texture);
-		mem::swap(view, rt.view);
-		mem::swap(resource, rt.resource);
+		mem::swap(rtv, rt.rtv);
+		mem::swap(srv, rt.srv);
 	}
 
 	return *this;
@@ -605,8 +764,8 @@ bool RenderTexture::reloadBackbuffer() {
 
 void RenderTexture::cleanup() {
 	texture.destroy();
-	view.destroy();
-	resource.destroy();
+	rtv.destroy();
+	srv.destroy();
 }
 
 void RenderTexture::bind(ID3D11DepthStencilView *dsv) {
@@ -618,56 +777,12 @@ void RenderTexture::bind(ID3D11DepthStencilView *dsv) {
 	vp.MaxDepth = 1.0f;
 	vp.TopLeftX = vp.TopLeftY = 0;
 	gfx::context->RSSetViewports(1, &vp);
-	gfx::context->OMSetRenderTargets(1, &view, dsv);
+	gfx::context->OMSetRenderTargets(1, &rtv, dsv);
 }
 
 void RenderTexture::clear(Colour colour, ID3D11DepthStencilView *dsv) {
-	gfx::context->ClearRenderTargetView(view, colour.data);
+	gfx::context->ClearRenderTargetView(rtv, colour.data);
 	if (dsv) {
 		gfx::context->ClearDepthStencilView(dsv, D3D11_CLEAR_DEPTH, 1.f, 0);
 	}
-}
-
-extern void addMessageToWidget(LogLevel severity, const char* message);
-
-bool RenderTexture::takeScreenshot(const char* base_name) {
-	// create a temporary texture that we can read from
-	D3D11_TEXTURE2D_DESC td;
-	mem::zero(td);
-	texture->GetDesc(&td);
-	td.Usage = D3D11_USAGE_STAGING;
-	td.BindFlags = 0;
-	td.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-
-	dxptr<ID3D11Texture2D> temp = nullptr;
-	HRESULT hr = gfx::device->CreateTexture2D(&td, nullptr, &temp);
-	if (FAILED(hr)) {
-		err("couldn't create temporary texture2D");
-		return false;
-	}
-
-	// copy the texture to the temporary texture
-	gfx::context->CopyResource(temp, texture);
-
-	// map texture data
-	D3D11_MAPPED_SUBRESOURCE mapped;
-	hr = gfx::context->Map(temp, 0, D3D11_MAP_READ, 0, &mapped);
-	if (FAILED(hr)) {
-		err("couldn't map temporary texture2D");
-		return false;
-	}
-
-	char base_fmt[64];
-	str::formatBuf(base_fmt, sizeof(base_fmt), "%s_%%03d.png", base_name);
-	mem::ptr<char[]> name = file::findFirstAvailable("screenshots", base_fmt);
-	bool success = stbi_write_png(name.get(), size.x, size.y, 4, mapped.pData, mapped.RowPitch);
-
-	if (success) {
-		info("saved screenshot as %s", name.get());
-		addMessageToWidget(LogLevel::Info, str::format("saved screenshot as %s", name.get()));
-	}
-
-	gfx::context->Unmap(temp, 0);
-
-	return success;
 }

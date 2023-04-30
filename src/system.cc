@@ -282,6 +282,12 @@ namespace gfx {
 		infodev->ClearStoredMessages();
 #endif
 	}
+
+	void errorExit(const char *msg) {
+		if (msg) err("[gfx] %s", msg);
+		logD3D11messages();
+		exit(1);
+	}
 } // namespace gfx
 
 namespace win {

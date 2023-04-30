@@ -16,21 +16,26 @@ Camera::Camera() {
 	updateVectors();
 }
 
-void Camera::update() {
+bool Camera::update() {
 	const Options &options = Options::get();
 	static bool is_dragging = false;
+	bool changed = false;
 
 	// Zoom stuff
 
-	if (float wheel = getMouseWheel()) {
+	if (float wheel = getMouseWheel() * gfx::isMainRTVActive()) {
 		zoom_exp += wheel * win::dt * options.zoom_sensitivity;
+		changed = true;
 	}
 
 	float kb_zoom = (float)(isActionDown(Action::ZoomIn) - isActionDown(Action::ZoomOut));
+	changed |= kb_zoom != 0;
+	
 	zoom_exp += kb_zoom * 0.1f * win::dt * options.zoom_sensitivity;
 
 	if (isActionPressed(Action::ResetZoom)) {
 		zoom_exp = 1.f;
+		changed = true;
 	}
 
 	// keyboard input in case the user has no mouse
@@ -39,6 +44,7 @@ void Camera::update() {
 		(float)(isActionDown(Action::RotateCameraVerPos) - isActionDown(Action::RotateCameraVerNeg))
 	) * 2.f;
 	bool any_kb_input = any(key_rel != 0);
+	changed |= any_kb_input;
 
 	vec2 look_offset = key_rel;
 
@@ -47,7 +53,7 @@ void Camera::update() {
 
 		if (!isMouseDown(MOUSE_RIGHT)) {
 			is_dragging = false;
-			return;
+			return changed;
 		}
 
 		if (isMousePressed(MOUSE_RIGHT)) {
@@ -55,10 +61,11 @@ void Camera::update() {
 		}
 
 		if (!is_dragging) {
-			return;
+			return changed;
 		}
 
 		look_offset = getMousePosRel();
+		changed |= any(look_offset != 0);
 	}
 
 	// Calculate how much to rotate
@@ -69,6 +76,8 @@ void Camera::update() {
 	angle.y = math::clamp(angle.y, -y_max_angle, y_max_angle);
 
 	updateVectors();
+
+	return changed;
 }
 
 void Camera::updateVectors() {
@@ -110,6 +119,10 @@ bool Camera::shouldSculpt() const {
 	constexpr float mouse_deadzone = 5.f;
 	static vec2 start_pos = 0;
 	static bool is_pressed = false;
+
+	if (!(gfx::isMainRTVActive() && isMouseInsideRTV())) {
+		return false;
+	}
 
 	if (!is_pressed) {
 		if (isMousePressed(MOUSE_LEFT)) {

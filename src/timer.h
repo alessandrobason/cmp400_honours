@@ -46,6 +46,7 @@ struct CPUClock {
 	double getMicroseconds();
 	double getSeconds();
 	void print(LogLevel level = LogLevel::Info);
+	void print(const char *name_overload, LogLevel level = LogLevel::Info);
 
 	uint64_t start = 0;
 	char debug_name[64] = {};
