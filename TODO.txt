@@ -18,10 +18,15 @@
 [ ] fix weird UV issues
 [X] move saving to another thread
 [ ] camera with panning
+[ ] render rt stuff in normal mode (maybe even lights?)
 
 [X] investigate better sculpting
 
 [ ] when user makes a change and hasn't saved, change window name to "filename *"
+
+-- For ADGS --
+[ ] add ray tracing UI
+[ ] get C00L screenshots
 
 -- Already Done --
 [X] Mouse input texture

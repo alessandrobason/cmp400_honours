@@ -21,6 +21,15 @@ static D3D11_USAGE usage_to_d3d11[(size_t)Buffer::Usage::Count] = {
     D3D11_USAGE_STAGING
 };
 
+static Bind descToBind(const D3D11_BUFFER_DESC &desc) {
+    Bind bind = Bind::None;
+    if (desc.BindFlags      & D3D11_BIND_SHADER_RESOURCE)  bind = bind | Bind::GpuRead;
+    if (desc.BindFlags      & D3D11_BIND_UNORDERED_ACCESS) bind = bind | Bind::GpuWrite;
+    if (desc.CPUAccessFlags & D3D11_CPU_ACCESS_READ)       bind = bind | Bind::CpuRead;
+    if (desc.CPUAccessFlags & D3D11_CPU_ACCESS_WRITE)      bind = bind | Bind::CpuWrite;
+    return bind;
+}
+
 Buffer::Buffer(Buffer &&buf) {
     *this = mem::move(buf);
 }
@@ -96,7 +105,7 @@ void Buffer::resize(size_t new_count) {
         size_t type_size = desc.StructureByteStride;
         size_t old_count = desc.ByteWidth / type_size;
         if (old_count < new_count) {
-            Handle<Buffer> newbuf = Buffer::makeStructured(type_size, new_count);
+            Handle<Buffer> newbuf = Buffer::makeStructured(type_size, new_count, descToBind(desc));
             assert(newbuf);
             gfx::context->CopySubresourceRegion(newbuf->buffer, 0, 0, 0, 0, buffer, 0, nullptr);
             *this = mem::move(*newbuf.get());
@@ -110,7 +119,7 @@ void Buffer::resize(size_t new_count) {
     }
 }
 
-void Buffer::bindCBuffer(Buffer &buf, ShaderType type, unsigned int slot) {
+void Buffer::bindCBuffer(Buffer &buf, ShaderType type, uint slot) {
     switch (type) {
         case ShaderType::Vertex:   gfx::context->VSSetConstantBuffers(slot, 1, &buf.buffer); break;
         case ShaderType::Fragment: gfx::context->PSSetConstantBuffers(slot, 1, &buf.buffer); break;
@@ -118,7 +127,7 @@ void Buffer::bindCBuffer(Buffer &buf, ShaderType type, unsigned int slot) {
     }
 }
 
-void Buffer::bindSRV(Buffer &buf, ShaderType type, unsigned int slot) {
+void Buffer::bindSRV(Buffer &buf, ShaderType type, uint slot) {
     switch (type) {
         case ShaderType::Vertex:   gfx::context->VSSetShaderResources(slot, 1, &buf.srv); break;
         case ShaderType::Fragment: gfx::context->PSSetShaderResources(slot, 1, &buf.srv); break;
@@ -126,11 +135,11 @@ void Buffer::bindSRV(Buffer &buf, ShaderType type, unsigned int slot) {
     }
 }
 
-void Buffer::bindUAV(Buffer &buf, unsigned int slot) {
+void Buffer::bindUAV(Buffer &buf, uint slot) {
     gfx::context->CSSetUnorderedAccessViews(slot, 1, &buf.uav, nullptr);
 }
 
-void Buffer::unbindCBuffer(ShaderType type, unsigned int slot, size_t count) {
+void Buffer::unbindCBuffer(ShaderType type, uint slot, size_t count) {
     static ID3D11Buffer* null_bufs[10] = {};
     assert(count < ARRLEN(null_bufs));
 
@@ -141,7 +150,7 @@ void Buffer::unbindCBuffer(ShaderType type, unsigned int slot, size_t count) {
     }
 }
 
-void Buffer::unbindSRV(ShaderType type, unsigned int slot, size_t count) {
+void Buffer::unbindSRV(ShaderType type, uint slot, size_t count) {
     static ID3D11ShaderResourceView* null_srvs[10] = {};
     assert(count < ARRLEN(null_srvs));
 
@@ -152,14 +161,14 @@ void Buffer::unbindSRV(ShaderType type, unsigned int slot, size_t count) {
     }
 }
 
-void Buffer::unbindUAV(unsigned int slot, size_t count) {
+void Buffer::unbindUAV(uint slot, size_t count) {
     static ID3D11UnorderedAccessView *null_uavs[10] = {};
     assert(count < ARRLEN(null_uavs));
 
     gfx::context->CSSetUnorderedAccessViews(slot, (UINT)count, null_uavs, nullptr);
 }
 
-void* Buffer::map(unsigned int subresource) {
+void* Buffer::map(uint subresource) {
     D3D11_MAPPED_SUBRESOURCE resource;
     HRESULT hr = gfx::context->Map(buffer, subresource, D3D11_MAP_WRITE_DISCARD, 0, &resource);
     if (FAILED(hr)) {
@@ -169,17 +178,7 @@ void* Buffer::map(unsigned int subresource) {
     return resource.pData;
 }
 
-// void* Buffer::mapRegion() {
-//     D3D11_MAPPED_SUBRESOURCE resource;
-//     HRESULT hr = gfx::context->Map(buffer, subresource, D3D11_MAP_WRITE_DISCARD, 0, &resource);
-//     if (FAILED(hr)) {
-//         err("couldn't map buffer");
-//         return nullptr;
-//     }
-//     return resource.pData;
-// }
-
-void Buffer::unmap(unsigned int subresource) {
+void Buffer::unmap(uint subresource) {
     gfx::context->Unmap(buffer, subresource);
 }
 

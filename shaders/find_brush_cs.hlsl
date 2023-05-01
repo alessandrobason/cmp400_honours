@@ -91,7 +91,8 @@ void rayMarch(float3 ro, float3 rd, out float3 out_normal, out float3 out_pos) {
 	}
 
     out_normal = 0;
-    out_pos = pos + dir * 500.;
+    out_pos = pos + dir * 50000.;
+    //out_pos = current_pos - dir * texBoundarySDF(current_pos);
 }
 
 [numthreads(1, 1, 1)]

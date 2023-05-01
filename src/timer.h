@@ -40,6 +40,7 @@ struct IntervalClock {
 struct CPUClock {
 	CPUClock(const char *name = nullptr);
 	void setName(const char *name);
+	void begin();
 	uint64_t getTime();
 	double getNanoseconds();
 	double getMilliseconds();

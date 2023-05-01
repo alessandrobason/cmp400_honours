@@ -52,24 +52,24 @@ struct Buffer {
 	void resize(size_t new_count);
 
 	template<typename T>
-	T *map(unsigned int subresource = 0) {
+	T *map(uint subresource = 0) {
 		return (T *)map(subresource);
 	}
 
-	void *map(unsigned int subresource = 0);
+	void *map(uint subresource = 0);
 	//void *mapRegion();
-	void unmap(unsigned int subresource = 0);
+	void unmap(uint subresource = 0);
 
-	void bindCBuffer(ShaderType type, unsigned int slot = 0) { bindCBuffer(*this, type, slot); }
-	void bindSRV(ShaderType type, unsigned int slot = 0) { bindSRV(*this, type, slot); }
-	void bindUAV(unsigned int slot = 0) { bindUAV(*this, slot); }
+	void bindCBuffer(ShaderType type, uint slot = 0) { bindCBuffer(*this, type, slot); }
+	void bindSRV(ShaderType type, uint slot = 0) { bindSRV(*this, type, slot); }
+	void bindUAV(uint slot = 0) { bindUAV(*this, slot); }
 
-	static void bindCBuffer(Buffer &buf, ShaderType type, unsigned int slot = 0);
-	static void bindSRV(Buffer &buf, ShaderType type, unsigned int slot = 0);
-	static void bindUAV(Buffer &buf, unsigned int slot = 0);
-	static void unbindCBuffer(ShaderType type, unsigned int slot = 0, size_t count = 1);
-	static void unbindSRV(ShaderType type, unsigned int slot = 0, size_t count = 1);
-	static void unbindUAV(unsigned int slot = 0, size_t count = 1);
+	static void bindCBuffer(Buffer &buf, ShaderType type, uint slot = 0);
+	static void bindSRV(Buffer &buf, ShaderType type, uint slot = 0);
+	static void bindUAV(Buffer &buf, uint slot = 0);
+	static void unbindCBuffer(ShaderType type, uint slot = 0, size_t count = 1);
+	static void unbindSRV(ShaderType type, uint slot = 0, size_t count = 1);
+	static void unbindUAV(uint slot = 0, size_t count = 1);
 
 	dxptr<ID3D11Buffer> buffer = nullptr;
 	dxptr<ID3D11UnorderedAccessView> uav = nullptr;

@@ -13,7 +13,7 @@ cbuffer ShaderData : register(b0) {
 	float3 cam_right;
 	float cam_zoom;
 	float3 cam_pos; 
-	float padding__0;
+	uint num_of_lights;
 };
 
 cbuffer Material : register(b1) {
@@ -32,11 +32,18 @@ struct BrushData {
 	float padding__4;
 };
 
-StructuredBuffer<BrushData> brush : register(t0);
-Texture3D<float> vol_tex : register(t1);
-Texture2D material_tex : register(t2);
-Texture2D bg_hdr : register(t3);
-Texture2D irradiance_map : register(t4);
+struct LightData {
+    float3 pos;
+    float radius;
+    float3 colour;
+    bool render;
+};
+
+StructuredBuffer<BrushData> brush  : register(t0);
+Texture3D<float> vol_tex           : register(t1);
+Texture2D material_tex             : register(t2);
+Texture2D background               : register(t3);
+StructuredBuffer<LightData> lights : register(t4);
 
 sampler tex_sampler;
 
@@ -61,8 +68,7 @@ float roughMap(float3 coords) {
 }
 
 float texBoundarySDF(float3 pos) {
-	float3 q = abs(pos) - vol_tex_size * 0.5;
-	return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
+    return sdf_box(pos, 0, vol_tex_size);
 }
 
 float3 calcNormal(float3 pos) {
@@ -113,7 +119,7 @@ float3 getBackground(float3 dir) {
 	float2 uv;
 	uv.x = 0.5 + atan2(dir.z, dir.x) / (2 * PI);
 	uv.y = 0.5 - asin(dir.y) / PI;
-	return bg_hdr.SampleLevel(tex_sampler, uv, 0).rgb;
+	return background.SampleLevel(tex_sampler, uv, 0).rgb;
 }
 
 bool isInMouse(float3 ro, float3 rd, out float3 p) {
@@ -128,6 +134,21 @@ bool isInMouse(float3 ro, float3 rd, out float3 p) {
 		if (d > MAX_TRACE_DISTANCE) break;
 	}
 	return false;
+}
+
+float lightDistance(float3 pos, out uint light_id) {
+    float dist = MAX_STEP;
+    for (uint i = 0; i < num_of_lights; ++i) {
+        LightData light = lights[i];
+        if (light.render) {
+            float light_dist = sdf_sphere(pos, light.pos, light.radius);
+            if (light_dist < dist) {
+                dist = light_dist;
+                light_id = i;
+            }
+        }
+    }
+    return dist;
 }
 
 float3 rayMarch(float3 ray_origin, float3 ray_dir) {
@@ -161,6 +182,13 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 	for (; step_count < MAX_STEPS; ++step_count) {
 		current_pos = ray_origin + ray_dir * distance_traveled;
 		float closest = texBoundarySDF(current_pos);
+		uint light_id = num_of_lights;
+		float light_dist = lightDistance(current_pos, light_id);
+
+		if (light_dist < MIN_HIT_DISTANCE) {
+			final_colour *= saturate(lights[light_id].colour) - (!is_inside * 0.8);
+			break;
+		}
 
 		// we're at least inside the texture
 		if (closest < MIN_HIT_DISTANCE) {
@@ -195,7 +223,7 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 			break;
 		}
 
-		distance_traveled += closest;
+		distance_traveled += min(closest, light_dist);
 	}
 
 	if (step_count >= MAX_STEPS) {

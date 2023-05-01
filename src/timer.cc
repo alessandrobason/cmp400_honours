@@ -123,11 +123,15 @@ bool IntervalClock::every(float seconds) {
 
 CPUClock::CPUClock(const char *name) {
 	setName(name);
-	start = timerNow();
+	begin();
 }
 
 void CPUClock::setName(const char *name) {
 	strncpy_s(debug_name, name ? name : "(none)", sizeof(debug_name) - 1);
+}
+
+void CPUClock::begin() {
+	start = timerNow();
 }
 
 uint64_t CPUClock::getTime() {

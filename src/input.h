@@ -139,6 +139,7 @@ enum class Action {
 	RotateCameraVerNeg,
 	ZoomIn,
 	ZoomOut,
+	CaptureFrame,
 	Count
 };
 

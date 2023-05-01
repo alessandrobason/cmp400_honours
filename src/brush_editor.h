@@ -87,7 +87,6 @@ private:
 	float depth = 0.f;
 	float smooth_k = 0.5f;
 	float scale = 1.f;
-	bool is_single_click = true;
 
 	size_t brush_index = 0;
 	Handle<Buffer> oper_handle;
@@ -100,6 +99,7 @@ private:
 	// widget data
 	Handle<Texture2D> brush_icon;
 	Handle<Texture2D> eraser_icon;
+	Handle<Texture2D> depth_tooltips[3];
 	State state = State::Brush;
 	bool is_open = true;
 	bool has_changed = true;

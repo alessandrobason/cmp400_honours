@@ -45,7 +45,7 @@ namespace gfx {
 	Handle<RenderTexture> imgui_rtv;
 	Handle<RenderTexture> main_rtv;
 	static vec4 main_rtv_bounds = 0;
-	static bool is_main_rtv_active = false;
+	static bool is_main_rtv_active = true;
 
 	static bool is_frame_captured = false;
 

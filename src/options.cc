@@ -2,6 +2,7 @@
 
 #include <assert.h>
 #include <imgui.h>
+
 #include "ini.h"
 #include "tracelog.h"
 #include "widgets.h"
@@ -17,10 +18,10 @@ void Options::load(const char *filename) {
 		gfx->get("auto capture").trySet(auto_capture);
 		gfx->get("show fps").trySet(show_fps);
 		if (ini::Value res = gfx->get("resolution")) {
-			arr<std::string_view> vec = res.asVec();
+			arr<str::view> vec = res.asVec();
 			if (vec.size() == 2) {
-				resolution.x = str::toUInt(vec[0].data());
-				resolution.y = str::toUInt(vec[1].data());
+				resolution.x = str::toUInt(vec[0].data);
+				resolution.y = str::toUInt(vec[1].data);
 			}
 		}
 	}
@@ -67,17 +68,23 @@ void Options::drawWidget() {
 		return;
 	}
 
-	if (ImGui::Button("Save to file")) {
+	if (ImGui::Button("Save")) {
 		save("options.ini");
 	}
 
 	separatorText("Graphics");
 	ImGui::Checkbox("VSync enabled", &vsync);
-	if (imInputUint2("Game view resolution", resolution.data)) {
-		if (all(resolution != 0)) {
-			gfx::main_rtv->resize(resolution.x, resolution.y);
+	tooltip("When VSync is enabled, the application caps its maximum number of frames per seconds, otherwise it tries to run as fast as possible");
+	
+	ImGui::PushItemWidth(-1);
+		ImGui::Text("Image resolution");
+		if (imInputUint2("##resolution", resolution.data)) {
+			if (all(resolution != 0)) {
+				gfx::main_rtv->resize(resolution.x, resolution.y);
+			}
 		}
-	}
+	ImGui::PopItemWidth();
+
 	ImGui::Checkbox("Auto Capture", &auto_capture);
 	tooltip("(Debugging only) Captures the frame every time a sculpting operation happens, only useful if the application is being debugged with RenderDoc");
 	ImGui::Checkbox("Show FPS", &show_fps);

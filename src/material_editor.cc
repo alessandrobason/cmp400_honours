@@ -11,15 +11,25 @@
 MaterialEditor::MaterialEditor() {
 	diffuse_handle    = addTexture("assets/testing_texture.png");
 	background_handle = addTexture("assets/rainforest_trail.png");
-	mat_handle = Buffer::makeConstant<MaterialPS>(Buffer::Usage::Dynamic);
-	light_buf  = Buffer::makeConstant<LightData>(Buffer::Usage::Dynamic);
+	mat_handle        = Buffer::makeConstant<MaterialPS>(Buffer::Usage::Dynamic);
+	lights_handle     = Buffer::makeStructured<LightData>(cur_lights_count, Bind::GpuRead | Bind::CpuWrite);
 
 	if (diffuse_handle == -1)    fatal("couldn't load default material texture");
 	if (background_handle == -1) fatal("couldn't load default background hdr texture");
 
-	if (!mat_handle) {
-		gfx::logD3D11messages();
-		exit(1);
+	if (!lights_handle) gfx::errorExit();
+	if (!mat_handle)    gfx::errorExit();
+
+	addLight(vec3(-400, 0, 0), 150.f);
+
+	assert(cur_lights_count >= lights.len);
+
+	if (LightData *data = lights_handle->map<LightData>()) {
+		for (size_t i = 0; i < lights.len; ++i) {
+			data[i] = lights[i];
+			data[i].colour *= light_strengths[i];
+		}
+		lights_handle->unmap();
 	}
 }
 
@@ -30,42 +40,39 @@ void MaterialEditor::drawWidget() {
 		return;
 	}
 
-	is_ray_tracing_dirty = false;
+	ray_tracing_dirty = false;
 
 	separatorText("Material");
 
-	has_changed |= ImGui::ColorPicker3("Albedo", albedo.data);
-	has_changed |= ImGui::ColorPicker3("Specular colour", specular.data);
-	has_changed |= ImGui::ColorPicker3("Emissive colour", emissive.data);
-	has_changed |= ImGui::SliderFloat("Smoothness", &smoothness, 0.f, 1.f);
-	has_changed |= ImGui::SliderFloat("Specular probability", &specular_probability, 0.f, 1.f);
+	const auto colourEdit = [](const char *label, vec3 &colour, const char *tip = nullptr) -> bool {
+		static ImGuiColorEditFlags colour_flags = ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel;
+		ImGui::Text(label);
+		if (tip) tooltip(tip);
+		ImGui::SameLine();
+		return ImGui::ColorEdit3(label, colour.data, colour_flags);
+	};
 
-	separatorText("Light");
+	const auto slider = [](const char *label, float &value, float vmin = 0, float vmax = 1) -> bool {
+		ImGui::Text(label);
+		return filledSlider(str::format("##%s", label), &value, vmin, vmax);
+	};
 
-	bool render_light = light_data.render_light;
+	const auto label = [](const char *str) {
+		ImGui::Text(str);
+		ImGui::SameLine();
+	};
 
-	has_changed |= ImGui::SliderFloat3("Position", light_data.light_pos.data, -1000, 1000);
-	has_changed |= ImGui::ColorPicker3("Colour", light_data.light_colour.data);
-	has_changed |= ImGui::SliderFloat("Strength", &light_strength, 1.f, 100.f);
-	has_changed |= ImGui::SliderFloat("Radius", &light_data.light_radius, 0.1f, 1000);
-	has_changed |= ImGui::Checkbox("Render", &render_light);
+	const auto &texChooser = [](const char *label, size_t &handle, Slice<TexNamePair> textures, const char *tip = nullptr) -> bool {
+		bool has_changed = false;
+		ImGui::Text(label);
+		if (tip) tooltip(tip);
 
-	light_data.render_light = render_light;
-	
-	separatorText("Textures");
-	
-	ImGui::Text("Uses texture");
-
-	ImGui::SameLine();
-	has_changed |= ImGui::Combo("##TexMode", (int *)&texture_mode, "No Texture\0Default\0Spherical");
-
-	const auto &texChooser = [](const char *label, size_t &handle, Slice<TexNamePair> textures, bool &is_dirty) {
 		if (ImGui::BeginCombo(label, textures[handle].name.get())) {
 			for (size_t i = 0; i < textures.len; ++i) {
 				bool is_selected = handle == i;
 				if (ImGui::Selectable(textures[i].name.get(), is_selected)) {
 					handle = i;
-					is_dirty = true;
+					has_changed = true;
 				}
 
 				if (is_selected) {
@@ -75,6 +82,7 @@ void MaterialEditor::drawWidget() {
 
 			ImGui::EndCombo();
 		}
+		return has_changed;
 	};
 
 	const auto showTexture = [](const char *label, Texture2D *tex, const vec2 &max_size) {
@@ -84,7 +92,6 @@ void MaterialEditor::drawWidget() {
 		clamped.y *= tex_size.y / tex_size.x;
 
 		ImGui::Text(label);
-		ImGui::SameLine();
 		const vec2 cursor_pos = ImGui::GetCursorScreenPos();
 		ImGui::Image((ImTextureID)tex->srv, clamped);
 		if (ImGui::IsItemHovered()) {
@@ -93,23 +100,79 @@ void MaterialEditor::drawWidget() {
 			const vec2 uv_start = norm_pos - 0.15f;
 			const vec2 uv_end = norm_pos + 0.15f;
 			ImGui::BeginTooltip();
-			ImGui::Image((ImTextureID)tex->srv, clamped * 2.f, uv_start, uv_end);
+				ImGui::Image((ImTextureID)tex->srv, clamped * 2.f, uv_start, uv_end);
 			ImGui::EndTooltip();
 		}
 	};
 
-	texChooser("Diffuse", diffuse_handle, textures, is_ray_tracing_dirty);
-	texChooser("Background", background_handle, textures, is_ray_tracing_dirty);
+	ImGui::PushItemWidth(-1);
+		material_dirty |= colourEdit("Colour", albedo);
+		material_dirty |= colourEdit("Reflection colour", specular);
+		material_dirty |= colourEdit("Emissive colour", emissive, "The colour that the material emits, think of it as if the material was a light and this was its colour");
 
-	if (ImGui::Button("Load Image From File")) {
-		should_open_nfd = true;
-	}
+		material_dirty |= slider("Smoothness", smoothness);
+		material_dirty |= slider("Shininess", specular_probability);
 
-	ImGui::BeginDisabled(texture_mode == TextureMode::None);
-		showTexture("Diffuse", get(diffuse_handle), vec2(200.f));
-	ImGui::EndDisabled();
+		separatorText("Lights");
 
-	showTexture("Background", get(background_handle), vec2(200.f));
+		for (size_t i = 0; i < lights.len; ++i) {
+			LightData &light = lights[i];
+
+			ImGui::PushID((int)i);
+			if (ImGui::CollapsingHeader(str::format("Light #%zu", i + 1))) {
+				bool render_light = light.render;
+
+				if (ImGui::Button("Remove")) {
+					light_dirty = true;
+					lights.removeSlow(i--);
+					ImGui::PopID();
+					continue;
+				}
+
+				ImGui::Text("Position");
+				light_dirty |= ImGui::DragFloat3("##Position", light.pos.data);
+				light_dirty |= colourEdit("Colour", light.colour);
+				light_dirty |= slider("Strength", light_strengths[i], 1.f, 100.f);
+				light_dirty |= slider("Radius", light.radius, 0.1f, 1000);
+				label("Visible");
+				light_dirty |= ImGui::Checkbox("##Render", &render_light);
+				ImGui::Separator();
+
+				light.render = render_light;
+			}
+			ImGui::PopID();
+		}
+
+		if (ImGui::Button("Add Light")) {
+			addLight(200, 100);
+			light_dirty = true;
+		}
+
+		separatorText("Textures");
+	
+		ImGui::Text("Texture mode");
+		tooltip(
+			"How the texture is treated, \n"
+			"No Texture: Only use the material colour\n"
+			"Default: Use the default texturing method\n"
+			"Spherical: Map the texture on the sculpture as if it was a sphere"
+		);
+
+		material_dirty |= ImGui::Combo("##TexMode", (int *)&texture_mode, "No Texture\0Default\0Spherical");
+
+		ray_tracing_dirty |= texChooser("Diffuse", diffuse_handle, textures, "The texture applied on the sculpture");
+		ray_tracing_dirty |= texChooser("Background", background_handle, textures);
+
+		if (ImGui::Button("Load Image From File")) {
+			should_open_nfd = true;
+		}
+
+		ImGui::BeginDisabled(texture_mode == TextureMode::None);
+			showTexture("Diffuse", get(diffuse_handle), vec2(200.f));
+		ImGui::EndDisabled();
+
+		showTexture("Background", get(background_handle), vec2(200.f));
+	ImGui::PopItemWidth();
 
 	ImGui::End();
 }
@@ -118,6 +181,7 @@ bool MaterialEditor::update() {
 	watcher.update();
 	auto changed = watcher.getChangedFiles();
 	while (changed) {
+		ray_tracing_dirty = true;
 		str::view name = file::getFilename(changed->name.get());
 
 		for (TexNamePair &tex : textures) {
@@ -135,11 +199,27 @@ bool MaterialEditor::update() {
 	if (should_open_nfd) {
 		should_open_nfd = false;
 
-		NFD::UniquePathU8 path;
 		nfdu8filteritem_t filter[] = { { "Normal Image", "jpg,jpeg,png,bmp,psd,tga,gif,pic" }, { "HDR Image", "hdr" } };
-		nfdresult_t result = NFD::OpenDialog(path, filter, ARRLEN(filter), "assets");
+		NFD::UniquePathSet paths;
+	 	nfdresult_t result = NFD::OpenDialogMultiple(paths, filter, ARRLEN(filter), "assets");
 		if (result == NFD_OKAY) {
-			addTexture(path.get());
+			nfdpathsetsize_t len = 0;
+			result = NFD::PathSet::Count(paths, len);
+			if (result == NFD_OKAY) {
+				for (nfdpathsetsize_t i = 0; i < len; ++i) {
+					NFD::UniquePathSetPathU8 path;
+					result = NFD::PathSet::GetPath(paths, i, path);
+					if (result == NFD_OKAY) {
+						addTexture(path.get());
+					}
+					else {
+						err("couldn't get nfd path from path set");
+					}
+				}
+			}
+			else {
+				err("couldn't get nfd path set count");
+			}
 		}
 		else if (result == NFD_CANCEL) {
 			// user has closed the dialog without selecting
@@ -149,25 +229,27 @@ bool MaterialEditor::update() {
 		}
 	}
 
-	if (!has_changed) return is_ray_tracing_dirty;
-	if (Buffer *buf = mat_handle.get()) {
-		if (MaterialPS *data = buf->map<MaterialPS>()) {
-			data->albedo               = albedo;
-			data->texture_mode         = texture_mode;
-			data->specular_colour      = specular;
-			data->smoothness           = smoothness;
-			data->emissive_colour      = emissive;
+	bool has_changed = material_dirty || light_dirty || ray_tracing_dirty;
+
+	if (material_dirty) {
+		material_dirty = false;
+		if (MaterialPS *data = mat_handle->map<MaterialPS>()) {
+			data->albedo = albedo;
+			data->texture_mode = texture_mode;
+			data->specular_colour = specular;
+			data->smoothness = smoothness;
+			data->emissive_colour = emissive;
 			data->specular_probability = specular_probability;
-			buf->unmap();
+			mat_handle->unmap();
 		}
 	}
-	if (LightData *data = light_buf->map<LightData>()) {
-		*data = light_data;
-		data->light_colour *= light_strength;
-		light_buf->unmap();
+
+	if (light_dirty) {
+		light_dirty = false;
+		updateLightsBuffer();
 	}
-	has_changed = false;
-	return true;
+
+	return has_changed;
 }
 
 void MaterialEditor::setOpen(bool new_is_open) {
@@ -178,8 +260,16 @@ bool MaterialEditor::isOpen() const {
 	return is_open;
 }
 
-Handle<Buffer> MaterialEditor::getBuffer() {
+Handle<Buffer> MaterialEditor::getBuffer() const {
 	return mat_handle;
+}
+
+Handle<Buffer> MaterialEditor::getLights() const {
+	return lights_handle;
+}
+
+size_t MaterialEditor::getLightsCount() const {
+	return lights.len;
 }
 
 ID3D11ShaderResourceView *MaterialEditor::getDiffuse() {
@@ -190,15 +280,6 @@ ID3D11ShaderResourceView *MaterialEditor::getDiffuse() {
 ID3D11ShaderResourceView *MaterialEditor::getBackground() {
 	if (Texture2D *tex = get(background_handle)) return tex->srv;
 	return nullptr;
-}
-
-ID3D11ShaderResourceView *MaterialEditor::getIrradiance() {
-	if (Texture2D *tex = get(irradiance_handle)) return tex->srv;
-	return nullptr;
-}
-
-static bool hasChanged(const char *filename) {
-
 }
 
 Texture2D *MaterialEditor::get(size_t index) {
@@ -232,4 +313,24 @@ size_t MaterialEditor::checkTextureAlreadyLoaded(str::view name) {
 		}
 	}
 	return -1;
+}
+
+void MaterialEditor::addLight(const vec3 &pos, float radius, float strength, const vec3 &colour, bool render) {
+	lights.push(pos, radius, colour, render);
+	light_strengths.push(strength);
+}
+
+void MaterialEditor::updateLightsBuffer() {
+	if (cur_lights_count < lights.len) {
+		cur_lights_count = lights.len * 2;
+		lights_handle->resize(cur_lights_count);
+	}
+
+	if (LightData *data = lights_handle->map<LightData>()) {
+		for (size_t i = 0; i < lights.len; ++i) {
+			data[i] = lights[i];
+			data[i].colour *= light_strengths[i];
+		}
+		lights_handle->unmap();
+	}
 }

@@ -18,6 +18,7 @@
 #include "mesh.h"
 #include "shader.h"
 #include "texture.h"
+#include "ray_tracing_editor.h"
 
 #include <imgui.h>
 
@@ -28,7 +29,6 @@
 //#include <tracy/TracyD3D11.hpp>
 
 constexpr vec3u maintex_size = 512;
-constexpr unsigned int initial_material_count = 10;
 
 static_assert(all(maintex_size % 8 == 0));
 
@@ -40,7 +40,7 @@ struct PSShaderData {
 	vec3 cam_right;
 	float cam_zoom;
 	vec3 cam_pos;
-	float padding__0;
+	uint num_of_lights;
 };
 
 struct BrushFindData {
@@ -69,89 +69,7 @@ static Mesh makeFullScreenTriangle() {
 	return m;
 }
 
-constexpr int block_size = 16;
-constexpr int group_size = 8;
-constexpr int skip_size = block_size * group_size;
-
-struct RayTracing {
-	struct RayTraceData {
-		vec2u thread_loc;
-		unsigned int num_rendered_frames;
-		unsigned int padding;
-	};
-
-	RayTracing(DynamicShader &ds) {
-		image = Texture2D::create(gfx::main_rtv->size, true);
-		rt_data = Buffer::makeConstant<RayTraceData>(Buffer::Usage::Dynamic);
-		shader  = ds.add("ray_tracing_cs", ShaderType::Compute);
-
-		if (!image)                gfx::errorExit();
-		if (!rt_data)              gfx::errorExit();
-		if (!shader)               gfx::errorExit();
-		if (!shader->addSampler()) gfx::errorExit();
-	}
-
-	bool update() {
-		if (any(gfx::main_rtv->size != image->size)) {
-			resize(gfx::main_rtv->size);
-			reset();
-		}
-
-		if (thread_loc.y >= (unsigned int)image->size.y) {
-			rendered_frames++;
-			thread_loc = 0;
-		}
-
-		if (RayTraceData *data = rt_data->map<RayTraceData>()) {
-			data->thread_loc = thread_loc;
-			data->num_rendered_frames = rendered_frames;
-			rt_data->unmap();
-		}
-
-		thread_loc.x += skip_size;
-		if (thread_loc.x >= (unsigned int)image->size.x) {
-			thread_loc.x = 0;
-			thread_loc.y += skip_size;
-		}
-
-		return true;
-	}
-
-	void reset() {
-		thread_loc = 0;
-		rendered_frames = 0;
-		image->clear(Colour::black);
-	}
-
-	void resize(const vec2i &size) {
-		image->init(size, true);
-	}
-
-	void step(
-		MaterialEditor &me,
-		Handle<Texture3D> main_tex,
-		Handle<Buffer> shader_data
-	) {
-
-		shader->dispatch(
-			vec3u(block_size, block_size, 1),
-			{ rt_data, shader_data, me.getBuffer(), me.light_buf },
-			{
-				main_tex->srv,
-				me.getDiffuse(),
-				me.getBackground(),
-				me.getIrradiance()
-			},
-			{ image->uav }
-		);
-	}
-
-	Handle<Shader> shader;
-	Handle<Texture2D> image;
-	Handle<Buffer> rt_data;
-	vec2u thread_loc = 0;
-	unsigned int rendered_frames = 0;
-};
+static void setTheme();
 
 int main() {
 	win::create("Honours Project", 800, 600);
@@ -162,7 +80,9 @@ int main() {
 		BrushEditor brush_editor;
 		MaterialEditor material_editor;
 		DynamicShader sh_manager;
-		RayTracing ray_tracing = sh_manager;
+		RayTracingEditor rt_editor = sh_manager;
+
+		setTheme();
 
 		Handle<Texture3D> main_texture = Texture3D::create(maintex_size, Texture3D::Type::float16);
 		brush_editor.runFillShader(Shapes::Sphere, ShapeData(vec3(0), 21), main_texture);
@@ -192,31 +112,22 @@ int main() {
 		Mesh triangle = makeFullScreenTriangle();
 		Options &options = Options::get();
 
-		static bool is_rt = false;
 		static bool rt_is_dirty = false;
 
 		while (win::isOpen()) {
 			sh_manager.poll();
 			saveLoadFileDialog(main_texture, scale_cs);
 
-			if (isKeyPressed(KEY_F)) {
+			if (isActionPressed(Action::CaptureFrame)) {
 				gfx::captureFrame();
-			}
-
-			if (isKeyPressed(KEY_R)) {
-				is_rt = !is_rt;
-				rt_is_dirty |= is_rt;
-				if (is_rt) ray_tracing.reset();
 			}
 
 			if (isActionPressed(Action::CloseProgram)) {
 				win::close();
 			}
 
-			
-
-			if (is_rt && ray_tracing.update()) {
-				ray_tracing.step(material_editor, main_texture, shader_data_handle);
+			if (rt_editor.update(material_editor)) {
+				rt_editor.step(material_editor, main_texture, shader_data_handle);
 			}
 
 			rt_is_dirty |= sh_manager.hasUpdated();
@@ -224,16 +135,16 @@ int main() {
 			brush_editor.update();
 			rt_is_dirty |= material_editor.update();
 
-			if (is_rt && rt_is_dirty) {
+			if (rt_editor.shouldRedraw(rt_is_dirty)) {
 				rt_is_dirty = false;
-				ray_tracing.reset();
+				rt_editor.reset();
 			}
 
-			if (!is_rt) {
-				if (Buffer* buf = find_data_handle.get()) {
+			if (gfx::isMainRTVActive()) {
+				if (Buffer *buf = find_data_handle.get()) {
 					if (BrushFindData *data = buf->map<BrushFindData>()) {
-						data->pos   = cam.pos + cam.fwd * cam.getZoom();
-						data->dir   = cam.getMouseDir();
+						data->pos = cam.pos + cam.fwd * cam.getZoom();
+						data->dir = cam.getMouseDir();
 						data->depth = brush_editor.getDepth();
 						data->scale = brush_editor.getScale();
 						buf->unmap();
@@ -243,6 +154,7 @@ int main() {
 				find_brush->dispatch(1, { find_data_handle }, { main_texture->srv }, { brush_editor.getDataUAV() });
 
 				if (cam.shouldSculpt()) {
+					rt_is_dirty = true;
 					if (options.auto_capture) {
 						gfx::captureFrame();
 					}
@@ -263,34 +175,33 @@ int main() {
 					data->cam_zoom = cam.getZoom();
 					data->one_over_aspect_ratio = resolution.y / resolution.x;
 					data->time = win::timeSinceStart();
+					data->num_of_lights = (uint)material_editor.getLightsCount();
 					buf->unmap();
 				}
 			}
 
-			if (!is_rt) {
-				gfx::main_rtv->clear(Colour::dark_grey);
-				gfx::main_rtv->bind();
-				main_vs->bind();
-				main_ps->bind(
-					{ shader_data_handle, material_editor.getBuffer() },
-					{
-						brush_editor.getDataSRV(),
-						main_texture->srv,
-						material_editor.getDiffuse(),
-						material_editor.getBackground(),
-						material_editor.getIrradiance()
-					}
-				);
-				triangle.render();
-				main_ps->unbind(2, 5);
-				main_ps->unbindCBuffers(2);
-			}
+			gfx::main_rtv->clear(Colour::dark_grey);
+			gfx::main_rtv->bind();
+			main_vs->bind();
+			main_ps->bind(
+				{ shader_data_handle, material_editor.getBuffer() },
+				{
+					brush_editor.getDataSRV(),
+					main_texture->srv,
+					material_editor.getDiffuse(),
+					material_editor.getBackground(),
+					material_editor.getLights()->srv
+				}
+			);
+			triangle.render();
+			main_ps->unbind(2, 5);
+			main_ps->unbindCBuffers(2);
 
 			gfx::imgui_rtv->bind();
 				if (options.show_fps) fpsWidget();
 				mainMenuBar(brush_editor, material_editor, main_texture);
-				if (is_rt) mainTargetWidget(ray_tracing.image);
-				else       mainTargetWidget(gfx::main_rtv);
+				rt_editor.widget();
+				mainViewWidget();
 				messagesWidget();
 				keyRemapper();
 				drawLogger();
@@ -301,7 +212,9 @@ int main() {
 			gfx::end();
 
 			if (isActionPressed(Action::TakeScreenshot)) {
-				is_rt ? ray_tracing.image->takeScreenshot() : gfx::main_rtv->takeScreenshot();
+				if (gfx::isMainRTVActive())       gfx::main_rtv->takeScreenshot();
+				else if (rt_editor.isRendering()) rt_editor.getImage()->takeScreenshot();
+				else addMessageToWidget(LogLevel::Error, "Trying to take a screenshot but neither the main nor the ray tracing widget are selected");
 			}
 
 			gfx::logD3D11messages();
@@ -309,4 +222,60 @@ int main() {
 	}
 
 	win::cleanup();
+}
+
+static void setTheme() {
+	// from https://github.com/OverShifted/OverEngine
+	ImGuiStyle& style = ImGui::GetStyle();
+	style.Colors[ImGuiCol_Text]                  = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+	style.Colors[ImGuiCol_TextDisabled]          = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
+	style.Colors[ImGuiCol_WindowBg]              = ImVec4(0.13f, 0.14f, 0.15f, 1.00f);
+	style.Colors[ImGuiCol_ChildBg]               = ImVec4(0.13f, 0.14f, 0.15f, 1.00f);
+	style.Colors[ImGuiCol_PopupBg]               = ImVec4(0.13f, 0.14f, 0.15f, 1.00f);
+	style.Colors[ImGuiCol_Border]                = ImVec4(0.43f, 0.43f, 0.50f, 0.50f);
+	style.Colors[ImGuiCol_BorderShadow]          = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+	style.Colors[ImGuiCol_FrameBg]               = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);
+	style.Colors[ImGuiCol_FrameBgHovered]        = ImVec4(0.38f, 0.38f, 0.38f, 1.00f);
+	style.Colors[ImGuiCol_FrameBgActive]         = ImVec4(0.67f, 0.67f, 0.67f, 0.39f);
+	style.Colors[ImGuiCol_TitleBg]               = ImVec4(0.08f, 0.08f, 0.09f, 1.00f);
+	style.Colors[ImGuiCol_TitleBgActive]         = ImVec4(0.08f, 0.08f, 0.09f, 1.00f);
+	style.Colors[ImGuiCol_TitleBgCollapsed]      = ImVec4(0.00f, 0.00f, 0.00f, 0.51f);
+	style.Colors[ImGuiCol_MenuBarBg]             = ImVec4(0.14f, 0.14f, 0.14f, 1.00f);
+	style.Colors[ImGuiCol_ScrollbarBg]           = ImVec4(0.02f, 0.02f, 0.02f, 0.53f);
+	style.Colors[ImGuiCol_ScrollbarGrab]         = ImVec4(0.31f, 0.31f, 0.31f, 1.00f);
+	style.Colors[ImGuiCol_ScrollbarGrabHovered]  = ImVec4(0.41f, 0.41f, 0.41f, 1.00f);
+	style.Colors[ImGuiCol_ScrollbarGrabActive]   = ImVec4(0.51f, 0.51f, 0.51f, 1.00f);
+	style.Colors[ImGuiCol_CheckMark]             = ImVec4(0.11f, 0.64f, 0.92f, 1.00f);
+	style.Colors[ImGuiCol_SliderGrab]            = ImVec4(0.11f, 0.64f, 0.92f, 1.00f);
+	style.Colors[ImGuiCol_SliderGrabActive]      = ImVec4(0.08f, 0.50f, 0.72f, 1.00f);
+	style.Colors[ImGuiCol_Button]                = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);
+	style.Colors[ImGuiCol_ButtonHovered]         = ImVec4(0.38f, 0.38f, 0.38f, 1.00f);
+	style.Colors[ImGuiCol_ButtonActive]          = ImVec4(0.67f, 0.67f, 0.67f, 0.39f);
+	style.Colors[ImGuiCol_Header]                = ImVec4(0.22f, 0.22f, 0.22f, 1.00f);
+	style.Colors[ImGuiCol_HeaderHovered]         = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);
+	style.Colors[ImGuiCol_HeaderActive]          = ImVec4(0.67f, 0.67f, 0.67f, 0.39f);
+	style.Colors[ImGuiCol_Separator]             = style.Colors[ImGuiCol_Border];
+	style.Colors[ImGuiCol_SeparatorHovered]      = ImVec4(0.41f, 0.42f, 0.44f, 1.00f);
+	style.Colors[ImGuiCol_SeparatorActive]       = ImVec4(0.26f, 0.59f, 0.98f, 0.95f);
+	style.Colors[ImGuiCol_ResizeGrip]            = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+	style.Colors[ImGuiCol_ResizeGripHovered]     = ImVec4(0.29f, 0.30f, 0.31f, 0.67f);
+	style.Colors[ImGuiCol_ResizeGripActive]      = ImVec4(0.26f, 0.59f, 0.98f, 0.95f);
+	style.Colors[ImGuiCol_Tab]                   = ImVec4(0.08f, 0.08f, 0.09f, 0.83f);
+	style.Colors[ImGuiCol_TabHovered]            = ImVec4(0.33f, 0.34f, 0.36f, 0.83f);
+	style.Colors[ImGuiCol_TabActive]             = ImVec4(0.23f, 0.23f, 0.24f, 1.00f);
+	style.Colors[ImGuiCol_TabUnfocused]          = ImVec4(0.08f, 0.08f, 0.09f, 1.00f);
+	style.Colors[ImGuiCol_TabUnfocusedActive]    = ImVec4(0.13f, 0.14f, 0.15f, 1.00f);
+	style.Colors[ImGuiCol_DockingPreview]        = ImVec4(0.26f, 0.59f, 0.98f, 0.70f);
+	style.Colors[ImGuiCol_DockingEmptyBg]        = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
+	style.Colors[ImGuiCol_PlotLines]             = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
+	style.Colors[ImGuiCol_PlotLinesHovered]      = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
+	style.Colors[ImGuiCol_PlotHistogram]         = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
+	style.Colors[ImGuiCol_PlotHistogramHovered]  = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
+	style.Colors[ImGuiCol_TextSelectedBg]        = ImVec4(0.26f, 0.59f, 0.98f, 0.35f);
+	style.Colors[ImGuiCol_DragDropTarget]        = ImVec4(0.11f, 0.64f, 0.92f, 1.00f);
+	style.Colors[ImGuiCol_NavHighlight]          = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+	style.Colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
+	style.Colors[ImGuiCol_NavWindowingDimBg]     = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
+	style.Colors[ImGuiCol_ModalWindowDimBg]      = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
+	style.GrabRounding                           = style.FrameRounding = 2.3f;
 }

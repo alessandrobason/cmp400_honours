@@ -3,7 +3,11 @@
 cbuffer RayTraceData : register(b0) {
     uint2 thread_loc;
     uint num_rendered_frames;
-    uint padding__0;
+    uint num_of_lights;
+	uint maximum_steps;
+	uint maximum_bounces;
+	uint maximum_rays;
+	float maximum_trace_dist;
 };
 
 cbuffer ShaderData : register(b1) {
@@ -26,20 +30,19 @@ cbuffer Material : register(b2) {
     float specular_probability;
 };
 
-cbuffer LightData : register(b3) {
-    float3 light_pos;
-    float light_radius;
-    float3 light_colour;
-    bool render_light;
+struct LightData {
+    float3 pos;
+    float radius;
+    float3 colour;
+    bool render;
 };
 
-RWTexture2D<unorm float4> output  : register(u0);
+RWTexture2D<unorm float4> output   : register(u0);
 
-Texture3D<float> vol_tex	: register(t0);
-Texture2D diffuse_tex 		: register(t1);
-Texture2D bg_hdr 			: register(t2);
-Texture2D irradiance_map	: register(t3);
-Texture2D previous 			: register(t4);
+Texture3D<float> vol_tex           : register(t0);
+Texture2D diffuse_tex              : register(t1);
+Texture2D background               : register(t2);
+StructuredBuffer<LightData> lights : register(t3);
 
 sampler tex_sampler;
 
@@ -67,17 +70,23 @@ float roughMap(float3 coords) {
 	return vol_tex.Load(int4(coords, 0));
 }
 
-float sdf_sphere(float3 pos, float3 c, float r) {
-	return length(pos - c) - r;
-}
-
-float sdf_box(float3 pos, float3 c, float3 s) {
-	float3 q = abs(pos - c) - s * 0.5;
-	return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
-}
-
 float texBoundarySDF(float3 pos) {
     return sdf_box(pos, 0, vol_tex_size);
+}
+
+float lightDistance(float3 pos, int bounce, out uint light_id) {
+    float dist = MAX_STEP;
+    for (uint i = 0; i < num_of_lights; ++i) {
+        LightData light = lights[i];
+        if (light.render || bounce) {
+            float light_dist = sdf_sphere(pos, light.pos, light.radius);
+            if (light_dist < dist) {
+                dist = light_dist;
+                light_id = i;
+            }
+        }
+    }
+    return dist;
 }
 
 float3 calcNormal(float3 pos) {
@@ -124,15 +133,11 @@ float3 getAlbedo(float3 pos, float3 normal) {
 	return colour;
 }
 
-float3 getBackground(float3 dir) {
-	float2 uv;
-	uv.x = 0.5 + atan2(dir.z, dir.x) / (2 * PI);
-	uv.y = 0.5 - asin(dir.y) / PI;
-	return bg_hdr.SampleLevel(tex_sampler, uv, 0).rgb;
-}
-
 float3 getEnvironment(float3 rd) {
-    return getBackground(rd);
+	float2 uv;
+	uv.x = 0.5 + atan2(rd.z, rd.x) / (2 * PI);
+	uv.y = 0.5 - asin(rd.y) / PI;
+	return background.SampleLevel(tex_sampler, uv, 0).rgb;
 }
 
 // == random functions ===============================
@@ -182,7 +187,7 @@ struct HitInfo {
 	Material material;
 };
 
-HitInfo rayMarch(float3 ro, float3 rd, inout uint state) {
+HitInfo rayMarch(float3 ro, float3 rd, int bounce, inout uint state) {
 	HitInfo info;
 	info.normal   = 0;
 	info.position = 0;
@@ -190,22 +195,21 @@ HitInfo rayMarch(float3 ro, float3 rd, inout uint state) {
 	info.material.light  = 0;
 
 	float distance_traveled = 0;
-	const int MAX_STEPS = 500;
 	const float ROUGH_MIN_HIT_DISTANCE = 0.05;
-	const float MIN_HIT_DISTANCE = .001;
-	const float MAX_TRACE_DISTANCE = 3000;
+	const float MIN_HIT_DISTANCE = .005;
 
-	for (int step_count = 0; step_count < MAX_STEPS; ++step_count) {
+	for (int step_count = 0; step_count < maximum_steps; ++step_count) {
 		float3 current_pos = ro + rd * distance_traveled;
 		float closest = texBoundarySDF(current_pos);
-        float light_dist = sdf_sphere(current_pos, light_pos, light_radius);
-        light_dist += (1 - render_light) * MAX_STEP;
+        uint light_id = num_of_lights;
+        float light_dist = lightDistance(current_pos, bounce, light_id);
 
 		if (light_dist < MIN_HIT_DISTANCE) {
-			info.normal          = lightNormal(current_pos, light_pos, light_radius);
+            LightData light = lights[light_id];
+            info.normal          = lightNormal(current_pos, light.pos, light.radius);
             info.position        = current_pos;
             info.material.albedo = 0;
-            info.material.light  = light_colour;
+            info.material.light  = light.colour;
             break;
 		}
 
@@ -231,7 +235,7 @@ HitInfo rayMarch(float3 ro, float3 rd, inout uint state) {
 			}
 		}
 
-		if (distance_traveled > MAX_TRACE_DISTANCE) {
+		if (distance_traveled > maximum_trace_dist) {
 			break;
 		}
 
@@ -242,13 +246,11 @@ HitInfo rayMarch(float3 ro, float3 rd, inout uint state) {
 }
 
 float3 rayTrace(float3 ro, float3 rd, inout uint state) {
-	const int MAX_BOUNCES = 10;
-
 	float3 incoming_light = 0;
 	float3 ray_colour = 1;
 
-	for (int bounce = 0; bounce <= MAX_BOUNCES; ++bounce) {
-		HitInfo info = rayMarch(ro, rd, state);
+	for (int bounce = 0; bounce <= maximum_bounces; ++bounce) {
+		HitInfo info = rayMarch(ro, rd, bounce, state);
 		
 		if (any(info.normal != 0)) {
 			ro = info.position + info.normal;
@@ -295,13 +297,12 @@ void main(uint2 thread_id : SV_DispatchThreadID) {
 	uv.y *= one_over_aspect_ratio;
 	uint rng_state = id.y * tex_size.x + id.x + num_rendered_frames * 12345;
 
-	const int MAX_RAYS = 10;
 	float3 total_light = 0;
 
     float3 ray_origin = cam_pos + cam_fwd * cam_zoom;
     float3 focus_point = cam_fwd + cam_right * uv.x + cam_up * uv.y;
 
-	for (int ray = 0; ray < MAX_RAYS; ++ray) {
+	for (int ray = 0; ray < maximum_rays; ++ray) {
         float2 aa_jitter = randomPointInCircle(rng_state) * 0.001;
         float3 aa_focus_point = focus_point + cam_right * aa_jitter.x + cam_up * aa_jitter.y;
         float3 ray_dir = normalize(aa_focus_point);
@@ -309,7 +310,7 @@ void main(uint2 thread_id : SV_DispatchThreadID) {
         total_light += rayTrace(ray_origin, ray_dir, rng_state);
 	}
 
-	float3 colour = total_light / MAX_RAYS;
+	float3 colour = total_light / maximum_rays;
 
     if (num_rendered_frames > 0) {
         float3 previous_col = output[id].rgb;

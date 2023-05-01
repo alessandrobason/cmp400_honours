@@ -21,9 +21,13 @@ bool Camera::update() {
 	static bool is_dragging = false;
 	bool changed = false;
 
+	if (!gfx::isMainRTVActive()) {
+		return false;
+	}
+
 	// Zoom stuff
 
-	if (float wheel = getMouseWheel() * gfx::isMainRTVActive()) {
+	if (float wheel = getMouseWheel()) {
 		zoom_exp += wheel * win::dt * options.zoom_sensitivity;
 		changed = true;
 	}
@@ -120,9 +124,7 @@ bool Camera::shouldSculpt() const {
 	static vec2 start_pos = 0;
 	static bool is_pressed = false;
 
-	if (!(gfx::isMainRTVActive() && isMouseInsideRTV())) {
-		return false;
-	}
+	if (!isMouseInsideRTV()) return false;
 
 	if (!is_pressed) {
 		if (isMousePressed(MOUSE_LEFT)) {

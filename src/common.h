@@ -13,5 +13,7 @@ using ssize_t   = int64_t;
 using size_t    = uint64_t;
 using uintptr_t = size_t;
 
+using uint = unsigned int;
+
 #define UNUSED(x) ((void)(x))
 #define ARRLEN(arr) (sizeof(arr)/sizeof(*(arr)))

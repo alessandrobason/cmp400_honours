@@ -38,26 +38,7 @@ void fpsWidget() {
 	ImGui::End();
 }
 
-void mainTargetWidget() {
-	mainTargetWidget(gfx::main_rtv);
-}
-
-void mainTargetWidget(Handle<Texture2D> texture) {
-	if (!is_game_view_open) return;
-	if (!ImGui::Begin("Main", &is_game_view_open)) {
-		ImGui::End();
-		gfx::setMainRTVActive(false);
-		return;
-	}
-
-	// set the main RTV to active if:
-	// - the curent window is focused
-	// - the mouse is inside the window
-	bool is_focused = ImGui::IsWindowFocused();
-	vec2 mouse_pos = ImGui::GetMousePos();
-	vec4 window_bb = vec4(ImGui::GetWindowPos(), ImGui::GetWindowSize());
-	gfx::setMainRTVActive(is_focused && window_bb.contains(mouse_pos));
-
+void imageViewWidget(Handle<Texture2D> texture, vec4 *out_bounds) {
 	vec2 win_size = ImGui::GetWindowContentRegionMax();
 	vec2 win_padding = ImGui::GetWindowContentRegionMin();
 
@@ -78,10 +59,51 @@ void mainTargetWidget(Handle<Texture2D> texture) {
 
 	vec2 position = (win_size - size) * 0.5f + win_padding;
 	vec2 win_pos = ImGui::GetWindowPos();
-	gfx::setMainRTVBounds(vec4(position + win_pos, size));
+	if (out_bounds) *out_bounds = vec4(position + win_pos, size);
 
 	ImGui::SetCursorPos(position);
 	ImGui::Image((ImTextureID)texture->srv, size);
+}
+
+void mainViewWidget() {
+	if (!is_game_view_open) return;
+	if (!ImGui::Begin("Main", &is_game_view_open)) {
+		ImGui::End();
+		gfx::setMainRTVActive(false);
+		return;
+	}
+
+	static bool was_focused = false;
+
+	// set the main RTV to active if:
+	// - the curent window is focused
+	// - the mouse is inside the window
+	bool is_focused = ImGui::IsWindowFocused();
+	vec2 mouse_pos = ImGui::GetMousePos();
+	vec4 window_bb = vec4(ImGui::GetWindowPos(), ImGui::GetWindowSize());
+	if (window_bb.contains(mouse_pos)) {
+		// if the user presses the lmb inside the RTV, even if it was not selected it will sculpt anyway,
+		// this is to prevent that
+		if (is_focused && !was_focused && isMouseDown(MOUSE_LEFT)) {
+			is_focused = false;
+		}
+		if (isMouseDown(MOUSE_RIGHT)) {
+			is_focused = true;
+			ImGui::SetWindowFocus();
+		}
+		gfx::setMainRTVActive(is_focused);
+	}
+
+	was_focused = is_focused;
+
+	ImGui::BeginDisabled(!is_focused);
+		vec4 bounds = 0;
+		imageViewWidget(gfx::main_rtv, &bounds);
+	ImGui::EndDisabled();
+
+	gfx::setMainRTVBounds(bounds);
+
+
 	ImGui::End();
 }
 
@@ -174,11 +196,14 @@ void keyRemapper() {
 		return;
 	}
 
+	tooltip("These are various actions that can be performed with their key, here you can change that key", false);
+
 	static Action cur_action = Action::Count;
 	static bool is_popup_open = false;
 
-	const auto &remapAction = [](Action action, const char *name, Action &selected) {
+	const auto &remapAction = [](Action action, const char *name, Action &selected, const char *tip = nullptr) {
 		ImGui::Text(name);
+		if (tip) tooltip(tip);
 		ImGui::SameLine();
 		if (ImGui::Button(getKeyName(getActionKey(action)), vec2(50, 20))) {
 			selected = action;
@@ -197,6 +222,7 @@ void keyRemapper() {
 	remapAction(Action::RotateCameraVerNeg, "Rotate Camera Vertical Negative", cur_action);
 	remapAction(Action::ZoomIn, "Zoom In", cur_action);
 	remapAction(Action::ZoomOut, "Zoom Out", cur_action);
+	remapAction(Action::CaptureFrame, "Capture Frame", cur_action, "(debugging only) Captures a frame in RenderDoc");
 
 	if (ImGui::BeginPopupModal("Remap", &is_popup_open)) {
 		Keys last_pressed = getLastKeyPressed();
@@ -246,9 +272,9 @@ void mainMenuBar(BrushEditor &be, MaterialEditor &me, Handle<Texture3D> main_tex
 				should_load_file = true;
 			}
 
-			if (ImGui::MenuItem("Clear Canvas")) {
-				be.runFillShader(Shapes::None, ShapeData(), main_tex);
-			}
+			// if (ImGui::MenuItem("Clear Canvas")) {
+			// 	be.runFillShader(Shapes::None, ShapeData(), main_tex);
+			// }
 
 			ImGui::EndMenu();
 		}
@@ -293,28 +319,28 @@ void mainMenuBar(BrushEditor &be, MaterialEditor &me, Handle<Texture3D> main_tex
 	}
 
 	if (open_new_popup) {
-		open_new_popup = false;
 		is_creating = true;
 		ImGui::OpenPopup("New File");
 	}
 
-	const auto &qualityDecision = [](Handle<Texture3D> tex, vec3u &quality) {
+	const auto &qualityDecision = [](Handle<Texture3D> tex, vec3u &quality, int &cur_level) {
 		static const char *quality_levels[] = { "Low", "Medium", "High", "Very High", "Maximum", "Original", "Custom" };
 		vec3u quality_sizes[] = { 32, 64, 128, 256, 512, tex->size, 0 };
-		static int cur_level_ind = 1;
+		//static int cur_level_ind = 1;
 
-		if (ImGui::Combo("Quality Level", &cur_level_ind, quality_levels, ARRLEN(quality_levels))) {
-			quality = quality_sizes[cur_level_ind];
+		if (ImGui::Combo("Quality Level", &cur_level, quality_levels, ARRLEN(quality_levels))) {
+			quality = quality_sizes[cur_level];
 		}
 
 		if (sliderUInt3("Size", quality.data, 0, 1024)) {
 			quality = vec3u(round(vec3(quality) / 8.f)) * 8;
-			cur_level_ind = ARRLEN(quality_levels) - 1;
+			cur_level = ARRLEN(quality_levels) - 1;
 		}
 	};
 
 	if (ImGui::BeginPopupModal("Save To File", &is_saving, ImGuiWindowFlags_AlwaysAutoResize)) {
-		qualityDecision(main_tex, save_quality);
+		static int cur_level = 1;
+		qualityDecision(main_tex, save_quality, cur_level);
 
 		if (ImGui::Button("Save")) {
 			should_save_file = true;
@@ -328,10 +354,17 @@ void mainMenuBar(BrushEditor &be, MaterialEditor &me, Handle<Texture3D> main_tex
 		static vec3u quality = 64;
 		static Shapes cur_shape = Shapes::Sphere;
 		static ShapeData shader_data;
+		static int cur_level = 5;
 
-		qualityDecision(main_tex, quality);
+		// only called once, so we can setup the variables
+		if (open_new_popup) {
+			open_new_popup = false;
+			quality = main_tex->size;
+		}
 
-		ImGui::Combo("Initial Shape", (int *)&cur_shape, "Sphere\0Box\0Cylinder\0None");
+		qualityDecision(main_tex, quality, cur_level);
+
+		ImGui::Combo("Initial Shape", (int *)&cur_shape, "Sphere\0Box\0Cylinder");
 
 		ImGui::DragFloat3("Position##shape", shader_data.position.data);
 
@@ -496,6 +529,10 @@ bool filledSlider(const char *str_id, float *p_data, float vmin, float vmax, con
 
 bool inputU8(const char *label, uint8_t *data, uint8_t step, uint8_t step_fast) {
 	return ImGui::InputScalar(label, ImGuiDataType_U8, data, &step, &step_fast, "%u");
+}
+
+bool inputUint(const char *label, uint &value, uint step, int flags) {
+	return ImGui::InputScalar(label, ImGuiDataType_U32, &value, &step);
 }
 
 bool sliderUInt(const char *label, unsigned int *v, unsigned int vmin, unsigned int vmax, int flags) {

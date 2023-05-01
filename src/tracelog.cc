@@ -184,18 +184,10 @@ void Logger::draw() {
         ImGui::OpenPopup("LogOptions");
     ImGui::SameLine();
     bool should_clear = ImGui::Button("Clear");
-    ImGui::SameLine();
-    bool should_copy = ImGui::Button("Copy");
-    ImGui::SameLine();
-
-    ImGui::Separator();
 
     if (ImGui::BeginChild("scrolling", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar)) {
         if (should_clear) {
             clear();
-        }
-        if (should_copy) {
-            ImGui::LogToClipboard();
         }
 
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));

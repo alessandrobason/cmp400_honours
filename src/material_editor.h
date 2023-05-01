@@ -21,10 +21,12 @@ struct MaterialPS {
 };
 
 struct LightData {
-	vec3 light_pos     = vec3(-400, 0, 0);
-	float light_radius = 150.f;
-	vec3 light_colour  = 1.f;
-	unsigned int render_light  = true;
+	LightData() = default;
+	LightData(const vec3 &p, float r, const vec3 &c, bool rl) : pos(p), radius(r), colour(c), render(rl) {}
+	vec3 pos;
+	float radius;
+	vec3 colour;
+	uint render;
 };
 
 struct MaterialEditor {
@@ -34,12 +36,13 @@ struct MaterialEditor {
 	void setOpen(bool is_open);
 	bool isOpen() const;
 
-	Handle<Buffer> getBuffer();
+	Handle<Buffer> getBuffer() const;
+	Handle<Buffer> getLights() const;
+	size_t getLightsCount() const;
 	ID3D11ShaderResourceView *getDiffuse();
 	ID3D11ShaderResourceView *getBackground();
-	ID3D11ShaderResourceView *getIrradiance();
 
-	Handle<Buffer> light_buf;
+	//Handle<Buffer> light_buf;
 
 private:
 	struct TexNamePair {
@@ -51,6 +54,8 @@ private:
 	Texture2D *get(size_t index);
 	size_t addTexture(const char *name);
 	size_t checkTextureAlreadyLoaded(str::view name);
+	void addLight(const vec3 &pos, float radius, float strength = 3, const vec3 &colour = 1, bool render = true);
+	void updateLightsBuffer();
 
 	vec3 albedo = 1;
 	TextureMode texture_mode = TextureMode::TriplanarBlend;
@@ -59,19 +64,22 @@ private:
 	vec3 emissive = 0.f;
 	float specular_probability = 0.f;
 
-	LightData light_data;
-	float light_strength = 3.f;
+	arr<LightData> lights;
+	arr<float> light_strengths;
+	Handle<Buffer> lights_handle;
+	// start with 10 lights so we don't need to allocate more for a while
+	size_t cur_lights_count = 10;
 	
 	Handle<Buffer> mat_handle = nullptr;
 
 	size_t diffuse_handle;
 	size_t background_handle;
-	size_t irradiance_handle;
 
 	// widget data
 	bool is_open = true;
-	bool has_changed = true;
-	bool is_ray_tracing_dirty = false;
+	bool material_dirty = true;
+	bool light_dirty = true;
+	bool ray_tracing_dirty = false;
 	arr<TexNamePair> textures;
 	file::Watcher watcher = "assets/";
 

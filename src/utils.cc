@@ -42,17 +42,65 @@ bool StreamIn::read(void *data, size_t datalen) {
 
 // == string utils ================================================
 namespace str {
-	view::view(const char *cstr, size_t len) 
-		: Super(cstr, len ? len : strlen(cstr)) 
+	view::view(const char *cstr, size_t len)
+		: Super(cstr, cstr ? (len ? len : strlen(cstr)) : 0)
 	{
+	}
+
+	view::view(Super slice) 
+		: Super(slice) 
+	{
+	}
+
+	void view::removePrefix(size_t count) {
+		if (count > len) count = len;
+		data += count;
+		len -= count;
+	}
+
+	void view::removeSuffix(size_t count) {
+		if (count > len) count = len;
+		len -= count;
 	}
 
 	bool view::compare(view v) const {
 		return str::ncmp(data, len, v.data, v.len);
 	}
 
-	mem::ptr<char[]> view::dup() {
+	mem::ptr<char[]> view::dup() const {
 		return str::dup(data, len);
+	}
+
+	size_t view::findFirstOf(view values) const {
+		for (size_t i = 0; i < len; ++i) {
+			for (size_t k = 0; k < values.len; ++k) {
+				if (data[i] == values[k]) return i;
+			}
+		}
+		return SIZE_MAX;
+	}
+
+	size_t view::findLastOf(view values) const {
+		for (ssize_t i = len - 1; i >= 0; --i) {
+			for (size_t k = 0; k < values.len; ++k) {
+				if (data[i] == values[k]) return i;
+			}
+		}
+		return SIZE_MAX;
+	}
+
+	size_t view::findFirstOf(char value) const {
+		for (size_t i = 0; i < len; ++i) {
+			if (data[i] == value) return i;
+		}
+		return SIZE_MAX;
+	}
+
+	size_t view::findLastOf(char value) const {
+		for (ssize_t i = len - 1; i >= 0; --i) {
+			if (data[i] == value) return i;
+		}
+		return SIZE_MAX;
 	}
 
 	bool view::operator==(view v) const {
@@ -381,62 +429,30 @@ namespace file {
 		return str::dup(name);
 	}
 
-	str::view getFilename(const char *path) {
-		if (!path || *path == '\0') return nullptr;
-		size_t len = strlen(path);
-		const char *cur = path;
+	str::view getFilename(str::view path) {
+		if (path.len == 0) return path;
 
-		for (cur = path + len - 1; *cur && cur >= path; --cur) {
-			if (*cur == '.') {
-				break;
-			}
-		}
+		size_t slash = path.findLastOf("/\\");
+		size_t dot   = path.findLastOf('.');
 
-		size_t end = cur - path;
+		if (slash == SIZE_MAX) slash = 0;
+		if (dot == SIZE_MAX)   dot = 0;
 
-		for (cur = path + end - 1; *cur && cur >= path; --cur) {
-			if (*cur == '/' || *cur == '\\') {
-				break;
-			}
-		}
-
-		size_t beg = cur - path + 1;
-
-		if (beg >= len) beg = 0;
-		if (end <= beg) end = len;
-
-		// size_t newlen = end - beg;
-		// mem::ptr<char[]> ptr = mem::ptr<char[]>::make(newlen + 1);
-		// memcpy(ptr.get(), path + beg, newlen);
-		// ptr[newlen] = '\0';
-		// return ptr;
-		return str::view(path + beg, end - beg);
+		return path.sub(slash + 1, dot);
 	}
 
 	const char *getExtension(const char *path) {
-		if (!path || *path == '\0') return nullptr;
-		size_t len = strlen(path);
+		str::view path_view = path;
+		if (path_view.len == 0) return path;
 
-		for (const char *cur = path + len - 1; *cur && cur >= path; --cur) {
-			if (*cur == '.') {
-				return cur + 1;
-			}
-		}
-
-		return path;
+		return path_view.sub(path_view.findLastOf('.') + 1).data;
 	}
 
 	const char *getNameAndExt(const char *path) {
-		if (!path || *path == '\0') return nullptr;
-		size_t len = strlen(path);
+		str::view path_view = path;
+		if (path_view.len == 0) return path;
 
-		for (const char *cur = path + len - 1; *cur && cur >= path; --cur) {
-			if (*cur == '/' || *cur == '\\') {
-				return cur + 1;
-			}
-		}
-
-		return path;
+		return path_view.sub(path_view.findLastOf("/\\") + 1).data;
 	}
 
 	Watcher::Watcher(const char *watch_folder) {

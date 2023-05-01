@@ -12,22 +12,22 @@ struct StrStream {
 	void skipWhitespace();
 	void skipUntil(char until);
 	void skip();
-	std::string_view getView(char delim);
+	str::view getView(char delim);
 };
 
-static std::string_view trim(std::string_view view);
+static str::view trim(str::view view);
 
 namespace ini {
 	unsigned int Value::asUint() const {
-		return str::toUInt(value.data());
+		return str::toUInt(value.data);
 	}
 
 	int Value::asInt() const {
-		return str::toInt(value.data());
+		return str::toInt(value.data);
 	}
 
 	double Value::asNum() const {
-		return str::toNum(value.data());
+		return str::toNum(value.data);
 	}
 
 	bool Value::asBool() const {
@@ -35,7 +35,7 @@ namespace ini {
 	}
 
 	mem::ptr<char[]> Value::asStr() const {
-		return str::dup(value.data(), value.size());
+		return str::dup(value.data, value.len);
 	}
 
 	//std::string Value::asStr() const {
@@ -50,28 +50,28 @@ namespace ini {
 			buf[0] = '\0';
 			return 0;
 		}
-		std::string_view view = trim(value);
-		size_t to_copy = std::min(view.size(), buflen - 1);
-		memcpy(buf, value.data(), to_copy);
+		str::view view = trim(value);
+		size_t to_copy = mem::min(view.len, buflen - 1);
+		memcpy(buf, value.data, to_copy);
 		buf[to_copy] = '\0';
 		return to_copy;
 	}
 
-	arr<std::string_view> Value::asVec(char delim) const {
+	arr<str::view> Value::asVec(char delim) const {
 		if (value.empty()) return {};
-		arr<std::string_view> out;
+		arr<str::view> out;
 
 		size_t start = 0;
-		for (size_t i = 0; i < value.size(); ++i) {
+		for (size_t i = 0; i < value.len; ++i) {
 			if (value[i] == delim) {
-				std::string_view arr_val = trim(value.substr(start, i - start));
+				str::view arr_val = trim(value.sub(start, i));
 				if (!arr_val.empty()) {
 					out.push(arr_val);
 				}
 				start = i + 1;
 			}
 		}
-		std::string_view last = trim(value.substr(start));
+		str::view last = trim(value.sub(start));
 		if (!last.empty()) {
 			out.push(last);
 		}
@@ -114,7 +114,7 @@ namespace ini {
 	//	}
 	//}
 
-	void Value::trySet(arr<std::string_view> &val) const {
+	void Value::trySet(arr<str::view> &val) const {
 		if (isValid()) {
 			val = asVec();
 		}
@@ -165,14 +165,14 @@ namespace ini {
 	}
 
 	static void addValue(Table &table, StrStream &in) {
-		std::string_view key = trim(in.getView('='));
+		str::view key = trim(in.getView('='));
 		in.skip(); // skip divider
-		std::string_view val = trim(in.getView('\n'));
+		str::view val = trim(in.getView('\n'));
 
 		if (key.empty()) return;
 
 		// remove inline comments
-		val = val.substr(0, val.find_first_of("#;"));
+		val = val.sub(0, val.findFirstOf("#;"));
 
 		// value might be until EOF, in that case no use in skipping
 		if (!in.isFinished()) in.skip(); // ignore \n
@@ -182,7 +182,7 @@ namespace ini {
 
 	static void addTable(Doc &out, StrStream &in) {
 		in.skip(); // skip [
-		std::string_view name = in.getView(']');
+		str::view name = in.getView(']');
 		in.skip(); // skip ]
 
 		if (name.empty()) return;
@@ -233,17 +233,17 @@ namespace ini {
 
 } // namespace ini
 
-static std::string_view trim(std::string_view view) {
+static str::view trim(str::view view) {
 	if (view.empty()) return view;
-	std::string_view out = view;
+	str::view out = view;
 	// trim left
-	for (size_t i = 0; i < view.size() && isspace(view[i]); ++i) {
-		out.remove_prefix(1);
+	for (size_t i = 0; i < view.len && isspace(view[i]); ++i) {
+		out.removePrefix(1);
 	}
 	if (out.empty()) return out;
 	// trim right
-	for (long long i = out.size() - 1; i >= 0 && isspace(out[i]); --i) {
-		out.remove_suffix(1);
+	for (long long i = out.len - 1; i >= 0 && isspace(out[i]); --i) {
+		out.removeSuffix(1);
 	}
 	return out;
 }
@@ -262,7 +262,7 @@ void StrStream::skip() {
 	if (!isFinished()) ++cur;
 }
 
-std::string_view StrStream::getView(char delim) {
+str::view StrStream::getView(char delim) {
 	const char *from = cur;
 	skipUntil(delim);
 	size_t view_len = cur - from;

@@ -260,6 +260,7 @@ bool Texture2D::loadFromHDRFile(const char *filename, bool can_gpu_read) {
 void Texture2D::cleanup() {
 	texture.destroy();
 	srv.destroy();
+	uav.destroy();
 }
 
 bool Texture2D::takeScreenshot(const char *base_name) {

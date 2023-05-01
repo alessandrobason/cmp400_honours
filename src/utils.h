@@ -252,7 +252,7 @@ struct Slice {
 		return len * sizeof(T);
 	}
 
-	Slice sub(size_t start, size_t end = SIZE_MAX) {
+	Slice sub(size_t start, size_t end = SIZE_MAX) const {
 		if (empty() || start >= len) return Slice();
 		if (end >= len) end = len - 1;
 		return Slice(data + start, end - start);
@@ -340,9 +340,18 @@ namespace str {
 		using Super::Super;
 
 		view(const char *cstr, size_t len = 0);
+		view(Super slice);
+
+		void removePrefix(size_t count);
+		void removeSuffix(size_t count);
 
 		bool compare(view v) const;
-		mem::ptr<char[]> dup();
+		mem::ptr<char[]> dup() const;
+		size_t findFirstOf(view values) const;
+		size_t findLastOf(view values) const;
+
+		size_t findFirstOf(char value) const;
+		size_t findLastOf(char value) const;
 
 		bool operator==(view v) const;
 		bool operator!=(view v) const;
@@ -460,7 +469,7 @@ namespace file {
 	MemoryBuf read(const char *filename);
 	bool write(const char *filename, const void *data, size_t len);
 	mem::ptr<char[]> findFirstAvailable(const char *dir = ".", const char *name_fmt = "name_%d.txt");
-	str::view getFilename(const char *path);
+	str::view getFilename(str::view path);
 	const char *getExtension(const char *path);
 	const char *getNameAndExt(const char *path);
 } // namespace file 

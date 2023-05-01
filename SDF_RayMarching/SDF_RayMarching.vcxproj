@@ -192,6 +192,7 @@
     <ClCompile Include="..\src\matrix.cc" />
     <ClCompile Include="..\src\mesh.cc" />
     <ClCompile Include="..\src\options.cc" />
+    <ClCompile Include="..\src\ray_tracing_editor.cc" />
     <ClCompile Include="..\src\shader.cc" />
     <ClCompile Include="..\src\shape_builder.cc" />
     <ClCompile Include="..\src\utils.cc" />
@@ -235,6 +236,7 @@
     <ClInclude Include="..\src\matrix.h" />
     <ClInclude Include="..\src\mesh.h" />
     <ClInclude Include="..\src\options.h" />
+    <ClInclude Include="..\src\ray_tracing_editor.h" />
     <ClInclude Include="..\src\shader.h" />
     <ClInclude Include="..\src\shape_builder.h" />
     <ClInclude Include="..\src\texture.h" />

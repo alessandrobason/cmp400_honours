@@ -35,6 +35,9 @@ static void centreButton(float width, float padding);
 BrushEditor::BrushEditor() {
 	brush_icon  = Texture2D::load("assets/brush_icon.png");
 	eraser_icon = Texture2D::load("assets/eraser_icon.png");
+	depth_tooltips[0] = Texture2D::load("assets/depth_inside_tip.png");
+	depth_tooltips[1] = Texture2D::load("assets/depth_normal_tip.png");
+	depth_tooltips[2] = Texture2D::load("assets/depth_outside_tip.png");
 	oper_handle = Buffer::makeConstant<OperationData>(Buffer::Usage::Dynamic);
 	data_handle = Buffer::makeStructured<BrushData>();
 	fill_buffer = Buffer::makeConstant<ShapeData>(Buffer::Usage::Dynamic);
@@ -50,9 +53,7 @@ BrushEditor::BrushEditor() {
 			ShaderType::Compute,
 			{ { shape_macros[i]}, {nullptr} }
 		);
-		if (!fill_shaders[i]) {
-			err("couldn't compile fill_shader with macro %s", shape_macros[i]);
-		}
+		if (!fill_shaders[i]) gfx::errorExit("couldn't compile fill shader");
 	}
 
 	addBrush("Sphere", Shapes::Sphere, ShapeData(vec3(0), 21));
@@ -114,16 +115,31 @@ void BrushEditor::drawWidget() {
 		ImGui::EndTable();
 	}
 
+	const auto &depthTip = [](Handle<Texture2D> handles[3]) {
+		ImGui::SameLine();
+		ImGui::TextDisabled("(?)");
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort)) {
+			ImGui::BeginTooltip();
+				ImGui::Text("The brush's depth relative to the surface");
+				ImGui::Image((ImTextureID)handles[0]->srv, vec2(100));
+				ImGui::SameLine();
+				ImGui::Image((ImTextureID)handles[1]->srv, vec2(100));
+				ImGui::SameLine();
+				ImGui::Image((ImTextureID)handles[2]->srv, vec2(100));
+			ImGui::EndTooltip();
+		}
+	};
+
 	ImGui::Text("Scale");
 	has_changed |= filledSlider("##Size", &scale, 1.f, 5.f, "%.1f");
 	ImGui::Text("Depth");
-	has_changed |= filledSlider("##Depth", &depth, -1.f, 1.f);
-	ImGui::Text("Smooth constant");
+	depthTip(depth_tooltips);
+	has_changed |= filledSlider("##Depth", &depth, -1.5f, 1.5f);
+	ImGui::Text("Blend amount");
 	has_changed |= filledSlider("##Smooth", &smooth_k, 0.f, 20.f);
-	ImGui::Text("Single click");
-	ImGui::Checkbox("##Single click", &is_single_click);
 
-	if (ImGui::BeginCombo("Brushes", textures[brush_index].name.get())) {
+	ImGui::Text("Current brush");
+	if (ImGui::BeginCombo("##Brushes", textures[brush_index].name.get())) {
 		for (size_t i = 0; i < textures.len; ++i) {
 			bool is_selected = brush_index == i;
 			if (ImGui::Selectable(textures[i].name.get(), is_selected)) {

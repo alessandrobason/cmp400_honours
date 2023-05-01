@@ -1,17 +1,14 @@
 #pragma once
 
-//#include <string>
-#include <string_view>
-
 #include "utils.h"
 
 namespace ini {
 	struct Value {
-		std::string_view key;
-		std::string_view value;
+		str::view key;
+		str::view value;
 
 		Value() = default;
-		Value(std::string_view key, std::string_view value) : key(key), value(value) {}
+		Value(str::view key, str::view value) : key(key), value(value) {}
 
 		bool isValid() const { return !key.empty(); }
 		operator bool() const { return isValid(); }
@@ -22,22 +19,22 @@ namespace ini {
 		bool asBool() const;
 		mem::ptr<char[]> asStr() const;
 		size_t toStr(char *buf, size_t buflen) const;
-		arr<std::string_view> asVec(char delim = ' ') const;
+		arr<str::view> asVec(char delim = ' ') const;
 
 		void trySet(int &value) const;
 		void trySet(float &value) const;
 		void trySet(double &value) const;
 		void trySet(bool &value) const;
 		void trySet(mem::ptr<char[]> &value) const;
-		void trySet(arr<std::string_view> &value) const;
+		void trySet(arr<str::view> &value) const;
 	};
 
 	struct Table {
-		std::string_view name;
+		str::view name;
 		arr<Value> values;
 
 		Table() = default;
-		Table(std::string_view name) : name(name) {}
+		Table(str::view name) : name(name) {}
 
 		bool isValid() const { return !name.empty(); }
 		const Value get(const char *key) const;

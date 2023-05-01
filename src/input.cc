@@ -28,6 +28,7 @@ static Keys actions[(int)Action::Count] = {
 	KEY_DOWN,   // RotateCameraVerNeg
 	KEY_X,      // ZoomIn
 	KEY_C,      // ZoomOut
+	KEY_F,      // CaptureFrame
 };
 
 static const char *key_names[KEY__COUNT] = {
