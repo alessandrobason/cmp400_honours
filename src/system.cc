@@ -14,9 +14,6 @@
 #include <renderdoc.h>
 #include <nfd.hpp>
 
-//#include <tracy/Tracy.hpp>
-//#include <tracy/TracyD3D11.hpp>
-
 #include "tracelog.h"
 #include "utils.h"
 #include "options.h"
@@ -26,8 +23,12 @@
 #include "shader.h"
 #include "buffer.h"
 #include "widgets.h"
+#include "gfx_factory.h"
+
+extern void pollShaders();
 
 static LRESULT wndProc(HWND, UINT, WPARAM, LPARAM);
+void subscribeGFXFactory(GFXFactoryBase *factory);
 
 VirtualAllocator g_gfx_arena;
 
@@ -40,7 +41,7 @@ namespace gfx {
 #endif
 	dxptr<IDXGISwapChain> swapchain = nullptr;
 	dxptr<ID3D11DepthStencilState> depth_stencil_state = nullptr;
-	//TracyD3D11Ctx tracy_ctx = nullptr;
+	static arr<GFXFactoryBase *> factories;
 
 	Handle<RenderTexture> imgui_rtv;
 	Handle<RenderTexture> main_rtv;
@@ -85,12 +86,10 @@ namespace gfx {
 	}
 
 	void cleanup() {
-		Shader::cleanAll();
-		Buffer::cleanAll();
-		Texture2D::cleanAll();
-		Texture3D::cleanAll();
-		RenderTexture::cleanAll();
-
+		for (GFXFactoryBase *factory : factories) {
+			factory->cleanup();
+		}
+		
 		gpuTimerCleanup();
 
 		renderdocCleanup();
@@ -202,14 +201,10 @@ namespace gfx {
 
 		imgui_rtv = RenderTexture::fromBackbuffer();
 
-		//tracy_ctx = TracyD3D11Context(device, context);
-
 		return true;
 	}
 	
 	void cleanupDevice() {
-		//TracyD3D11Destroy(tracy_ctx);
-
 #ifndef NDEBUG
 		// we need this as it doesn't report memory leaks otherwise
 		infodev->PushEmptyStorageFilter();
@@ -243,7 +238,7 @@ namespace gfx {
 
 	void captureFrame() {
 		if (!is_frame_captured && renderdocCaptureStart()) {
-			addMessageToWidget(LogLevel::Info, "Captured current frame for RenderDoc");
+			widgets::addMessage(LogLevel::Info, "Captured current frame for RenderDoc");
 		}
 		is_frame_captured = true;
 	}
@@ -310,6 +305,7 @@ namespace win {
 	}
 
 	void poll() {
+		pollShaders();
 		// reset mouse relative position
 		setMouseRelative(0);
 		setMouseWheel(0);
@@ -481,4 +477,8 @@ LRESULT wndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 	}
 
 	return DefWindowProc(hwnd, msg, wparam, lparam);
+}
+
+void subscribeGFXFactory(GFXFactoryBase *factory) {
+	gfx::factories.push(factory);
 }

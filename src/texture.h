@@ -5,6 +5,8 @@
 #include "colour.h"
 #include "handle.h"
 
+namespace thr { template<typename T> struct Promise; }
+
 struct Texture2D {
 	Texture2D() = delete;
 	Texture2D(const Texture2D &rt) = delete;
@@ -17,7 +19,6 @@ struct Texture2D {
 	static Handle<Texture2D> create(const vec2i &size, bool can_gpu_read = false);
 	static Handle<Texture2D> load(const char *filename, bool can_gpu_read = false);
 	static Handle<Texture2D> loadHDR(const char *filename, bool can_gpu_read = false);
-	static void cleanAll();
 	// ------------------
 
 	bool init(const vec2i &size, bool can_gpu_read = false);
@@ -61,13 +62,12 @@ struct Texture3D {
 	static Handle<Texture3D> create(const vec3u &texsize, Type type, const void *initial_data = nullptr);
 	static Handle<Texture3D> create(int width, int height, int depth, Type type, const void *initial_data = nullptr);
 	static Handle<Texture3D> load(const char *filename);
-	static void cleanAll();
 	// ------------------
 
 	bool init(const vec3u &texsize, Type type, const void *initial_data = nullptr);
 	bool init(int width, int height, int depth, Type type, const void *initial_data = nullptr);
 	bool loadFromFile(const char *filename);
-	bool save(const char *filename, bool overwrite = false);
+	bool save(const char *filename, bool overwrite = false, thr::Promise<bool> *promise = nullptr);
 	void cleanup();
 	Type getType();
 
@@ -88,7 +88,6 @@ struct RenderTexture : Texture2D {
 	static Handle<RenderTexture> make();
 	static Handle<RenderTexture> create(int width, int height);
 	static Handle<RenderTexture> fromBackbuffer();
-	static void cleanAll();
 	// ------------------
 
 	bool resize(int new_width, int new_height);

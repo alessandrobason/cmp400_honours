@@ -18,12 +18,14 @@ cbuffer ShaderData : register(b1) {
 	float3 cam_right;
 	float cam_zoom;
 	float3 cam_pos; 
-	float padding__1;
+	float padding__0;
+	bool use_tonemapping;
+	float3 padding__1;
 };
 
 cbuffer Material : register(b2) {
 	float3 albedo;
-	uint texture_mode;
+	bool use_texture;
     float3 specular_colour;
     float smoothness;
     float3 emissive_colour;
@@ -90,14 +92,13 @@ float lightDistance(float3 pos, int bounce, out uint light_id) {
 }
 
 float3 calcNormal(float3 pos) {
-	const float step = 3.;
 	const float2 k = float2(1, -1);
 
 	return normalize(
-		k.xyy * preciseMap(pos + k.xyy * step) +
-		k.yyx * preciseMap(pos + k.yyx * step) +
-		k.yxy * preciseMap(pos + k.yxy * step) +
-		k.xxx * preciseMap(pos + k.xxx * step)
+		k.xyy * preciseMap(pos + k.xyy * NORMAL_STEP) +
+		k.yyx * preciseMap(pos + k.yyx * NORMAL_STEP) +
+		k.yxy * preciseMap(pos + k.yxy * NORMAL_STEP) +
+		k.xxx * preciseMap(pos + k.xxx * NORMAL_STEP)
 	);
 }
 
@@ -105,12 +106,13 @@ float3 lightNormal(float3 pos, float3 c, float r) {
 	return normalize(pos - c);
 }
 
+// from https://catlikecoding.com/unity/tutorials/advanced-rendering/triplanar-mapping/
 float3 getTriplanarBlend(float3 pos, float3 normal) {
 	const float3 blend = abs(normal);
-	const float3 weights = blend / dot(blend, 1.);
+	const float3 weights = blend / sum(blend);
 	float3 tex_coords = pos / vol_tex_size;
 
-	const float3 blend_r = diffuse_tex.SampleLevel(tex_sampler, tex_coords.yz, 0).rgb * weights.x;
+	const float3 blend_r = diffuse_tex.SampleLevel(tex_sampler, tex_coords.zy, 0).rgb * weights.x;
 	const float3 blend_g = diffuse_tex.SampleLevel(tex_sampler, tex_coords.xz, 0).rgb * weights.y;
 	const float3 blend_b = diffuse_tex.SampleLevel(tex_sampler, tex_coords.xy, 0).rgb * weights.z;
 
@@ -126,10 +128,7 @@ float3 getSphereCoordsBlend(float3 normal) {
 
 float3 getAlbedo(float3 pos, float3 normal) {
 	float3 colour = albedo;
-	switch (texture_mode) {
-		case TRIPLANAR_BLEND: colour *= getTriplanarBlend(pos, normal); break;
-		case SPHERE_COODS:    colour *= getSphereCoordsBlend(normal);   break;
-	}
+	if (use_texture) colour *= getTriplanarBlend(pos, normal);
 	return colour;
 }
 
@@ -195,8 +194,6 @@ HitInfo rayMarch(float3 ro, float3 rd, int bounce, inout uint state) {
 	info.material.light  = 0;
 
 	float distance_traveled = 0;
-	const float ROUGH_MIN_HIT_DISTANCE = 0.05;
-	const float MIN_HIT_DISTANCE = .005;
 
 	for (int step_count = 0; step_count < maximum_steps; ++step_count) {
 		float3 current_pos = ro + rd * distance_traveled;
@@ -258,10 +255,7 @@ float3 rayTrace(float3 ro, float3 rd, inout uint state) {
             float3 specular_dir = reflect(rd, info.normal);
             bool is_specular_bounce = specular_probability >= random(state);
             rd = lerp(diffuse_dir, specular_dir, smoothness * is_specular_bounce);
-			// rd = randomHemisphereDir(info.normal, state);
 
-		    // float light_strength = dot(info.normal, rd);
-		    // ray_colour *= info.material.albedo * light_strength * 2.;
             incoming_light += info.material.light * ray_colour;
 		    ray_colour *= lerp(info.material.albedo, specular_colour, is_specular_bounce);
 		}
@@ -311,6 +305,9 @@ void main(uint2 thread_id : SV_DispatchThreadID) {
 	}
 
 	float3 colour = total_light / maximum_rays;
+	if (use_tonemapping) {
+		colour = toneMapping(colour);
+	}
 
     if (num_rendered_frames > 0) {
         float3 previous_col = output[id].rgb;

@@ -7,7 +7,6 @@
 #include "tracelog.h"
 #include "widgets.h"
 #include "timer.h"
-#include "shape_builder.h"
 #include "camera.h"
 #include "matrix.h"
 #include "brush_editor.h"
@@ -19,18 +18,12 @@
 #include "shader.h"
 #include "texture.h"
 #include "ray_tracing_editor.h"
+#include "sculpture.h"
 
 #include <imgui.h>
-
 #include <d3d11.h>
 
 #include "utils.h"
-
-//#include <tracy/TracyD3D11.hpp>
-
-constexpr vec3u maintex_size = 512;
-
-static_assert(all(maintex_size % 8 == 0));
 
 struct PSShaderData {
 	vec3 cam_up;
@@ -41,82 +34,46 @@ struct PSShaderData {
 	float cam_zoom;
 	vec3 cam_pos;
 	uint num_of_lights;
+	uint use_tonemapping;
+	vec3 padding__0;
 };
 
-struct BrushFindData {
-	vec3 pos;
-	float depth;
-	vec3 dir;
-	float scale;
-};
+GFX_CLASS_CHECK(PSShaderData);
 
-static Mesh makeFullScreenTriangle() {
-	Mesh::Vertex verts[] = {
-		{ vec3(-1, -1, 0), vec2(0, 0) },
-		{ vec3(-1,  3, 0), vec2(0, 2) },
-		{ vec3( 3, -1, 0), vec2(2, 0) },
-	};
-
-	Mesh::Index indices[] = {
-		0, 1, 2,
-	};
-
-	Mesh m;
-	if (!m.create(verts, indices)) {
-		gfx::errorExit();
-	}
-
-	return m;
-}
-
-static void setTheme();
+static Mesh makeFullScreenTriangle();
+static void setImGuiTheme();
 
 int main() {
-	win::create("Honours Project", 800, 600);
+	const char *base_name = "Honours Project";
+	win::create(base_name, 800, 600);
 
 	// push stack so it cleans up after itself before closing
 	{
 		Camera cam;
 		BrushEditor brush_editor;
 		MaterialEditor material_editor;
-		DynamicShader sh_manager;
-		RayTracingEditor rt_editor = sh_manager;
+		RayTracingEditor rt_editor;
+		Sculpture sculpture = Sculpture(brush_editor);
+		Options &options = Options::get();
+		bool is_dirty = false;
 
-		setTheme();
+		Handle<Shader> main_vs            = Shader::compile("base_vs.hlsl",          ShaderType::Vertex);
+		Handle<Shader> main_ps            = Shader::compile("base_ps.hlsl",          ShaderType::Fragment);
+		Handle<Buffer> shader_data_handle = Buffer::makeConstant<PSShaderData>(Buffer::Usage::Dynamic);
+		Mesh triangle                     = makeFullScreenTriangle();
 
-		Handle<Texture3D> main_texture = Texture3D::create(maintex_size, Texture3D::Type::float16);
-		brush_editor.runFillShader(Shapes::Sphere, ShapeData(vec3(0), 21), main_texture);
-
-		if (!main_texture) gfx::errorExit();
-
-		Handle<Shader> main_vs       = sh_manager.add("base_vs",          ShaderType::Vertex);
-		Handle<Shader> main_ps       = sh_manager.add("base_ps",          ShaderType::Fragment);
-		Handle<Shader> sculpt        = sh_manager.add("sculpt_cs",        ShaderType::Compute);
-		Handle<Shader> find_brush    = sh_manager.add("find_brush_cs",    ShaderType::Compute);
-		Handle<Shader> scale_cs      = sh_manager.add("scale_cs", ShaderType::Compute);
-
-		if (!main_vs)       gfx::errorExit();
-		if (!main_ps)       gfx::errorExit();
-		if (!sculpt)        gfx::errorExit();
-		if (!find_brush)    gfx::errorExit();
-		if (!scale_cs)      gfx::errorExit();
+		if (!main_vs)            gfx::errorExit();
+		if (!main_ps)            gfx::errorExit();
+		if (!shader_data_handle) gfx::errorExit();
 
 		main_ps->addSampler();
 
-		Handle<Buffer> shader_data_handle    = Buffer::makeConstant<PSShaderData>(Buffer::Usage::Dynamic);
-		Handle<Buffer> find_data_handle      = Buffer::makeConstant<BrushFindData>(Buffer::Usage::Dynamic);
-
-		if (!shader_data_handle)    gfx::errorExit();
-		if (!find_data_handle)      gfx::errorExit();
-
-		Mesh triangle = makeFullScreenTriangle();
-		Options &options = Options::get();
-
-		static bool rt_is_dirty = false;
+		widgets::setupMenuBar(brush_editor, material_editor, rt_editor, sculpture);
+		setImGuiTheme();
 
 		while (win::isOpen()) {
-			sh_manager.poll();
-			saveLoadFileDialog(main_texture, scale_cs);
+			widgets::saveLoadFile();
+			sculpture.update();
 
 			if (isActionPressed(Action::CaptureFrame)) {
 				gfx::captureFrame();
@@ -127,38 +84,28 @@ int main() {
 			}
 
 			if (rt_editor.update(material_editor)) {
-				rt_editor.step(material_editor, main_texture, shader_data_handle);
+				rt_editor.step(material_editor, sculpture.texture, shader_data_handle);
 			}
 
-			rt_is_dirty |= sh_manager.hasUpdated();
-			rt_is_dirty |= cam.update();
+			is_dirty |= Shader::hasUpdated(rt_editor.getShader());
+			is_dirty |= cam.update();
 			brush_editor.update();
-			rt_is_dirty |= material_editor.update();
+			is_dirty |= material_editor.update();
 
-			if (rt_editor.shouldRedraw(rt_is_dirty)) {
-				rt_is_dirty = false;
+			if (rt_editor.shouldRedraw(is_dirty)) {
+				is_dirty = false;
+				// win::setWindowName(str::format("%s-%s*", base_name, project_name.get()));
 				rt_editor.reset();
 			}
 
 			if (gfx::isMainRTVActive()) {
-				if (Buffer *buf = find_data_handle.get()) {
-					if (BrushFindData *data = buf->map<BrushFindData>()) {
-						data->pos = cam.pos + cam.fwd * cam.getZoom();
-						data->dir = cam.getMouseDir();
-						data->depth = brush_editor.getDepth();
-						data->scale = brush_editor.getScale();
-						buf->unmap();
-					}
-				}
+				brush_editor.findBrush(cam, sculpture.texture);
 
-				find_brush->dispatch(1, { find_data_handle }, { main_texture->srv }, { brush_editor.getDataUAV() });
 
 				if (cam.shouldSculpt()) {
-					rt_is_dirty = true;
-					if (options.auto_capture) {
-						gfx::captureFrame();
-					}
-					sculpt->dispatch(main_texture->size / 8, { brush_editor.getOperHandle() }, { brush_editor.getBrushSRV(), brush_editor.getDataSRV() }, { main_texture->uav });
+					is_dirty = true;
+					sculpture.runSculpt();
+					win::setWindowName(str::format("%s - %s*", base_name, sculpture.getName()));
 				}
 			}
 
@@ -176,6 +123,7 @@ int main() {
 					data->one_over_aspect_ratio = resolution.y / resolution.x;
 					data->time = win::timeSinceStart();
 					data->num_of_lights = (uint)material_editor.getLightsCount();
+					data->use_tonemapping = (uint)material_editor.useTonemapping();
 					buf->unmap();
 				}
 			}
@@ -187,7 +135,7 @@ int main() {
 				{ shader_data_handle, material_editor.getBuffer() },
 				{
 					brush_editor.getDataSRV(),
-					main_texture->srv,
+					sculpture.texture->srv,
 					material_editor.getDiffuse(),
 					material_editor.getBackground(),
 					material_editor.getLights()->srv
@@ -198,14 +146,15 @@ int main() {
 			main_ps->unbindCBuffers(2);
 
 			gfx::imgui_rtv->bind();
-				if (options.show_fps) fpsWidget();
-				mainMenuBar(brush_editor, material_editor, main_texture);
+				if (options.show_fps) widgets::fps();
+				widgets::menuBar();
 				rt_editor.widget();
-				mainViewWidget();
-				messagesWidget();
-				keyRemapper();
+				widgets::mainView();
+				widgets::messages();
+				widgets::keyRemapper();
+				widgets::controlsPage();
 				drawLogger();
-				brush_editor.drawWidget();
+				brush_editor.drawWidget(sculpture.texture);
 				material_editor.drawWidget();
 				options.drawWidget();
 			
@@ -214,7 +163,7 @@ int main() {
 			if (isActionPressed(Action::TakeScreenshot)) {
 				if (gfx::isMainRTVActive())       gfx::main_rtv->takeScreenshot();
 				else if (rt_editor.isRendering()) rt_editor.getImage()->takeScreenshot();
-				else addMessageToWidget(LogLevel::Error, "Trying to take a screenshot but neither the main nor the ray tracing widget are selected");
+				else widgets::addMessage(LogLevel::Error, "Trying to take a screenshot but neither the main nor the ray tracing widget are selected");
 			}
 
 			gfx::logD3D11messages();
@@ -224,7 +173,26 @@ int main() {
 	win::cleanup();
 }
 
-static void setTheme() {
+static Mesh makeFullScreenTriangle() {
+	Mesh::Vertex verts[] = {
+		{ vec3(-1, -1, 0), vec2(0, 0) },
+		{ vec3(-1,  3, 0), vec2(0, 2) },
+		{ vec3(3, -1, 0), vec2(2, 0) },
+	};
+
+	Mesh::Index indices[] = {
+		0, 1, 2,
+	};
+
+	Mesh m;
+	if (!m.create(verts, indices)) {
+		gfx::errorExit();
+	}
+
+	return m;
+}
+
+static void setImGuiTheme() {
 	// from https://github.com/OverShifted/OverEngine
 	ImGuiStyle& style = ImGui::GetStyle();
 	style.Colors[ImGuiCol_Text]                  = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);

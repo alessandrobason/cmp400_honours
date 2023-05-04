@@ -17,26 +17,21 @@ struct BrushData {
 // input
 Texture3D<float> brush : register(t0);
 StructuredBuffer<BrushData> brush_data : register(t1);
-// StructuredBuffer<uint> material : register(t2);
 // output
 RWTexture3D<float> vol_tex : register(u0);
-// RWTexture3D<float3> material_tex : register(u1);
 
 static float3 brush_size = 0;
 static float3 volume_tex_size = 0;
 
-// #define MAX_DIST 10000.
-
 // operation is a 32 bit unsigned integer used for flags,
-// the left-most 3 bits are used as the operation mask
-// 1110 0000 0000 0000 0000 0000 0000 0000
-// ^--- is smooth
-//  ^-- is union
-//   ^- is subtraction
+// the left-most bit is used to flag if the operation is smooth
+// the other bits are used as flag for the operation
+// 1000 0000 0000 0000 0000 0000 0000 0011
+// ^--- is smooth            is union ---^
+//                    is subtraction ---^
 
-#define OP_MASK                 (3758096384)
-#define OP_SUBTRACTION          (1 << 29)
-#define OP_UNION                (1 << 30)
+#define OP_UNION                (1)
+#define OP_SUBTRACTION          (2)
 #define SMOOTH_OP               (1 << 31)
 #define OP_SMOOTH_UNION         (SMOOTH_OP | OP_UNION)
 #define OP_SMOOTH_SUBTRACTION   (SMOOTH_OP | OP_SUBTRACTION)
@@ -78,11 +73,9 @@ inline void op_smooth_subtraction(float vold, float vnew, float k, uint3 id, out
 }
 
 inline void setVTSkipRead(uint3 id, float old_value, float new_value, float3 pos) {
-	const float ROUGH_MIN_HIT_DISTANCE = 1;
     bool changed;
-    // old_value = min(old_value, MAX_STEP);
     
-    switch (operation & OP_MASK) {
+    switch (operation) {
         case OP_UNION:               op_union(old_value, new_value, id, changed);                             break;                   
         case OP_SUBTRACTION:         op_subtraction(old_value, new_value, id, changed);                       break;       
         case OP_SMOOTH_UNION:        op_smooth_union(old_value, new_value, smooth_amount, id, changed);       break;       

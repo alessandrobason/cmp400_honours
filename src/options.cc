@@ -17,6 +17,7 @@ void Options::load(const char *filename) {
 		gfx->get("vsync").trySet(vsync);
 		gfx->get("auto capture").trySet(auto_capture);
 		gfx->get("show fps").trySet(show_fps);
+		gfx->get("autosave").trySet(auto_save_mins);
 		if (ini::Value res = gfx->get("resolution")) {
 			arr<str::view> vec = res.asVec();
 			if (vec.size() == 2) {
@@ -48,6 +49,7 @@ void Options::save(const char *filename) {
 	fp.print("resolution = %u %u\n", resolution.x, resolution.y);
 	fp.print("auto capture = %s\n", B(auto_capture));
 	fp.print("show fps = %s\n", B(show_fps));
+	fp.print("autosave = %.2f\n", auto_save_mins);
 
 	fp.puts("\n[camera]\n");
 	fp.print("zoom sensitivity = %.3f\n", zoom_sensitivity);
@@ -78,7 +80,7 @@ void Options::drawWidget() {
 	
 	ImGui::PushItemWidth(-1);
 		ImGui::Text("Image resolution");
-		if (imInputUint2("##resolution", resolution.data)) {
+		if (inputUint2("##resolution", resolution.data)) {
 			if (all(resolution != 0)) {
 				gfx::main_rtv->resize(resolution.x, resolution.y);
 			}
@@ -88,6 +90,9 @@ void Options::drawWidget() {
 	ImGui::Checkbox("Auto Capture", &auto_capture);
 	tooltip("(Debugging only) Captures the frame every time a sculpting operation happens, only useful if the application is being debugged with RenderDoc");
 	ImGui::Checkbox("Show FPS", &show_fps);
+
+	ImGui::DragFloat("Auto Save", &auto_save_mins, 0.1f, 0.f, 10.f, "%.3fminute(s)");
+	tooltip("How many minutes before the sculpture auto saves, keep in mind that you need to save it at least once first!");
 
 	separatorText("Camera");
 	ImGui::SliderFloat("Zoom sensitivity", &zoom_sensitivity, 1, 50);

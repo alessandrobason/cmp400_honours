@@ -2,11 +2,19 @@
 
 extern struct VirtualAllocator g_gfx_arena;
 
+struct GFXFactoryBase {
+	virtual void cleanup() = 0;
+};
+
 template<typename T>
-struct GFXFactory {
-	GFXFactory() = default;
+struct GFXFactory : GFXFactoryBase {
+	GFXFactory() {
+		extern void subscribeGFXFactory(GFXFactoryBase *factory);
+		subscribeGFXFactory(this);
+	}
+
 	~GFXFactory() {
-		// check that we remembered to call cleanup
+		// check that we remembered to call cleanup (should be automatic check just in case)
 		assert(!head);
 	}
 
@@ -44,7 +52,7 @@ struct GFXFactory {
 		}
 	}
 
-	void cleanup() {
+	virtual void cleanup() override {
 		Node *node = head;
 		while (node) {
 			node->cleanup();

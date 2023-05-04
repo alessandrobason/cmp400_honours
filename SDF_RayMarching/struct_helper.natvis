@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <Type Name="arr&lt;*&gt;">
+    <DisplayString>{{ size={ len } }}</DisplayString>
+    <Expand>
+      <Item Name="[len]" ExcludeView="simple">len</Item>
+      <Item Name="[cap]" ExcludeView="simple">cap</Item>
+      <ArrayItems>
+        <Size>len</Size>
+        <ValuePointer>buf</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="str::view">
+    <DisplayString>{ data,[len]s }</DisplayString>
+    <StringView>data,s</StringView>
+    <Expand>
+      <Item Name="[len]" ExcludeView="simple">len</Item>
+      <Item Name="[str]" ExcludeView="simple">data, s</Item>
+    </Expand>
+  </Type>
+</AutoVisualizer>

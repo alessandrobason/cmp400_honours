@@ -13,6 +13,7 @@ double timerToSec(uint64_t ticks);
 double timerToMilli(uint64_t ticks);
 double timerToMicro(uint64_t ticks);
 double timerToNano(uint64_t ticks);
+const char *timerFormat(uint64_t ticks);
 
 void gpuTimerInit();
 void gpuTimerCleanup();
@@ -60,21 +61,6 @@ struct GPUClock{
 	void setName(const char *name);
 	void start();
 	void end();
-	void print(LogLevel level = LogLevel::Info);
-	bool isReady();
 
-	size_t start_timer = 0;
-	size_t end_timer = 0;
+	size_t timer_handle = 0;
 };
-
-#if 0
-struct GPUTimer {
-	// -- handle stuff --
-	static Handle<GPUTimer> make(const char *name);
-	static bool isHandleValid(Handle<GPUTimer> handle);
-	static GPUTimer *get(Handle<GPUTimer> handle);
-	// ------------------
-	void start();
-	void end();
-};
-#endif

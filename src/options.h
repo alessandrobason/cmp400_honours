@@ -9,6 +9,7 @@ struct Options {
 	vec2u resolution        = vec2u(1920, 1080);
 	bool auto_capture       = false;
 	bool show_fps           = true;
+	float auto_save_mins    = 1.f;
 
 	// camera
 	float zoom_sensitivity  = 20.f;

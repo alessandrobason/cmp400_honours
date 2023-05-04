@@ -16,6 +16,6 @@ struct Camera {
 	vec3 up;
 	vec3 right;
 
-	vec2 angle = 0.f;
+	vec2 angle = vec2(-41.f, 8.3f);
 	float zoom_exp = 1.f;
 };

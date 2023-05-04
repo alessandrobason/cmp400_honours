@@ -34,7 +34,6 @@ struct Buffer {
 	static Handle<Buffer> make();
 	static Handle<Buffer> makeConstant(size_t type_size, Usage usage, bool cpu_can_write = true, bool cpu_can_read = false, const void *initial_data = nullptr, size_t data_count = 1);
 	static Handle<Buffer> makeStructured(size_t type_size, size_t count = 1, Bind bind = Bind::GpuReadWrite, const void *initial_data = nullptr);
-	static void cleanAll();
 
 	template<typename T>
 	static Handle<Buffer> makeConstant(Usage usage, bool can_write = true, bool can_read = false, const void *initial_data = nullptr, size_t data_count = 1) {

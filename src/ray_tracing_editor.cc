@@ -13,10 +13,10 @@ constexpr int block_size = 16;
 constexpr int group_size = 8;
 constexpr int skip_size = block_size * group_size;
 
-RayTracingEditor::RayTracingEditor(DynamicShader &ds) {
+RayTracingEditor::RayTracingEditor() {
 	image       = Texture2D::create(gfx::main_rtv->size, true);
 	data_handle = Buffer::makeConstant<RayTraceData>(Buffer::Usage::Dynamic);
-	shader      = ds.add("ray_tracing_cs", ShaderType::Compute);
+	shader      = Shader::compile("ray_tracing_cs.hlsl", ShaderType::Compute);
 
 	if (!image)                gfx::errorExit();
 	if (!data_handle)          gfx::errorExit();
@@ -28,7 +28,7 @@ bool RayTracingEditor::update(const MaterialEditor &me) {
 	if (any(gfx::main_rtv->size != image->size)) {
 		resize(gfx::main_rtv->size);
 		reset();
-		//rough_clock.begin();
+		rough_clock.begin();
 	}
 
 	// don't update if the window is not even visible
@@ -40,7 +40,8 @@ bool RayTracingEditor::update(const MaterialEditor &me) {
 		
 		data.num_rendered_frames++;
 		data.thread_loc = 0;
-		//rough_clock.print();
+		sum_frame_times += rough_clock.getTime();
+		rough_clock.begin();
 	}
 
 	if (RayTraceData *rt_data = data_handle->map<RayTraceData>()) {
@@ -89,6 +90,22 @@ void RayTracingEditor::step(MaterialEditor &me, Handle<Texture3D> main_tex, Hand
 	);
 }
 
+bool RayTracingEditor::isEditorOpen() const {
+	return is_editor_open;
+}
+
+void RayTracingEditor::setEditorOpen(bool is_open) {
+	is_editor_open = is_open;
+}
+
+bool RayTracingEditor::isViewOpen() const {
+	return is_view_open;
+}
+
+void RayTracingEditor::setViewOpen(bool is_open) {
+	is_view_open = is_open;
+}
+
 bool RayTracingEditor::isRendering() const {
 	return is_rendering;
 }
@@ -101,9 +118,13 @@ Handle<Texture2D> RayTracingEditor::getImage() const {
 	return image;
 }
 
+Handle<Shader> RayTracingEditor::getShader() const {
+	return shader;
+}
+
 void RayTracingEditor::imageWidget() {
 	if (!is_view_open) return;
-	if (!ImGui::Begin("Ray Tracing Render", &is_view_open)) {
+	if (!ImGui::Begin("Render", &is_view_open)) {
 		is_view_active = false;
 		ImGui::End();
 		return;
@@ -111,34 +132,13 @@ void RayTracingEditor::imageWidget() {
 
 	is_view_active = true;
 
-	imageViewWidget(image);
+	widgets::imageView(image);
 
 	ImGui::End();
 }
 
 void RayTracingEditor::timeWidget() {
 	if (!is_rendering) return;
-
-	const auto timeFmt = [](uint64_t time) -> const char *{
-		if (timerToSec(time) >= 60.0) {
-			double seconds = timerToSec(time);
-			double minutes = floor(seconds / 60.0);
-			seconds -= minutes * 60.0;
-			return str::format("%.0fmin %.2fs", minutes, seconds);
-		}
-		else if (timerToSec(time) >= 1.0) {
-			return str::format("%.2fs", timerToSec(time));
-		}
-		else if (timerToMilli(time) >= 1.0) {
-			return str::format("%.2fms", timerToMilli(time));
-		}
-		else if (timerToMicro(time) >= 1.0) {
-			return str::format("%.2fus", timerToMicro(time));
-		}
-		else {
-			return str::format("%.2fns", timerToNano(time));
-		}
-	};
 
 	constexpr float PAD = 10.0f;
 	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove;
@@ -155,13 +155,15 @@ void RayTracingEditor::timeWidget() {
 	ImGui::SetNextWindowBgAlpha(0.35f);
 
 	ImGui::Begin("TIME overlay", nullptr, window_flags);
-	ImGui::Text("Rendering time: %s", timeFmt(timerSince(start_render)));
+		ImGui::Text("Rendering time: %s", timerFormat(timerSince(start_render)));
+		ImGui::Text("Frames rendered: %d", data.num_rendered_frames);
+		ImGui::Text("Average time per frame: %s", data.num_rendered_frames ? timerFormat(sum_frame_times / data.num_rendered_frames) : "n/a");
 	ImGui::End();
 }
 
 void RayTracingEditor::editorWidget() {
 	if (!is_editor_open) return;
-	if (!ImGui::Begin("Ray Tracing Editor", &is_editor_open)) {
+	if (!ImGui::Begin("Render Editor", &is_editor_open)) {
 		ImGui::End();
 		return;
 	}

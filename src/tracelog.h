@@ -2,6 +2,8 @@
 
 #include <stdarg.h>
 
+struct ImColor;
+
 enum class LogLevel {
     None,
     Debug, 
@@ -17,6 +19,7 @@ void logMessageV(LogLevel level, const char *fmt, va_list vlist);
 void drawLogger();
 void logSetOpen(bool is_open);
 bool logIsOpen();
+const ImColor &logGetLevelColour(LogLevel level);
 
 #define debug(...) logMessage(LogLevel::Debug,   __VA_ARGS__)
 #define info(...)  logMessage(LogLevel::Info,    __VA_ARGS__)

@@ -15,6 +15,7 @@
 #include "input.h"
 #include "options.h"
 #include "timer.h"
+#include "vec.h"
 
 static const char *level_strings[(int)LogLevel::Count] = {
     "[NONE] ",
@@ -55,7 +56,7 @@ struct Logger {
     ImVector<Line> lines;
     bool auto_scrool = true;
     bool is_open = true;
-    CRITICAL_SECTION mutex;
+    thr::Mutex mutex;
 };
 
 static Logger logger;
@@ -68,7 +69,7 @@ void logMessage(LogLevel level, const char *fmt, ...) {
 }
 
 void logMessageV(LogLevel level, const char *fmt, va_list vlist) {
-    EnterCriticalSection(&logger.mutex);
+    logger.mutex.lock();
 
     double time_millis = timerToMilli(timerNow());
     double time_seconds = time_millis / 1000.0;
@@ -109,7 +110,7 @@ void logMessageV(LogLevel level, const char *fmt, va_list vlist) {
         exit(1);
     }
 
-    LeaveCriticalSection(&logger.mutex);
+    logger.mutex.unlock();
 }
 
 void drawLogger() {
@@ -124,16 +125,18 @@ bool logIsOpen() {
     return logger.is_open;
 }
 
+const ImColor &logGetLevelColour(LogLevel level) {
+    return level_colours[(int)level];
+}
+
 // == LOGGER FUNCTIONS ========================================================================================================
 
 Logger::Logger() {
-    InitializeCriticalSection(&mutex);
     SetConsoleOutputCP(CP_UTF8);
     clear();
 }
 
 Logger::~Logger() {
-    DeleteCriticalSection(&mutex);
     if (Options::get().print_to_file) {
         if (!fp) {
             mem::ptr<char[]> filename = file::findFirstAvailable("logs", "log_%d.txt");
@@ -156,7 +159,6 @@ Logger::~Logger() {
 void Logger::clear() {
     buf.clear();
     lines.clear();
-    //lines.push_back({});
 }
 
 void Logger::endLine(LogLevel level, int minutes, int seconds, int millis) {

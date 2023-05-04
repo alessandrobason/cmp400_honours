@@ -140,6 +140,8 @@ enum class Action {
 	ZoomIn,
 	ZoomOut,
 	CaptureFrame,
+	ChangeToBrush,
+	ChangeToEraser,
 	Count
 };
 

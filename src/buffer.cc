@@ -86,10 +86,6 @@ Handle<Buffer> Buffer::makeStructured(
     return newbuf;
 }
 
-void Buffer::cleanAll() {
-    buffer_factory.cleanup();
-}
-
 void Buffer::cleanup() {
     buffer.destroy();
     srv.destroy();

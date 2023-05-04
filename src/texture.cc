@@ -9,8 +9,7 @@
 #include "utils.h"
 #include "tracelog.h"
 #include "gfx_factory.h"
-
-extern void addMessageToWidget(LogLevel level, const char *msg, float show_time = 3.f);
+#include "widgets.h"
 
 /* ==========================================
    =============== TEXTURE 2D ===============
@@ -74,10 +73,6 @@ Handle<Texture2D> Texture2D::loadHDR(const char *filename, bool can_gpu_read) {
 	}
 
 	return tex;
-}
-
-void Texture2D::cleanAll() {
-	tex2d_factory.cleanup();
 }
 
 bool Texture2D::init(const vec2i &newsize, bool can_gpu_read) {
@@ -297,7 +292,7 @@ bool Texture2D::takeScreenshot(const char *base_name) {
 
 	if (success) {
 		info("saved screenshot as %s", name.get());
-		addMessageToWidget(LogLevel::Info, str::format("saved screenshot as %s", name.get()));
+		widgets::addMessage(LogLevel::Info, str::format("saved screenshot as %s", name.get()));
 	}
 
 	gfx::context->Unmap(temp, 0);
@@ -410,10 +405,6 @@ Handle<Texture3D> Texture3D::load(const char *filename) {
 	return tex;
 }
 
-void Texture3D::cleanAll() {
-	tex3d_factory.cleanup();
-}
-
 bool Texture3D::init(const vec3u &texsize, Type type, const void *initial_data) {
 	return init(texsize.x, texsize.y, texsize.z, type, initial_data);
 }
@@ -521,7 +512,7 @@ bool Texture3D::loadFromFile(const char *filename) {
 
 #include <thread>
 
-bool Texture3D::save(const char *filename, bool overwrite) {
+bool Texture3D::save(const char *filename, bool overwrite, thr::Promise<bool> *promise) {
 	if (!overwrite && file::exists(filename)) {
 		err("trying to save a Texture3D but file (%s) already exists", filename);
 		return false;
@@ -569,10 +560,11 @@ bool Texture3D::save(const char *filename, bool overwrite) {
 	info("Saving texture in another thread");
 
 	std::thread(
-		[](StreamOut &&stream, mem::ptr<char[]> filename) {
+		[](StreamOut &&stream, mem::ptr<char[]> filename, thr::Promise<bool> *promise) {
 			zstd::Buf compressed = zstd::compress(stream.getData(), stream.getLen());
 			if (!compressed) {
 				err("could not compress texture data: %s", compressed.getErrorString());
+				if (promise) promise->set(false);
 				return;
 			}
 
@@ -608,16 +600,18 @@ bool Texture3D::save(const char *filename, bool overwrite) {
 
 			if (!file::write(filename.get(), compressed.data, compressed.len)) {
 				info("failed to save file (%s)", filename.get());
-				addMessageToWidget(LogLevel::Error, "Failed to save sculpture to file!");
+				if (promise) promise->set(false);
+				widgets::addMessage(LogLevel::Error, "Failed to save sculpture to file!");
 			}
 			else {
-				addMessageToWidget(LogLevel::Info, "Saved sculpture to file!");
+				if (promise) promise->set(true);
+				widgets::addMessage(LogLevel::Info, "Saved sculpture to file!");
 			}
 		},
-		mem::move(stream), str::dup(filename)
+		mem::move(stream), str::dup(filename), promise
 	).detach();
 
-	addMessageToWidget(LogLevel::Warning, "Saving sculpture to file, this could take a while!", 6.f);
+	widgets::addMessage(LogLevel::Warning, "Saving sculpture to file, this could take a while!", 6.f);
 
 	return true;
 }
@@ -747,10 +741,6 @@ Handle<RenderTexture> RenderTexture::fromBackbuffer() {
 	}
 
 	return rt;
-}
-
-void RenderTexture::cleanAll() {
-	rentex_factory.cleanup();
 }
 
 bool RenderTexture::resize(int new_width, int new_height) {

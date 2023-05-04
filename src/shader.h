@@ -3,7 +3,6 @@
 #include "gfx_common.h"
 #include "handle.h"
 #include "utils.h"
-//#include "vec.h"
 
 struct Buffer;
 template<typename T> struct vec3T;
@@ -23,13 +22,10 @@ struct Shader {
 
 	// -- handle stuff --
 	static Handle<Shader> make();
-	static Handle<Shader> load(const char *filename, ShaderType type);
-	static Handle<Shader> compile(const char *filename, ShaderType type, Slice<ShaderMacro> macros = {});
-	static void cleanAll();
+	static Handle<Shader> load(const char *filename, ShaderType type, bool hot_reload = true);
+	static Handle<Shader> compile(const char *filename, ShaderType type, Slice<ShaderMacro> macros = {}, bool hot_reload = true);
+	static bool hasUpdated(Handle<Shader> handle);
 	// ------------------
-
-	// bool load(const char *filename, ShaderType type);
-	// bool compile(const char *filename, ShaderType type, Slice<ShaderMacro> macros = {});
 
 	bool loadVertex(const void *data, size_t len);
 	bool loadFragment(const void *data, size_t len);
@@ -55,23 +51,4 @@ struct Shader {
 	// either input layout (if VS) or sampler state (if PS)
 	dxptr<ID3D11DeviceChild> extra = nullptr;
 	ShaderType shader_type = ShaderType::None;
-};
-
-struct DynamicShader {
-	DynamicShader() = default;
-	DynamicShader(const DynamicShader &s) = delete;
-	DynamicShader(DynamicShader &&s);
-
-	DynamicShader &operator=(DynamicShader &&s);
-	
-	Handle<Shader> add(const char *name, ShaderType type);
-
-	void poll();
-	bool hasUpdated() const { return has_updated; }
-
-private:
-	Handle<Shader> addFileWatch(const char *name, ShaderType type);
-
-	file::Watcher watcher = "shaders/";
-	bool has_updated = false;
 };

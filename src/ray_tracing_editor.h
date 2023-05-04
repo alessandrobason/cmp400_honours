@@ -1,5 +1,6 @@
 #pragma once
 
+#include "gfx_common.h"
 #include "common.h"
 #include "vec.h"
 #include "timer.h"
@@ -23,7 +24,9 @@ struct RayTracingEditor {
 		float maximum_trace_dist = 3000.f;
 	};
 
-	RayTracingEditor(DynamicShader &ds);
+	GFX_CLASS_CHECK(RayTraceData);
+
+	RayTracingEditor();
 
 	bool update(const MaterialEditor &me);
 	void widget();
@@ -31,9 +34,15 @@ struct RayTracingEditor {
 	void resize(const vec2i &size);
 	void step(MaterialEditor &me, Handle<Texture3D> main_tex, Handle<Buffer> shader_data);
 
+	bool isEditorOpen() const;
+	void setEditorOpen(bool is_open);
+	bool isViewOpen() const;
+	void setViewOpen(bool is_open);
+
 	bool isRendering() const;
 	bool shouldRedraw(bool is_dirty) const;
 	Handle<Texture2D> getImage() const;
+	Handle<Shader> getShader() const;
 
 private:
 	void imageWidget();
@@ -54,4 +63,5 @@ private:
 	bool should_redraw = false;
 	bool refresh = true;
 	CPUClock rough_clock = "ray tracing frame";
+	uint64_t sum_frame_times = 0;
 };

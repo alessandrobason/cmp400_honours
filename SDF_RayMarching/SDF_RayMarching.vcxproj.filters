@@ -69,9 +69,6 @@
     <ClCompile Include="..\libs\stb\stb.c">
       <Filter>Libraries\stb</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\shape_builder.cc">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\matrix.cc">
       <Filter>Source Files\math</Filter>
     </ClCompile>
@@ -156,16 +153,13 @@
     <ClCompile Include="..\src\ray_tracing_editor.cc">
       <Filter>Source Files\gui</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\sculpture.cc">
+      <Filter>Source Files\gfx</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\libs\stb\stb_image_write.h">
       <Filter>Libraries\stb</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\shape_builder.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\camera.h">
-      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\libs\stb\stb_image.h">
       <Filter>Libraries\stb</Filter>
@@ -284,5 +278,14 @@
     <ClInclude Include="..\src\ray_tracing_editor.h">
       <Filter>Header Files\gui</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\camera.h">
+      <Filter>Header Files\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\sculpture.h">
+      <Filter>Header Files\gfx</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="struct_helper.natvis" />
   </ItemGroup>
 </Project>

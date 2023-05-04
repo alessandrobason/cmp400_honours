@@ -14,147 +14,255 @@
 #include "utils.h"
 #include "brush_editor.h"
 #include "material_editor.h"
+#include "ray_tracing_editor.h"
+#include "sculpture.h"
 #include "options.h"
-
-static bool is_game_view_open = true;
-
-void fpsWidget() {
-	constexpr float PAD = 10.0f;
-	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove;
-	ImGuiViewport *viewport = ImGui::GetMainViewport();
-	vec2 work_pos = viewport->WorkPos;
-	vec2 work_size = viewport->WorkSize;
-	vec2 window_pos = {
-		work_pos.x + PAD,
-		work_pos.y + work_size.y - PAD
-	};
-	vec2 window_pos_pivot = { 0.f, 1.f };
-	ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
-	ImGui::SetNextWindowViewport(viewport->ID);
-	ImGui::SetNextWindowBgAlpha(0.35f);
-
-	ImGui::Begin("FPS overlay", nullptr, window_flags);
-	ImGui::Text("FPS: %.1f", win::fps);
-	ImGui::End();
-}
-
-void imageViewWidget(Handle<Texture2D> texture, vec4 *out_bounds) {
-	vec2 win_size = ImGui::GetWindowContentRegionMax();
-	vec2 win_padding = ImGui::GetWindowContentRegionMin();
-
-	win_size -= win_padding;
-
-	vec2 size = texture->size;
-	float dx = win_size.x / size.x;
-	float dy = win_size.y / size.y;
-
-	if (dx > dy) {
-		size.x *= dy;
-		size.y = win_size.y;
-	}
-	else {
-		size.x = win_size.x;
-		size.y *= dx;
-	}
-
-	vec2 position = (win_size - size) * 0.5f + win_padding;
-	vec2 win_pos = ImGui::GetWindowPos();
-	if (out_bounds) *out_bounds = vec4(position + win_pos, size);
-
-	ImGui::SetCursorPos(position);
-	ImGui::Image((ImTextureID)texture->srv, size);
-}
-
-void mainViewWidget() {
-	if (!is_game_view_open) return;
-	if (!ImGui::Begin("Main", &is_game_view_open)) {
-		ImGui::End();
-		gfx::setMainRTVActive(false);
-		return;
-	}
-
-	static bool was_focused = false;
-
-	// set the main RTV to active if:
-	// - the curent window is focused
-	// - the mouse is inside the window
-	bool is_focused = ImGui::IsWindowFocused();
-	vec2 mouse_pos = ImGui::GetMousePos();
-	vec4 window_bb = vec4(ImGui::GetWindowPos(), ImGui::GetWindowSize());
-	if (window_bb.contains(mouse_pos)) {
-		// if the user presses the lmb inside the RTV, even if it was not selected it will sculpt anyway,
-		// this is to prevent that
-		if (is_focused && !was_focused && isMouseDown(MOUSE_LEFT)) {
-			is_focused = false;
-		}
-		if (isMouseDown(MOUSE_RIGHT)) {
-			is_focused = true;
-			ImGui::SetWindowFocus();
-		}
-		gfx::setMainRTVActive(is_focused);
-	}
-
-	was_focused = is_focused;
-
-	ImGui::BeginDisabled(!is_focused);
-		vec4 bounds = 0;
-		imageViewWidget(gfx::main_rtv, &bounds);
-	ImGui::EndDisabled();
-
-	gfx::setMainRTVBounds(bounds);
-
-
-	ImGui::End();
-}
-
-bool imInputUint2(const char *label, unsigned int v[2], int flags) {
-	static unsigned int step = 1;
-	return ImGui::InputScalarN(label, ImGuiDataType_U32, v, 2, &step, nullptr, "%u", flags);
-}
-
-bool imInputUint3(const char *label, unsigned int v[3], int flags) {
-	static unsigned int step = 1;
-	return ImGui::InputScalarN(label, ImGuiDataType_U32, v, 3, &step, nullptr, "%u", flags);
-}
 
 // how long before the messagge starts disappearing
 constexpr float falloff_time = 2.f;
 
-static const ImColor level_to_colour[(int)LogLevel::Count] = {
-    ImColor(  0,   0,   0), // None
-    ImColor( 26, 102, 191), // Debug
-    ImColor( 30, 149,  96), // Info
-    ImColor(230, 179,   0), // Warning
-    ImColor(251,  35,  78), // Error
-    ImColor(255,   0,   0), // Fatal
-};
+static struct GameView {
+	bool is_open = true;
+	bool was_focused = false;
+} game_view;
 
-struct Message {
-	Message() = default;
-	Message(LogLevel l, mem::ptr<char[]>&& m, float t) : severity(l), message(mem::move(m)), timer(t) {}
-	LogLevel severity;
-	mem::ptr<char[]> message;
-	float timer = 0.f;
-};
+static struct MessageManager {
+	struct Message {
+		Message() = default;
+		Message(LogLevel l, mem::ptr<char[]> &&m, float t) : severity(l), message(mem::move(m)), timer(t) {}
+		LogLevel severity;
+		mem::ptr<char[]> message;
+		float timer = 0.f;
+	};
 
-static arr<Message> messages;
-static char window_title[64] = "Message##";
-static const size_t title_beg = strlen(window_title);
+	void widget();
+	void add(LogLevel severity, const char *message, float show_time);
 
-void messagesWidget() {
-	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove;
+	arr<Message> messages;
+	char window_title[64] = "Message##";
+	const size_t title_beg = strlen(window_title);
+} msg_manager;
+
+static struct KeyRemapper {
+	void widget();
+	bool is_open = false;
+} remapper;
+
+static struct ControlsMenu {
+	bool is_open = false;
+} controls;
+
+static struct MenuBar {
+	void widget();
+	void saveWidget();
+
+	BrushEditor *brush_editor       = nullptr;
+	MaterialEditor *material_editor = nullptr;
+	RayTracingEditor *rt_editor     = nullptr;
+	Sculpture *sculpture            = nullptr;
+
+	bool open_save_popup  = false;
+	bool open_new_popup   = false;
+	bool is_saving        = false;
+	bool is_creating      = false;
+	bool should_load_file = false;
+	bool should_save_file = false;
+	vec3u save_quality    = 64;
+} menu_bar;
+
+namespace widgets {
+	void setupMenuBar(BrushEditor &be, MaterialEditor &me, RayTracingEditor &re, Sculpture &sc) {
+		menu_bar.brush_editor    = &be;
+		menu_bar.material_editor = &me;
+		menu_bar.rt_editor       = &re;
+		menu_bar.sculpture       = &sc;
+	}
+
+	void fps() {
+		constexpr float PAD = 10.0f;
+		constexpr ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove;
+		ImGuiViewport *viewport = ImGui::GetMainViewport();
+		vec2 work_pos = viewport->WorkPos;
+		vec2 work_size = viewport->WorkSize;
+		vec2 window_pos = {
+			work_pos.x + PAD,
+			work_pos.y + work_size.y - PAD
+		};
+		vec2 window_pos_pivot = { 0.f, 1.f };
+		ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
+		ImGui::SetNextWindowViewport(viewport->ID);
+		ImGui::SetNextWindowBgAlpha(0.35f);
+
+		ImGui::Begin("FPS overlay", nullptr, window_flags);
+			ImGui::Text("FPS: %.1f", win::fps);
+		ImGui::End();
+	}
+
+	void imageView(Handle<Texture2D> texture, vec4 *out_bounds) {
+		vec2 win_size = ImGui::GetWindowContentRegionMax();
+		vec2 win_padding = ImGui::GetWindowContentRegionMin();
+
+		win_size -= win_padding;
+
+		vec2 size = texture->size;
+		float dx = win_size.x / size.x;
+		float dy = win_size.y / size.y;
+
+		if (dx > dy) {
+			size.x *= dy;
+			size.y = win_size.y;
+		}
+		else {
+			size.x = win_size.x;
+			size.y *= dx;
+		}
+
+		vec2 position = (win_size - size) * 0.5f + win_padding;
+		vec2 win_pos = ImGui::GetWindowPos();
+		if (out_bounds) *out_bounds = vec4(position + win_pos, size);
+
+		ImGui::SetCursorPos(position);
+		ImGui::Image((ImTextureID)texture->srv, size);
+	}
+
+	void mainView() {
+		if (!game_view.is_open) return;
+		if (!ImGui::Begin("Main", &game_view.is_open)) {
+			ImGui::End();
+			gfx::setMainRTVActive(false);
+			return;
+		}
+		
+		// set the main RTV to active if:
+		// - the curent window is focused
+		// - the mouse is inside the window
+		bool is_focused = ImGui::IsWindowFocused();
+		vec2 mouse_pos = ImGui::GetMousePos();
+		vec4 window_bb = vec4(ImGui::GetWindowPos(), ImGui::GetWindowSize());
+		if (window_bb.contains(mouse_pos)) {
+			// if the user presses the lmb inside the RTV, even if it was not selected it will sculpt anyway,
+			// this is to prevent that
+			if (is_focused && !game_view.was_focused && isMouseDown(MOUSE_LEFT)) {
+				is_focused = false;
+			}
+			if (isMouseDown(MOUSE_RIGHT)) {
+				is_focused = true;
+				ImGui::SetWindowFocus();
+			}
+			gfx::setMainRTVActive(is_focused);
+		}
+
+		game_view.was_focused = is_focused;
+
+		ImGui::BeginDisabled(!is_focused);
+		vec4 bounds = 0;
+		imageView(gfx::main_rtv, &bounds);
+		ImGui::EndDisabled();
+
+		gfx::setMainRTVBounds(bounds);
+
+
+		ImGui::End();
+	}
+
+	void messages() {
+		msg_manager.widget();
+	}
+
+	void addMessage(LogLevel severity, const char *message, float show_time) {
+		msg_manager.messages.push(severity, str::dup(message), show_time);
+	}
+
+	void keyRemapper() {
+		remapper.widget();
+	}
+	
+	void controlsPage() {
+		if (!controls.is_open) return;
+		if (!ImGui::Begin("Controls", &controls.is_open)) {
+			ImGui::End();
+			return;
+		}
+	
+		separatorText("Base");
+
+		ImGui::Text(
+			"Exit program: %s\n"
+			"Take Screenshot: %s\n"
+			"Capture Frame (debugging only): %s\n",
+			getKeyName(getActionKey(Action::CloseProgram)),
+			getKeyName(getActionKey(Action::TakeScreenshot)),
+			getKeyName(getActionKey(Action::CaptureFrame))
+		);
+
+		separatorText("Camera");
+
+		ImGui::Text(
+			"Rotate Camera: %s %s %s %s\n"
+			"Reset Zoom: %s\n"
+			"Zoom in: %s\n"
+			"Zoom out: %s\n",
+			getKeyName(getActionKey(Action::RotateCameraHorPos)),
+			getKeyName(getActionKey(Action::RotateCameraHorNeg)),
+			getKeyName(getActionKey(Action::RotateCameraVerPos)),
+			getKeyName(getActionKey(Action::RotateCameraVerNeg)),
+			getKeyName(getActionKey(Action::ResetZoom)),
+			getKeyName(getActionKey(Action::ZoomIn)),
+			getKeyName(getActionKey(Action::ZoomOut))
+		);
+
+		separatorText("Brush");
+
+		ImGui::Text(
+			"Use brush: %s\n"
+			"Use eraser: %s\n"
+			"While editing: \n"
+			"  - Modify scale: %s\n"
+			"  - Modify depth: %s\n"
+			"  - Modify blend amount: %s\n",
+			getKeyName(getActionKey(Action::ChangeToBrush)),
+			getKeyName(getActionKey(Action::ChangeToEraser)),
+			getKeyName(KEY_SHIFT),
+			getKeyName(KEY_CTRL),
+			getKeyName(KEY_ALT)
+		);
+
+		separatorText("File");
+
+		ImGui::Text(
+			"New: %s-%s\n"
+			"Save: %s-%s\n",
+			getKeyName(KEY_CTRL), getKeyName(KEY_A),
+			getKeyName(KEY_CTRL), getKeyName(KEY_N)
+		);
+
+		ImGui::End();
+	}
+
+	void menuBar() {
+		menu_bar.widget();
+	}
+
+	void saveLoadFile() {
+		menu_bar.saveWidget();
+	}
+
+} // namespace widgets
+
+void MessageManager::widget() {
+	constexpr ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove;
 
 	const float PAD = 10.0f;
-	const ImGuiViewport* viewport = ImGui::GetMainViewport();
+	const ImGuiViewport *viewport = ImGui::GetMainViewport();
 	const vec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
 	const vec2 work_size = viewport->WorkSize;
 	vec2 window_pos = work_pos + PAD;
 	const vec2 window_pos_pivot = 0.f;
 	float y_size = 0.f;
 
-	for (size_t i = 0; i < messages.size(); ++i) {
-		Message &msg = messages[i];
-		
+	for (size_t i = 0; i < messages.len; ++i) {
+		auto &msg = messages[i];
+
 		const float alpha = msg.timer / falloff_time;
 		ImVec4 border_colour = ImGui::GetStyleColorVec4(ImGuiCol_Border);
 		border_colour.w = alpha;
@@ -164,12 +272,12 @@ void messagesWidget() {
 		ImGui::PushStyleColor(ImGuiCol_Border, border_colour);
 
 		str::formatBuf(window_title + title_beg, sizeof(window_title) - title_beg, "%zu", i);
-		
+
 		ImGui::Begin(window_title, nullptr, window_flags);
-			ImColor col = level_to_colour[(int)msg.severity];
-			col.Value.w = alpha;
-			ImGui::TextColored(col, msg.message.get());
-			y_size = ImGui::GetWindowSize().y;
+		ImColor col = logGetLevelColour(msg.severity);
+		col.Value.w = alpha;
+		ImGui::TextColored(col, msg.message.get());
+		y_size = ImGui::GetWindowSize().y;
 		ImGui::End();
 
 		ImGui::PopStyleColor();
@@ -183,15 +291,9 @@ void messagesWidget() {
 	}
 }
 
-void addMessageToWidget(LogLevel severity, const char* message, float show_time) {
-	messages.push(severity, str::dup(message), show_time);
-}
-
-static bool is_remapper_open = false;
-
-void keyRemapper() {
-	if (!is_remapper_open) return;
-	if (!ImGui::Begin("Key Remapping", &is_remapper_open)) {
+void KeyRemapper::widget() {
+	if (!is_open) return;
+	if (!ImGui::Begin("Key Remapping", &is_open)) {
 		ImGui::End();
 		return;
 	}
@@ -223,6 +325,8 @@ void keyRemapper() {
 	remapAction(Action::ZoomIn, "Zoom In", cur_action);
 	remapAction(Action::ZoomOut, "Zoom Out", cur_action);
 	remapAction(Action::CaptureFrame, "Capture Frame", cur_action, "(debugging only) Captures a frame in RenderDoc");
+	remapAction(Action::ChangeToBrush, "Change to Brush", cur_action);
+	remapAction(Action::ChangeToEraser, "Change to Eraser", cur_action);
 
 	if (ImGui::BeginPopupModal("Remap", &is_popup_open)) {
 		Keys last_pressed = getLastKeyPressed();
@@ -248,23 +352,33 @@ void keyRemapper() {
 	ImGui::End();
 }
 
-static bool should_load_file = false;
-static bool should_save_file = false;
-static vec3u save_quality = 64;
+void MenuBar::widget() {
+	assert(brush_editor && material_editor && rt_editor);
 
-void mainMenuBar(BrushEditor &be, MaterialEditor &me, Handle<Texture3D> main_tex) {
-	static bool open_save_popup = false;
-	static bool open_new_popup = false;
-	static bool is_saving = false;
-	static bool is_creating = false;
+	if (isKeyDown(KEY_CTRL)) {
+		bool is_popup_open = open_new_popup || open_save_popup;
+		if (!is_popup_open) {
+			if (isKeyPressed(KEY_N)) {
+				open_new_popup = true;
+			}
+			if (isKeyPressed(KEY_S)) {
+				if (sculpture->getPath()) {
+					sculpture->save(save_quality);
+				}
+				else {
+					open_save_popup = true;
+				}
+			}
+		}
+	}
 
 	if (ImGui::BeginMainMenuBar()) {
 		if (ImGui::BeginMenu("File")) {
-			if (ImGui::MenuItem("New")) {
+			if (ImGui::MenuItem("New", "Ctrl+N")) {
 				open_new_popup = true;
 			}
 
-			if (ImGui::MenuItem("Save")) {
+			if (ImGui::MenuItem("Save", "Ctrl+S")) {
 				open_save_popup = true;
 			}
 
@@ -272,26 +386,30 @@ void mainMenuBar(BrushEditor &be, MaterialEditor &me, Handle<Texture3D> main_tex
 				should_load_file = true;
 			}
 
-			// if (ImGui::MenuItem("Clear Canvas")) {
-			// 	be.runFillShader(Shapes::None, ShapeData(), main_tex);
-			// }
-
 			ImGui::EndMenu();
 		}
 
 		if (ImGui::BeginMenu("View")) {
 			Options &options = Options::get();
 
-			if (ImGui::MenuItem("Main View", nullptr, is_game_view_open)) {
-				is_game_view_open = !is_game_view_open;
+			if (ImGui::MenuItem("Main View", nullptr, game_view.is_open)) {
+				game_view.is_open = !game_view.is_open;
 			}
 
-			if (ImGui::MenuItem("Brush Editor", nullptr, be.isOpen())) {
-				be.setOpen(!be.isOpen());
+			if (ImGui::MenuItem("Render View", nullptr, rt_editor->isViewOpen())) {
+				rt_editor->setViewOpen(!rt_editor->isViewOpen());
 			}
 
-			if (ImGui::MenuItem("Material Editor", nullptr, me.isOpen())) {
-				me.setOpen(!me.isOpen());
+			if (ImGui::MenuItem("Render editor", nullptr, rt_editor->isEditorOpen())) {
+				rt_editor->setEditorOpen(!rt_editor->isEditorOpen());
+			}
+
+			if (ImGui::MenuItem("Brush Editor", nullptr, brush_editor->isOpen())) {
+				brush_editor->setOpen(!brush_editor->isOpen());
+			}
+
+			if (ImGui::MenuItem("Material Editor", nullptr, material_editor->isOpen())) {
+				material_editor->setOpen(!material_editor->isOpen());
 			}
 
 			if (ImGui::MenuItem("Logger", nullptr, logIsOpen())) {
@@ -302,8 +420,12 @@ void mainMenuBar(BrushEditor &be, MaterialEditor &me, Handle<Texture3D> main_tex
 				options.setOpen(!options.isOpen());
 			}
 
-			if (ImGui::MenuItem("Key Remapper", nullptr, is_remapper_open)) {
-				is_remapper_open = !is_remapper_open;
+			if (ImGui::MenuItem("Key Remapper", nullptr, remapper.is_open)) {
+				remapper.is_open = !remapper.is_open;
+			}
+
+			if (ImGui::MenuItem("Controls", nullptr, controls.is_open)) {
+				controls.is_open = !controls.is_open;
 			}
 
 			ImGui::EndMenu();
@@ -313,7 +435,6 @@ void mainMenuBar(BrushEditor &be, MaterialEditor &me, Handle<Texture3D> main_tex
 	}
 
 	if (open_save_popup) {
-		open_save_popup = false;
 		is_saving = true;
 		ImGui::OpenPopup("Save To File");
 	}
@@ -326,7 +447,6 @@ void mainMenuBar(BrushEditor &be, MaterialEditor &me, Handle<Texture3D> main_tex
 	const auto &qualityDecision = [](Handle<Texture3D> tex, vec3u &quality, int &cur_level) {
 		static const char *quality_levels[] = { "Low", "Medium", "High", "Very High", "Maximum", "Original", "Custom" };
 		vec3u quality_sizes[] = { 32, 64, 128, 256, 512, tex->size, 0 };
-		//static int cur_level_ind = 1;
 
 		if (ImGui::Combo("Quality Level", &cur_level, quality_levels, ARRLEN(quality_levels))) {
 			quality = quality_sizes[cur_level];
@@ -339,8 +459,14 @@ void mainMenuBar(BrushEditor &be, MaterialEditor &me, Handle<Texture3D> main_tex
 	};
 
 	if (ImGui::BeginPopupModal("Save To File", &is_saving, ImGuiWindowFlags_AlwaysAutoResize)) {
-		static int cur_level = 1;
-		qualityDecision(main_tex, save_quality, cur_level);
+		static int cur_level = 5;
+		qualityDecision(sculpture->texture, save_quality, cur_level);
+
+		// only called once, so we can setup the variables
+		if (open_save_popup) {
+			open_save_popup = false;
+			save_quality = sculpture->texture->size;
+		}
 
 		if (ImGui::Button("Save")) {
 			should_save_file = true;
@@ -359,10 +485,10 @@ void mainMenuBar(BrushEditor &be, MaterialEditor &me, Handle<Texture3D> main_tex
 		// only called once, so we can setup the variables
 		if (open_new_popup) {
 			open_new_popup = false;
-			quality = main_tex->size;
+			quality = sculpture->texture->size;
 		}
 
-		qualityDecision(main_tex, quality, cur_level);
+		qualityDecision(sculpture->texture, quality, cur_level);
 
 		ImGui::Combo("Initial Shape", (int *)&cur_shape, "Sphere\0Box\0Cylinder");
 
@@ -382,10 +508,10 @@ void mainMenuBar(BrushEditor &be, MaterialEditor &me, Handle<Texture3D> main_tex
 		}
 
 		if (ImGui::Button("New")) {
-			if (all(quality != main_tex->size)) {
-				main_tex->init(quality, main_tex->getType());
+			if (all(quality != sculpture->texture->size)) {
+				sculpture->texture->init(quality, sculpture->texture->getType());
 			}
-			be.runFillShader(cur_shape, shader_data, main_tex);
+			brush_editor->runFillShader(cur_shape, shader_data, sculpture->texture);
 			
 			ImGui::CloseCurrentPopup();
 		}
@@ -394,7 +520,7 @@ void mainMenuBar(BrushEditor &be, MaterialEditor &me, Handle<Texture3D> main_tex
 	}
 }
 
-void saveLoadFileDialog(Handle<Texture3D> main_texture, Handle<Shader> scale_cs) {
+void MenuBar::saveWidget() {
 	if (should_save_file) {
 		should_save_file = false;
 
@@ -402,10 +528,7 @@ void saveLoadFileDialog(Handle<Texture3D> main_texture, Handle<Shader> scale_cs)
 		nfdu8filteritem_t filter[] = { { "Tex3D", "bin" } };
 		nfdresult_t result = NFD::SaveDialog(path, filter, ARRLEN(filter));
 		if (result == NFD_OKAY) {
-			Handle<Texture3D> out_text = Texture3D::create(save_quality, main_texture->getType());
-			scale_cs->dispatch(save_quality / 8, {}, { main_texture->srv }, { out_text->uav });
-			out_text->save(path.get(), true);
-			out_text->cleanup();
+			sculpture->save(save_quality, path.release());
 			return;
 		}
 		else if (result == NFD_CANCEL) {
@@ -424,7 +547,7 @@ void saveLoadFileDialog(Handle<Texture3D> main_texture, Handle<Shader> scale_cs)
 		nfdu8filteritem_t filter[] = { { "Tex3D", "bin" } };
 		nfdresult_t result = NFD::OpenDialog(path, filter, ARRLEN(filter));
 		if (result == NFD_OKAY) {
-			main_texture->loadFromFile(path.get());
+			sculpture->texture->loadFromFile(path.get());
 			return;
 		}
 		else if (result == NFD_CANCEL) {
@@ -438,9 +561,8 @@ void saveLoadFileDialog(Handle<Texture3D> main_texture, Handle<Shader> scale_cs)
 	}
 }
 
-bool filledSlider(const char *str_id, float *p_data, float vmin, float vmax, const char *fmt) {
+bool filledSlider(const char *str_id, float *p_data, float vmin, float vmax, const char *fmt, ImGuiSliderFlags flags) {
 	const ImGuiDataType data_type = ImGuiDataType_Float;
-	const ImGuiSliderFlags flags = 0;
 	float *p_min = &vmin;
 	float *p_max = &vmax;
 
@@ -457,7 +579,7 @@ bool filledSlider(const char *str_id, float *p_data, float vmin, float vmax, con
 	const ImRect frame_bb(window->DC.CursorPos, vec2(w, label_size.y + style.FramePadding.y * 2.0f) + window->DC.CursorPos);
 	const ImRect total_bb(frame_bb.Min, frame_bb.Max);
 
-	const bool temp_input_allowed = true;
+	const bool temp_input_allowed = (flags & ImGuiSliderFlags_NoInput) == 0;
 	ImGui::ItemSize(total_bb, style.FramePadding.y);
 	if (!ImGui::ItemAdd(total_bb, id, &frame_bb, temp_input_allowed ? ImGuiItemFlags_Inputable : 0))
 		return false;
@@ -507,7 +629,7 @@ bool filledSlider(const char *str_id, float *p_data, float vmin, float vmax, con
 
 	constexpr float grab_padding = 2.f;
 	const float value_width = vmax - vmin;
-	const float value_norm = ((*p_data) - vmin) / value_width;
+	const float value_norm = math::clamp(((*p_data) - vmin) / value_width, 0.f, 1.f);
 	const float frame_width = frame_bb.GetWidth() - grab_padding * 2.f;
 	const float grab_width = math::max(value_norm * frame_width, 1.f);
 
@@ -533,6 +655,16 @@ bool inputU8(const char *label, uint8_t *data, uint8_t step, uint8_t step_fast) 
 
 bool inputUint(const char *label, uint &value, uint step, int flags) {
 	return ImGui::InputScalar(label, ImGuiDataType_U32, &value, &step);
+}
+
+bool inputUint2(const char *label, unsigned int v[2], int flags) {
+	static unsigned int step = 1;
+	return ImGui::InputScalarN(label, ImGuiDataType_U32, v, 2, &step, nullptr, "%u", flags);
+}
+
+bool inputUint3(const char *label, unsigned int v[3], int flags) {
+	static unsigned int step = 1;
+	return ImGui::InputScalarN(label, ImGuiDataType_U32, v, 3, &step, nullptr, "%u", flags);
 }
 
 bool sliderUInt(const char *label, unsigned int *v, unsigned int vmin, unsigned int vmax, int flags) {

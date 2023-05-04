@@ -1,32 +1,47 @@
-[X] Key remapping
-[X] add "new" button in file, where we can create a new scene, let the user decide if it should have a default shape (sphere, maybe more?) in it
-[X] support sizes that are not constant (not all values are the same)
-[X] load background image from file
-[ ] If you hold shift, a bar appears over the mouse for changing the size,
+[X] add Ray tracing editor and view to the "View" menu
+[X] add #define pow2(v) dot((v), (v)) to common.hlsl
+[x] make getMouseDist use sdf_sphere to be more explicit
+[X] move constants to common.hlsl and make them defines
+[X] maybe have tonemapping be a checkbox?
+[X] add rendered frames count to Ray tracing editor "time" UI
+[X] change sculpt operations stuff so we don't need a bit mask
+[x] when user makes a change and hasn't saved, change window name to "filename*"
+[x] If you hold shift, a bar appears over the mouse for changing the size,
     could have the same thing with the ctrl key and the alt key for depth and
     smoothness
-[ ] Make normal map 3d texture, so the normal calculation
-    becomes only 8 texture lookups instead of 32 (jesus christ)
-[ ] use a debug allocator that checks for memory leaks
-[ ] Antialiasing
-[ ] make GPUTimer handle-based (look at half-implemented version in timer.h)
+[X] help screen with all the controls
+[-] add tip in background explaining why it should use an HDR image and what is an HDR image
+[-] save materials somehow (ini file?)
+[-] render rt stuff in normal mode (maybe even lights?)
+[-] fix weird UV issues
 
-[ ] help screen with all the controls
-[X] use SDF box in brush
-[X] hot-reload material texture
-[X] add default brushes
-[ ] fix weird UV issues
-[X] move saving to another thread
-[ ] camera with panning
-[ ] render rt stuff in normal mode (maybe even lights?)
+[X] make ROUGH_MIN_HIT_DISTANCE 1 so we get smooth surfaces around
+[X] investigate why logger isn't printing anymore (goddamnit)
 
-[X] investigate better sculpting
+-- Cleanup ideas --
+[X] make a GfxFactoryBase class with a virtual void cleanup();
+    this way we can save them all in a list and clean them up automatically
+[X] remove DynamicShader class, it should do it automatically, same for 2D textures (?)
+[X] maybe add a few typedefs for maths types like float3 etc to make it clearer
+    which structs are for shader use. maybe find a way to static assert shader
+    structs
+    #define GFX_CLASS_CHECK(T) static_assert((sizeof(T) % (sizeof(float) * 4)) == 0)
+[X] make it so the gpu timer prints stuff automatically instead of having to do
+    if (timer->isReady()) timer->print()
+[X] cleanup widget stuff
 
-[ ] when user makes a change and hasn't saved, change window name to "filename *"
+-- GFX stuff to do if I want to be free of D3D11 --
+[-] hide all gfx stuff in the source file, the caller doesn't really care about
+    the underlying specifics. this also means that to add a new backend we just
+    need to modify a few source file, maybe try to centralize that?
+[-] maybe remove extern stuff from system, instead have a platform specific header for this
+[-] make a ReadResource and a WriteResource which are a srv and a uav, then they
+    could be accessed like handle->read or handle->write, making it more clear what
+    you are doing
 
 -- For ADGS --
-[ ] add ray tracing UI
-[ ] get C00L screenshots
+[X] add ray tracing UI
+[X] get C00L screenshots
 
 -- Already Done --
 [X] Mouse input texture
@@ -40,8 +55,20 @@
 [X] sculpting
 [X] "view" menu that lets you open/close any window
 [X] add percentage of file size when compressing it
+[X] Key remapping
+[X] add "new" button in file, where we can create a new scene, let the user decide if it should have a default shape (sphere, maybe more?) in it
+[X] support sizes that are not constant (not all values are the same)
+[X] load background image from file
+[X] Antialiasing
+[X] use SDF box in brush
+[X] hot-reload material texture
+[X] add default brushes
+[X] move saving to another thread
+[X] investigate better sculpting
 
--- Options ideas --
-* texture format (either f16 or f32)
-* volume tex size
-* brush tex size
+-- Never going to be done --
+[-] Make normal map 3d texture, so the normal calculation
+    becomes only 8 texture lookups instead of 32 (jesus christ)
+[-] use a debug allocator that checks for memory leaks
+[-] make GPUTimer handle-based (look at half-implemented version in timer.h)
+[-] camera with panning

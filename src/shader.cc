@@ -11,10 +11,22 @@
 #include "mesh.h"
 #include "buffer.h"
 #include "gfx_factory.h"
+#include "widgets.h"
 
 static GFXFactory<Shader> shader_factory;
 
 static dxptr<ID3DBlob> compileShader(const char *filename, ShaderType type, Slice<ShaderMacro> macros = {});
+
+struct ShaderHandler {
+	void add(const char *filename, Handle<Shader> handle);
+	void poll();
+	file::Watcher watcher = "shaders/";
+	arr<Handle<Shader>> update_list;
+} sh_handler;
+
+void pollShaders() {
+	sh_handler.poll();
+}
 
 Shader::Shader(Shader &&s) {
 	*this = mem::move(s);
@@ -38,7 +50,7 @@ Handle<Shader> Shader::make() {
 	return shader_factory.getNew();
 }
 
-Handle<Shader> Shader::load(const char *filename, ShaderType type) {
+Handle<Shader> Shader::load(const char *filename, ShaderType type, bool hot_reload) {
 	Shader *shader = shader_factory.getNew();
 	bool success = false;
 
@@ -56,10 +68,11 @@ Handle<Shader> Shader::load(const char *filename, ShaderType type) {
 		return nullptr;
 	}
 
+	if (hot_reload) sh_handler.add(filename, shader);
 	return shader;
 }
 
-Handle<Shader> Shader::compile(const char *filename, ShaderType type, Slice<ShaderMacro> macros) {
+Handle<Shader> Shader::compile(const char *filename, ShaderType type, Slice<ShaderMacro> macros, bool hot_reload) {
 	Shader *shader = shader_factory.getNew();
 	bool success = false;
 
@@ -80,11 +93,15 @@ Handle<Shader> Shader::compile(const char *filename, ShaderType type, Slice<Shad
 		return nullptr;
 	}
 
+	if (hot_reload) sh_handler.add(filename, shader);
 	return shader;
 }
 
-void Shader::cleanAll() {
-	shader_factory.cleanup();
+bool Shader::hasUpdated(Handle<Shader> handle) {
+	size_t index = sh_handler.update_list.find(handle);
+	if (index == SIZE_MAX) return false;
+	sh_handler.update_list.remove(index);
+	return true;
 }
 
 bool Shader::loadVertex(const void *data, size_t len) {
@@ -278,68 +295,11 @@ void Shader::dispatch(
    ============= DYNAMIC SHADER =============
    ========================================== */
 
-DynamicShader::DynamicShader(DynamicShader &&s) {
-	*this = mem::move(s);
+void ShaderHandler::add(const char *filename, Handle<Shader> handle) {
+	watcher.watchFile(filename, handle.get());
 }
 
-DynamicShader &DynamicShader::operator=(DynamicShader &&s) {
-	if (this != &s) {
-		mem::swap(watcher, s.watcher);
-	}
-	return *this;
-}
-
-Handle<Shader> DynamicShader::add(const char *name, ShaderType type) {
-	if (!name || type == ShaderType::None) return nullptr;
-	return addFileWatch(name, type);
-}
-
-Handle<Shader> DynamicShader::addFileWatch(const char *name, ShaderType type) {
-	const char *filename = str::format("%s.hlsl", name);
-
-	Handle<Shader> new_shader = Shader::compile(filename, type);
-
-#if 0 && defined(NDEBUG)
-	if (file::exists(str::format("shaders/bin/%s.cso", name))) {
-		if (!new_shader.load(name, type)) {
-			err("couldn't load shader %s from file", name);
-			return false;
-		}
-	}
-	else if (dxptr<ID3DBlob> blob = compileShader(filename, type)) {
-		bool success = false;
-		void *data = blob->GetBufferPointer();
-		size_t len = blob->GetBufferSize();
-
-		switch (type) {
-		case ShaderType::Vertex:   success = new_shader.loadVertex(data, len);   break;
-		case ShaderType::Fragment: success = new_shader.loadFragment(data, len); break;
-		case ShaderType::Compute:  success = new_shader.loadCompute(data, len);  break;
-		}
-
-		if (!success) {
-			err("couldn't load shader %s from file", name);
-			return false;
-		}
-	}
-	else {
-		return true;
-	}
-#else
-	if (!new_shader) {
-		return nullptr;
-	}
-#endif
-
-	watcher.watchFile(filename, new_shader.get());
-
-	return new_shader;
-}
-
-extern void addMessageToWidget(LogLevel severity, const char* message, float show_time = 3.f);
-
-void DynamicShader::poll() {
-	has_updated = false;
+void ShaderHandler::poll() {
 	watcher.update();
 
 	auto file = watcher.getChangedFiles();
@@ -348,7 +308,7 @@ void DynamicShader::poll() {
 
 		if (dxptr<ID3DBlob> blob = compileShader(file->name.get(), shader->shader_type)) {
 			info("re-compiled shader %s successfully", file->name.get());
-			addMessageToWidget(LogLevel::Info, str::format("re-compiled shader %s successfully", file->name.get()));
+			widgets::addMessage(LogLevel::Info, str::format("re-compiled shader %s successfully", file->name.get()));
 
 			void *data = blob->GetBufferPointer();
 			size_t len = blob->GetBufferSize();
@@ -359,7 +319,9 @@ void DynamicShader::poll() {
 				case ShaderType::Compute:  shader->loadCompute(data, len);  break;
 			}
 
-			has_updated = true;
+			if (!update_list.contains(shader)) {
+				update_list.push(shader);
+			}
 		}
 
 		file = watcher.getChangedFiles(file);
@@ -417,7 +379,7 @@ static dxptr<ID3DBlob> compileShader(const char *filename, ShaderType type, Slic
 
 	if (FAILED(hr)) {
 		err("couldn't compile shader %s", filename);
-		addMessageToWidget(LogLevel::Error, str::format("Couldn't compile shader %s", filename));
+		widgets::addMessage(LogLevel::Error, str::format("Couldn't compile shader %s", filename));
 		if (err_blob) {
 			err((const char *)err_blob->GetBufferPointer());
 		}

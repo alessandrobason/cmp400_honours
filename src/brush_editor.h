@@ -8,6 +8,7 @@
 
 struct Buffer;
 struct Shader;
+struct Camera;
 
 enum class Shapes : int {
 	Sphere, Box, Cylinder, None, Count
@@ -26,10 +27,12 @@ struct ShapeData {
 	};
 };
 
+GFX_CLASS_CHECK(ShapeData);
+
 enum class Operations : uint32_t {
 	None               = 0,
-	Subtraction        = 1u << 29,
-	Union              = 1u << 30,
+	Union              = 1u << 0,
+	Subtraction        = 1u << 1,
 	Smooth             = 1u << 31,
 	SmoothUnion        = Smooth | Union,
 	SmoothSubtraction  = Smooth | Subtraction,
@@ -43,6 +46,8 @@ struct OperationData {
 	float depth;
 };
 
+GFX_CLASS_CHECK(OperationData);
+
 struct BrushData {
 	vec3 position;
 	float radius;
@@ -50,10 +55,22 @@ struct BrushData {
 	float padding__1;
 };
 
+GFX_CLASS_CHECK(BrushData);
+
+struct BrushFindData {
+	vec3 pos;
+	float depth;
+	vec3 dir;
+	float scale;
+};
+
+GFX_CLASS_CHECK(BrushFindData);
+
 struct BrushEditor {
 	BrushEditor();
-	void drawWidget();
+	void drawWidget(Handle<Texture3D> main_tex);
 	void update();
+	void findBrush(const Camera &cam, Handle<Texture3D> texture);
 	void setOpen(bool is_open);
 	bool isOpen() const;
 
@@ -63,7 +80,6 @@ struct BrushEditor {
 	ID3D11ShaderResourceView *getDataSRV();
 	vec3i getBrushSize() const;
 	float getScale() const;
-	float getDepth() const;
 	Handle<Buffer> getOperHandle();
 
 	void runFillShader(Shapes shape, const ShapeData &data, Handle<Texture3D> destination);
@@ -82,6 +98,9 @@ private:
 	size_t addTexture(const char *name);
 	size_t addBrush(const char *name, Shapes shape, const ShapeData &data);
 	size_t checkTextureAlreadyLoaded(str::view name);
+	void mouseWidget(Handle<Texture3D> main_tex);
+	void findBrush(Handle<Texture3D> main_tex);
+	void setState(State newstate);
 
 	vec3 position = 0.f;
 	float depth = 0.f;
@@ -91,6 +110,8 @@ private:
 	size_t brush_index = 0;
 	Handle<Buffer> oper_handle;
 	Handle<Buffer> data_handle;
+	Handle<Buffer> find_data_handle;
+	Handle<Shader> find_brush;
 
 	// fill stuff
 	Handle<Buffer> fill_buffer;
@@ -103,6 +124,8 @@ private:
 	State state = State::Brush;
 	bool is_open = true;
 	bool has_changed = true;
+	vec3 cam_pos;
+	vec3 cam_dir;
 
 	arr<TexNamePair> textures;
 	bool should_open_nfd = false;

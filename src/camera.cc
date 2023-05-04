@@ -1,9 +1,12 @@
 #include "camera.h"
 
+#include <imgui.h>
+
 #include "maths.h"
 #include "input.h"
 #include "system.h"
 #include "options.h"
+#include "widgets.h"
 
 constexpr float y_max_angle = 90.f;
 constexpr float radius = 270.f;

@@ -9,8 +9,8 @@
 #include "widgets.h"
 
 MaterialEditor::MaterialEditor() {
-	diffuse_handle    = addTexture("assets/testing_texture.png");
-	background_handle = addTexture("assets/rainforest_trail.png");
+	diffuse_handle    = addTexture("assets/ground texture.png");
+	background_handle = addTexture("assets/rainforest_trail_4k.hdr");
 	mat_handle        = Buffer::makeConstant<MaterialPS>(Buffer::Usage::Dynamic);
 	lights_handle     = Buffer::makeStructured<LightData>(cur_lights_count, Bind::GpuRead | Bind::CpuWrite);
 
@@ -42,8 +42,6 @@ void MaterialEditor::drawWidget() {
 
 	ray_tracing_dirty = false;
 
-	separatorText("Material");
-
 	const auto colourEdit = [](const char *label, vec3 &colour, const char *tip = nullptr) -> bool {
 		static ImGuiColorEditFlags colour_flags = ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel;
 		ImGui::Text(label);
@@ -57,8 +55,9 @@ void MaterialEditor::drawWidget() {
 		return filledSlider(str::format("##%s", label), &value, vmin, vmax);
 	};
 
-	const auto label = [](const char *str) {
+	const auto label = [](const char *str, const char *tip = nullptr) {
 		ImGui::Text(str);
+		if (tip) tooltip(tip);
 		ImGui::SameLine();
 	};
 
@@ -106,6 +105,16 @@ void MaterialEditor::drawWidget() {
 	};
 
 	ImGui::PushItemWidth(-1);
+		separatorText("Material");
+
+		label(
+			"Use tonemapping", 
+			"Apply a \"filter\" on the final image, it can be very useful "
+			"if you're using an HDR (high dynamic range) image as your background "
+			"and the contrast is too strong"
+		);
+		ray_tracing_dirty |= ImGui::Checkbox("##tonemapping", &use_tonemapping);
+
 		material_dirty |= colourEdit("Colour", albedo);
 		material_dirty |= colourEdit("Reflection colour", specular);
 		material_dirty |= colourEdit("Emissive colour", emissive, "The colour that the material emits, think of it as if the material was a light and this was its colour");
@@ -150,15 +159,10 @@ void MaterialEditor::drawWidget() {
 
 		separatorText("Textures");
 	
-		ImGui::Text("Texture mode");
-		tooltip(
-			"How the texture is treated, \n"
-			"No Texture: Only use the material colour\n"
-			"Default: Use the default texturing method\n"
-			"Spherical: Map the texture on the sculpture as if it was a sphere"
-		);
-
-		material_dirty |= ImGui::Combo("##TexMode", (int *)&texture_mode, "No Texture\0Default\0Spherical");
+		ImGui::Text("Use Texture");
+		tooltip("If this is turned off, only the base colour is used for the material");
+		ImGui::SameLine();
+		material_dirty |= ImGui::Checkbox("##UseTex", &use_texture);
 
 		ray_tracing_dirty |= texChooser("Diffuse", diffuse_handle, textures, "The texture applied on the sculpture");
 		ray_tracing_dirty |= texChooser("Background", background_handle, textures);
@@ -167,7 +171,7 @@ void MaterialEditor::drawWidget() {
 			should_open_nfd = true;
 		}
 
-		ImGui::BeginDisabled(texture_mode == TextureMode::None);
+		ImGui::BeginDisabled(!use_texture);
 			showTexture("Diffuse", get(diffuse_handle), vec2(200.f));
 		ImGui::EndDisabled();
 
@@ -199,7 +203,7 @@ bool MaterialEditor::update() {
 	if (should_open_nfd) {
 		should_open_nfd = false;
 
-		nfdu8filteritem_t filter[] = { { "Normal Image", "jpg,jpeg,png,bmp,psd,tga,gif,pic" }, { "HDR Image", "hdr" } };
+		nfdu8filteritem_t filter[] = { { "Image", "jpg,jpeg,png,bmp,psd,tga,gif,pic,hdr" } };
 		NFD::UniquePathSet paths;
 	 	nfdresult_t result = NFD::OpenDialogMultiple(paths, filter, ARRLEN(filter), "assets");
 		if (result == NFD_OKAY) {
@@ -235,7 +239,7 @@ bool MaterialEditor::update() {
 		material_dirty = false;
 		if (MaterialPS *data = mat_handle->map<MaterialPS>()) {
 			data->albedo = albedo;
-			data->texture_mode = texture_mode;
+			data->use_texture = (uint)use_texture;
 			data->specular_colour = specular;
 			data->smoothness = smoothness;
 			data->emissive_colour = emissive;
@@ -258,6 +262,10 @@ void MaterialEditor::setOpen(bool new_is_open) {
 
 bool MaterialEditor::isOpen() const {
 	return is_open;
+}
+
+bool MaterialEditor::useTonemapping() const {
+	return use_tonemapping;
 }
 
 Handle<Buffer> MaterialEditor::getBuffer() const {

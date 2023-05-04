@@ -195,6 +195,19 @@ struct arr {
 		}
 	}
 
+	size_t find(const T &value) const {
+		for (size_t i = 0; i < len; ++i) {
+			if (buf[i] == value) {
+				return i;
+			}
+		}
+		return SIZE_MAX;
+	}
+
+	bool contains(const T &value) const {
+		return find(value) != SIZE_MAX;
+	}
+
 	arr &operator=(const arr &a) {
 		clear();
 		reserve(a.len);
@@ -254,7 +267,7 @@ struct Slice {
 
 	Slice sub(size_t start, size_t end = SIZE_MAX) const {
 		if (empty() || start >= len) return Slice();
-		if (end >= len) end = len - 1;
+		if (end >= len) end = len;
 		return Slice(data + start, end - start);
 	}
 
@@ -327,6 +340,8 @@ namespace str {
 		bool operator==(const tstr &t);
 
 		size_t len() const;
+		mem::ptr<char[]> toAnsi() const;
+		mem::ptr<wchar_t[]> toWide() const;
 		tstr clone() const;
 
 		operator const TCHAR *() const;
@@ -490,3 +505,61 @@ struct VirtualAllocator {
 	uint8_t *current = nullptr;
 	uint8_t *next_page = nullptr;
 };
+
+// == threading utils =============================================
+
+namespace thr {
+	struct Mutex {
+		Mutex();
+		~Mutex();
+		bool isValid();
+		void lock();
+		bool tryLock();
+		void unlock();
+		void *internal = nullptr;
+	};
+
+	template<typename T>
+	struct Promise {
+		void reset() {
+			mtx.lock();
+			finished = false;
+			mtx.unlock();
+		}
+
+		void set(const T &v) {
+			mtx.lock();
+			value = v;
+			finished = true;
+			mtx.unlock();
+		}
+
+		void set(T &&v) {
+			mtx.lock();
+			value = mem::move(v);
+			finished = true;
+			mtx.unlock();
+		}
+
+		bool isFinished() {
+			bool result = false;
+
+			if (mtx.tryLock()) {
+				result = finished;
+				mtx.unlock();
+			}
+
+			return result;
+		}
+
+		void join() {
+			while (!isFinished()) {}
+		}
+
+		T value;
+
+	private:
+		bool finished = false;
+		Mutex mtx;
+	};
+} // namespace thr

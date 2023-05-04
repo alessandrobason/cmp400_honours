@@ -337,6 +337,29 @@ namespace str {
 #endif
 	}
 
+	mem::ptr<char[]> tstr::toAnsi() const {
+		if (!buf) return nullptr;
+#ifdef UNICODE
+		return wideToAnsi(buf);
+#else
+		return dup(buf);
+#endif
+	}
+
+	mem::ptr<wchar_t[]> tstr::toWide() const {
+		if (!buf) return nullptr;
+#ifdef UNICODE
+		// str::dup for wstr
+		size_t l = wcslen(buf);
+		auto ptr = mem::ptr<wchar_t[]>::make(l + 1);
+		memcpy(ptr.get(), buf, l);
+		ptr[l] = '\0';
+		return ptr;
+#else
+		return ansiToWide(buf);
+#endif
+	}
+
 	tstr tstr::clone() const {
 		return tstr(buf);
 	}
@@ -804,3 +827,43 @@ void VirtualAllocator::rewind(size_t size) {
 	assert(size <= (size_t)(current - start));
 	current -= size;
 }
+
+namespace thr {
+	Mutex::Mutex() {
+		internal = malloc(sizeof(CRITICAL_SECTION));
+		if (internal) {
+			InitializeCriticalSection((CRITICAL_SECTION *)internal);
+		}
+	}
+
+	Mutex::~Mutex() {
+		if (internal) {
+			DeleteCriticalSection((CRITICAL_SECTION *)internal);
+		}
+		free(internal);
+	}
+
+	bool Mutex::isValid() {
+		return internal != nullptr;
+	}
+
+	void Mutex::lock() {
+		if (internal) {
+			EnterCriticalSection((CRITICAL_SECTION *)internal);
+		}
+	}
+
+	bool Mutex::tryLock() {
+		if (internal) {
+			return TryEnterCriticalSection((CRITICAL_SECTION *)internal);
+		}
+		return false;
+	}
+
+	void Mutex::unlock() {
+		if (internal) {
+			LeaveCriticalSection((CRITICAL_SECTION *)internal);
+		}
+	}
+
+} // namespace thr
