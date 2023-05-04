@@ -57,7 +57,7 @@ BrushEditor::BrushEditor() {
 	}
 
 	addBrush("Sphere", Shapes::Sphere, ShapeData(vec3(0), 21));
-	addBrush("Box", Shapes::Box, ShapeData(vec3(0), 21, 21, 21));
+	addBrush("Box", Shapes::Box, ShapeData(vec3(0), 42, 42, 42));
 	addBrush("Cylinder", Shapes::Cylinder, ShapeData(vec3(0), 21, 42));
 }
 
