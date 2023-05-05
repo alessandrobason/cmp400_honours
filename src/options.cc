@@ -7,6 +7,7 @@
 #include "tracelog.h"
 #include "widgets.h"
 #include "system.h"
+#include "texture.h"
 
 void Options::load(const char *filename) {
 	watcher.watchFile(filename);
@@ -91,7 +92,7 @@ void Options::drawWidget() {
 	tooltip("(Debugging only) Captures the frame every time a sculpting operation happens, only useful if the application is being debugged with RenderDoc");
 	ImGui::Checkbox("Show FPS", &show_fps);
 
-	ImGui::DragFloat("Auto Save", &auto_save_mins, 0.1f, 0.f, 10.f, "%.3fminute(s)");
+	ImGui::DragFloat("Auto Save", &auto_save_mins, 0.1f, 0.f, 10.f, "%.3f minute(s)");
 	tooltip("How many minutes before the sculpture auto saves, keep in mind that you need to save it at least once first!");
 
 	separatorText("Camera");

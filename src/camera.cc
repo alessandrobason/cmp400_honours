@@ -7,6 +7,7 @@
 #include "system.h"
 #include "options.h"
 #include "widgets.h"
+#include "texture.h"
 
 constexpr float y_max_angle = 90.f;
 constexpr float radius = 270.f;

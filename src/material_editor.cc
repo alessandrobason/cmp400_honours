@@ -115,6 +115,11 @@ void MaterialEditor::drawWidget() {
 		);
 		ray_tracing_dirty |= ImGui::Checkbox("##tonemapping", &use_tonemapping);
 
+		ImGui::BeginDisabled(!use_tonemapping);
+		label("Exposure");
+		ray_tracing_dirty |= ImGui::DragFloat("##exposure", &exposure_bias, 0.5f, 0.01f, 10.f);
+		ImGui::EndDisabled();
+
 		material_dirty |= colourEdit("Colour", albedo);
 		material_dirty |= colourEdit("Reflection colour", specular);
 		material_dirty |= colourEdit("Emissive colour", emissive, "The colour that the material emits, think of it as if the material was a light and this was its colour");
@@ -123,7 +128,7 @@ void MaterialEditor::drawWidget() {
 		material_dirty |= slider("Shininess", specular_probability);
 
 		separatorText("Lights");
-
+		
 		for (size_t i = 0; i < lights.len; ++i) {
 			LightData &light = lights[i];
 
@@ -266,6 +271,10 @@ bool MaterialEditor::isOpen() const {
 
 bool MaterialEditor::useTonemapping() const {
 	return use_tonemapping;
+}
+
+float MaterialEditor::getExposure() const {
+	return exposure_bias;
 }
 
 Handle<Buffer> MaterialEditor::getBuffer() const {

@@ -11,7 +11,7 @@
 #include "camera.h"
 
 constexpr vec3u brush_tex_size = 64;
-constexpr Texture3D::Type brush_type = Texture3D::Type::float16;
+constexpr Texture3D::Type brush_type = Texture3D::Type::r16_snorm;
 constexpr const char *shape_macros[(int)Shapes::Count] = { "SHAPE_SPHERE", "SHAPE_BOX", "SHAPE_CYLINDER", nullptr };
 
 static_assert(all(brush_tex_size % 8 == 0));

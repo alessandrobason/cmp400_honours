@@ -1,4 +1,4 @@
-#define MAX_STEP 128.
+#define MAX_STEP 128
 #define PI 3.14159265
 #define ROUGH_MIN_HIT_DISTANCE 1.
 #define MIN_HIT_DISTANCE .005
@@ -9,7 +9,7 @@
 // sums together all the values in a vector
 #define sum(v)  (dot((v), 1.))
 
-float trilinearInterpolation(float3 pos, float3 size, Texture3D<float> tex) {
+float trilinearInterpolation(float3 pos, float3 size, Texture3D<snorm float> tex) {
     int3 start = max(min(int3(pos), int3(size) - 2), 0);
     int3 end = start + 1;
 
@@ -72,8 +72,7 @@ float3 Uncharted2Tonemap(float3 x) {
 }
 
 // from http://filmicworlds.com/blog/filmic-tonemapping-operators/
-float3 toneMapping(float3 colour) {
-	float exposure_bias = 3.0;
+float3 toneMapping(float3 colour, float exposure_bias) {
 	colour = Uncharted2Tonemap(colour * exposure_bias);
 	
 	static const float W = 11.2;

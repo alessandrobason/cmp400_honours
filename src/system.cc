@@ -20,6 +20,7 @@
 #include "maths.h"
 #include "input.h"
 #include "timer.h"
+#include "texture.h"
 #include "shader.h"
 #include "buffer.h"
 #include "widgets.h"

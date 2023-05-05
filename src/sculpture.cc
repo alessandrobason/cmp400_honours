@@ -14,7 +14,7 @@ constexpr vec3u texture_size = 512;
 static_assert(all(texture_size % 8 == 0));
 
 Sculpture::Sculpture(BrushEditor &be) : brush_editor(be) {
-	texture = Texture3D::create(texture_size, Texture3D::Type::float16);
+	texture = Texture3D::create(texture_size, Texture3D::Type::r16_snorm);
 	scale   = Shader::compile("scale_cs.hlsl", ShaderType::Compute);
 	sculpt  = Shader::compile("sculpt_cs.hlsl", ShaderType::Compute);
 
@@ -27,15 +27,18 @@ Sculpture::Sculpture(BrushEditor &be) : brush_editor(be) {
 
 Sculpture::~Sculpture() {
 	if (save_state == SaveState::Unsaved) {
+		mem::ptr<char[]> save_name = save_path ? str::dup(save_path.get()) : file::findFirstAvailable(".", "unsaved_sculpture_%d.bin");
+		name = file::getNameAndExt(save_name.get());
 		int result = MessageBox(
 			nullptr,
-			(str::tstr)str::format("%s has unsaved changes, would you like to save?", name ? name.data : "Unsaved"),
+			(str::tstr)str::format("You have unsaved changes, would you like to save before closing? Your file will be saved as %s", name.data),
+			//(str::tstr)str::format("%s has unsaved changes, would you like to save?", name ? name.data : "Unsaved"),
 			TEXT("Unsaved Changed"),
 			MB_YESNO | MB_ICONWARNING
 		);
 		if (result == IDYES) {
 			if (all(save_quality == 0)) save_quality = texture->size;
-			save(save_quality, file::findFirstAvailable(".", "unsaved_sculpture_%d.bin"));
+			save(save_quality, mem::move(save_name));
 		}
 	}
 
@@ -64,9 +67,9 @@ void Sculpture::update() {
 }
 
 void Sculpture::runSculpt() {
-	if (Options::get().auto_capture) {
-		gfx::captureFrame();
-	}
+	if (save_state == SaveState::Saved) save_state = SaveState::Unsaved;
+	if (Options::get().auto_capture)    gfx::captureFrame();
+	
 	sculpt->dispatch(
 		texture->size / 8, 
 		{ brush_editor.getOperHandle() },

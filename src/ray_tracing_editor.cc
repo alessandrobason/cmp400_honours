@@ -28,7 +28,6 @@ bool RayTracingEditor::update(const MaterialEditor &me) {
 	if (any(gfx::main_rtv->size != image->size)) {
 		resize(gfx::main_rtv->size);
 		reset();
-		rough_clock.begin();
 	}
 
 	// don't update if the window is not even visible
@@ -69,6 +68,8 @@ void RayTracingEditor::reset() {
 	start_render = timerNow();
 	data.thread_loc = 0;
 	data.num_rendered_frames = 0;
+	sum_frame_times = 0;
+	rough_clock.begin();
 	image->clear(Colour::black);
 }
 
@@ -216,6 +217,7 @@ void RayTracingEditor::editorWidget() {
 
 	if (btnFillWidth(is_rendering ? "Stop render" : "Resume render", is_rendering ? "Stop rendering the scene" : "Resume rendering the scene")) {
 		is_rendering = !is_rendering;
+		rough_clock.begin();
 	}
 
 	if (btnFillWidth("Save image", "Save the current frame to a file called \"ray_tracing_render_XYZ.png\" in the screenshots folder")) {

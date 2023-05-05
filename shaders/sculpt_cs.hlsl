@@ -15,10 +15,10 @@ struct BrushData {
 };
 
 // input
-Texture3D<float> brush : register(t0);
+Texture3D<snorm float> brush : register(t0);
 StructuredBuffer<BrushData> brush_data : register(t1);
 // output
-RWTexture3D<float> vol_tex : register(u0);
+RWTexture3D<snorm float> vol_tex : register(u0);
 
 static float3 brush_size = 0;
 static float3 volume_tex_size = 0;
@@ -101,7 +101,7 @@ inline void writeApproximateDistance(float3 pos, uint3 id) {
     // in the same rough direction as the point
     const float3 edge_pos = clamp(pos, 0, brush_size * brush_scale);
     // get the brush value at this edge
-    float distance = sampleBrush(edge_pos);
+    float distance = sampleBrush(edge_pos) * MAX_STEP;
     // then add the distance from this edge to the actual point
     distance += length(pos - edge_pos);
     // make the distance slightly smaller, this is to avoid the distance from being
@@ -110,7 +110,7 @@ inline void writeApproximateDistance(float3 pos, uint3 id) {
     distance *= 0.9;
     
     bool changed;
-    op_union(sampleWorld(id), distance, id, changed);
+    op_union(sampleWorld(id), distance / MAX_STEP, id, changed);
 }
 
 inline float texBoundarySDF(float3 pos) {

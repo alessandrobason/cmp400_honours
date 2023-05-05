@@ -15,7 +15,8 @@ cbuffer ShaderData : register(b0) {
 	float3 cam_pos; 
 	uint num_of_lights;
 	bool use_tonemapping;
-	float3 padding__0;
+	float exposure_bias;
+	float2 padding__0;
 };
 
 cbuffer Material : register(b1) {
@@ -42,7 +43,7 @@ struct LightData {
 };
 
 StructuredBuffer<BrushData> brush  : register(t0);
-Texture3D<float> vol_tex           : register(t1);
+Texture3D<snorm float> vol_tex     : register(t1);
 Texture2D material_tex             : register(t2);
 Texture2D background               : register(t3);
 StructuredBuffer<LightData> lights : register(t4);
@@ -66,7 +67,7 @@ float preciseMap(float3 coords) {
 }
 
 float roughMap(float3 coords) {
-	return vol_tex.Load(int4(coords, 0));
+	return vol_tex.Load(int4(round(coords), 0));
 }
 
 float texBoundarySDF(float3 pos) {
@@ -187,14 +188,15 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 		if (closest < MIN_HIT_DISTANCE) {
 			is_inside = true;
 			float3 tex_pos = worldToTex(current_pos);
+			tex_pos = clamp(tex_pos, 0, vol_tex_size - 1);
 			// do a rough sample of the volume texture, this simply samples the closest voxel
 			// without doing any filtering and is only used to avoid that expensive calculation
 			// when we can
-			closest = roughMap(tex_pos);
+			closest = roughMap(tex_pos) * MAX_STEP;
 
 			// if it is roughly close to a shape, do a much more precise check using trilinear filtering
 			if (closest < ROUGH_MIN_HIT_DISTANCE) {
-				closest = preciseMap(tex_pos);
+				closest = preciseMap(tex_pos) * MAX_STEP;
 
 				if (closest < MIN_HIT_DISTANCE) {
 					const float3 normal = calcNormal(tex_pos);
@@ -248,5 +250,5 @@ float4 main(PixelInput input) : SV_TARGET {
 
 	float3 colour = rayMarch(ray_origin, ray_dir);
 
-	return float4(use_tonemapping ? toneMapping(colour) : colour, 1.0);
+	return float4(use_tonemapping ? toneMapping(colour, exposure_bias) : colour, 1.0);
 }

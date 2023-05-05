@@ -16,7 +16,7 @@ struct BrushData {
 	float padding__5;
 };
 
-Texture3D<float> vol_tex : register(t0);
+Texture3D<snorm float> vol_tex : register(t0);
 RWStructuredBuffer<BrushData> brush : register(u0);
 static float3 vol_tex_size = 0;
 
@@ -29,7 +29,7 @@ float preciseMap(float3 coords) {
 }
 
 float roughMap(float3 coords) {
-	return vol_tex.Load(int4(coords, 0));
+	return vol_tex.Load(int4(round(coords), 0));
 }
 
 float texBoundarySDF(float3 pos) {
@@ -64,11 +64,11 @@ void rayMarch(float3 ro, float3 rd, out float3 out_normal, out float3 out_pos) {
 			// do a rough sample of the volume texture, this simply samples the closest voxel
 			// without doing any filtering and is only used to avoid that expensive calculation
 			// when we can
-			closest = roughMap(tex_pos);
+			closest = roughMap(tex_pos) * MAX_STEP;
 
 			// if it is roughly close to a shape, do a much more precise check using trilinear filtering
 			if (closest < ROUGH_MIN_HIT_DISTANCE) {
-				closest = preciseMap(tex_pos);
+				closest = preciseMap(tex_pos) * MAX_STEP;
 
 				if (closest < MIN_HIT_DISTANCE) {
 					out_normal = calcNormal(tex_pos);

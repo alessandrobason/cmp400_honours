@@ -1,7 +1,7 @@
 #include "shaders/common.hlsl"
 
-Texture3D<float> source : register(t0);
-RWTexture3D<float> destination : register(u0);
+Texture3D<snorm float> source : register(t0);
+RWTexture3D<snorm float> destination : register(u0);
 
 static float3 src_size;
 static float3 dst_size;

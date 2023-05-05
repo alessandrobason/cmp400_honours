@@ -1,10 +1,12 @@
 #pragma once
 
 #include "common.h"
-#include "texture.h"
+#include "gfx_common.h"
+#include "vec.h"
 
 namespace str { struct tstr; }
 template<typename T> struct Handle;
+struct RenderTexture;
 
 namespace gfx {
 	extern dxptr<ID3D11Device> device;

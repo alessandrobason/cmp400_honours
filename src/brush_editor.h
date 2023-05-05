@@ -103,8 +103,8 @@ private:
 	void setState(State newstate);
 
 	vec3 position = 0.f;
-	float depth = 0.f;
-	float smooth_k = 0.5f;
+	float depth = 0.9f;
+	float smooth_k = 0.f;
 	float scale = 1.f;
 
 	size_t brush_index = 0;

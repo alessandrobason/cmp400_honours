@@ -35,6 +35,7 @@ struct MaterialEditor {
 	bool isOpen() const;
 
 	bool useTonemapping() const;
+	float getExposure() const;
 	Handle<Buffer> getBuffer() const;
 	Handle<Buffer> getLights() const;
 	size_t getLightsCount() const;
@@ -61,6 +62,7 @@ private:
 	vec3 emissive = 0.f;
 	float specular_probability = 0.f;
 	bool use_tonemapping = true;
+	float exposure_bias = 2.f;
 
 	arr<LightData> lights;
 	arr<float> light_strengths;

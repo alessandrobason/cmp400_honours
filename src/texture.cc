@@ -314,7 +314,7 @@ void Texture2D::copyInto(Handle<Texture2D> handle) {
 
 static GFXFactory<Texture3D> tex3d_factory;
 
-static DXGI_FORMAT to_dx_format[(int)Texture3D::Type::count] = {
+static DXGI_FORMAT to_dx_format[] = {
 	DXGI_FORMAT_R8_UINT,         // uint8
 	DXGI_FORMAT_R16_UINT,        // uint16
 	DXGI_FORMAT_R32_UINT,        // uint32
@@ -325,9 +325,10 @@ static DXGI_FORMAT to_dx_format[(int)Texture3D::Type::count] = {
 	DXGI_FORMAT_R32_FLOAT,       // float32
 	DXGI_FORMAT_R16G16_UINT,     // r16g16_uint
 	DXGI_FORMAT_R11G11B10_FLOAT, // r11g11b10_float
+	DXGI_FORMAT_R16_SNORM,       // r16_snorm
 };
 
-static size_t type_to_size[(int)Texture3D::Type::count] = {
+static size_t type_to_size[] = {
 	sizeof(uint8_t),  // uint8
 	sizeof(uint16_t), // uint16
 	sizeof(uint32_t), // uint32
@@ -338,7 +339,11 @@ static size_t type_to_size[(int)Texture3D::Type::count] = {
 	sizeof(float),    // float32
 	sizeof(uint32_t), // r16g16_uint
 	sizeof(uint32_t), // r11g11b10_float
+	sizeof(uint16_t), // r16_snorm
 };
+
+static_assert(ARRLEN(type_to_size) == (int)Texture3D::Type::count);
+static_assert(ARRLEN(to_dx_format) == (int)Texture3D::Type::count);
 
 static Texture3D::Type dxToType(DXGI_FORMAT format) {
 	using Type = Texture3D::Type;
@@ -353,7 +358,9 @@ static Texture3D::Type dxToType(DXGI_FORMAT format) {
 		case DXGI_FORMAT_R32_FLOAT:       return Type::float32;
 		case DXGI_FORMAT_R16G16_UINT:     return Type::r16g16_uint;
 		case DXGI_FORMAT_R11G11B10_FLOAT: return Type::r11g11b10_float;
+		case DXGI_FORMAT_R16_SNORM:       return Type::r16_snorm;
 	}
+	assert(false && "format is not in switch, probably forgot to add it");
 	return Type::count;
 }
 

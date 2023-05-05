@@ -35,7 +35,8 @@ struct PSShaderData {
 	vec3 cam_pos;
 	uint num_of_lights;
 	uint use_tonemapping;
-	vec3 padding__0;
+	float exposure_bias;
+	vec2 padding__0;
 };
 
 GFX_CLASS_CHECK(PSShaderData);
@@ -124,6 +125,7 @@ int main() {
 					data->time = win::timeSinceStart();
 					data->num_of_lights = (uint)material_editor.getLightsCount();
 					data->use_tonemapping = (uint)material_editor.useTonemapping();
+					data->exposure_bias = material_editor.getExposure();
 					buf->unmap();
 				}
 			}

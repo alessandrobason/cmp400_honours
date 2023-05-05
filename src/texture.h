@@ -48,6 +48,7 @@ struct Texture3D {
 		float32,
 		r16g16_uint,
 		r11g11b10_float,
+		r16_snorm,
 		count,
 	};
 
