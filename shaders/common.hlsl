@@ -5,7 +5,7 @@
 #define MAX_TRACE_DISTANCE 3000
 #define NORMAL_STEP 3.
 
-#define pow2(v) (dot((v), (v)))
+#define mag2(v) (dot((v), (v)))
 // sums together all the values in a vector
 #define sum(v)  (dot((v), 1.))
 
@@ -42,22 +42,10 @@ float sdf_box(float3 pos, float3 centre, float3 s) {
 	return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
 }
 
-float sdf_cylinder(float3 position, float centre, float radius, float height) {
+float sdf_cylinder(float3 position, float3 centre, float radius, float height) {
 	position -= centre;
-
-    float3 top = float3(0, height * 0.5, 0);
-    float3 bottom = -top;
-
-	float3 ba = top - bottom;
-	float3 pa = position - bottom;
-	float baba = pow2(ba);
-	float paba = pow2(ba);
-	float x = length(pa * baba - ba * paba) - radius * baba;
-	float y = abs(paba - baba * 0.5) - baba * 0.5;
-	float x2 = x * x;
-	float y2 = y * y * baba;
-	float d = (max(x, y) < 0.0) ? -min(x2, y2) : (((x > 0.0) ? x2 : 0.0) + ((y > 0.0) ? y2 : 0.0));
-	return sign(d) * sqrt(abs(d)) / baba;
+	float2 d = abs(float2(length(position.xz),position.y)) - float2(radius, height);
+	return min(max(d.x,d.y),0.0) + length(max(d,0.0));
 }
 
 float3 Uncharted2Tonemap(float3 x) {

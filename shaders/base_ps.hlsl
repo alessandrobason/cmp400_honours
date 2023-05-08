@@ -229,7 +229,7 @@ float3 rayMarch(float3 ray_origin, float3 ray_dir) {
 
 		float3 mouse_to_ro = mouse_pos - ray_origin;
 		float3 surface_to_ro = current_pos - ray_origin;
-		bool is_inside_shape = pow2(mouse_to_ro) > pow2(surface_to_ro);
+		bool is_inside_shape = mag2(mouse_to_ro) > mag2(surface_to_ro);
 
 		final_colour *= mouse_colours[(int)is_inside_tex + is_inside_shape];
 	}

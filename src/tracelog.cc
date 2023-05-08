@@ -174,16 +174,16 @@ void Logger::draw() {
 
     static int filter = 0;
 
-    // LogOptions menu
-    if (ImGui::BeginPopup("LogOptions")) {
+    // Options menu
+    if (ImGui::BeginPopup("Options")) {
         ImGui::Checkbox("Auto-scroll", &auto_scrool);
         ImGui::Combo("Filter", &filter, "None\0Debug\0Info\0Warning\0Error");
         ImGui::EndPopup();
     }
 
     // Main window
-    if (ImGui::Button("LogOptions"))
-        ImGui::OpenPopup("LogOptions");
+    if (ImGui::Button("Options"))
+        ImGui::OpenPopup("Options");
     ImGui::SameLine();
     bool should_clear = ImGui::Button("Clear");
 
