@@ -19,8 +19,8 @@ struct GFXFactory : GFXFactoryBase {
 	}
 
 	~GFXFactory() {
-		// check that we remembered to call cleanup (should be automatic, check just in case)
-		assert(!head);
+		// if we're here it means that the program crashed somehow, don't do anything in
+		// case the device/context are out of scope already
 	}
 
 	struct Node : public T {

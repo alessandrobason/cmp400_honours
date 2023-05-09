@@ -38,10 +38,12 @@ struct Tex2DHandler {
 		mtx.lock();
 		watcher.update();
 
+		char filename[1024];
+
 		auto file = watcher.getChangedFiles();
 		while (file) {
 			Texture2D *tex = (Texture2D *)file->custom_data;
-			const char *filename = str::format("assets/%s", file->name.get());
+			str::formatBuf(filename, sizeof(filename), "assets/%s", file->name.get());
 
 			fs::file fp = fs::file(filename);
 			if (!fp) {
@@ -413,7 +415,7 @@ static size_t type_to_size[] = {
 	sizeof(float),    // float32
 	sizeof(uint32_t), // r16g16_uint
 	sizeof(uint32_t), // r11g11b10_float
-	sizeof(uint16_t), // r16_snorm
+	sizeof(int16_t),  // r16_snorm
 };
 
 static_assert(ARRLEN(type_to_size) == (int)Texture3D::Type::count);
@@ -583,9 +585,6 @@ bool Texture3D::loadFromFile(const char *filename) {
 	if (!stream.read(size)) { err("could not read texture size"); return false; }
 	if (!stream.read(type)) { err("could not read texture type"); return false; }
 
-	size_t type_size = type_to_size[(int)type];
-	size_t data_len = size.x * size.y * size.z * type_size;
-
 	init(size, type, stream.cur);
 
 	return true;
@@ -632,7 +631,15 @@ bool Texture3D::save(const char *filename, bool overwrite, thr::Promise<bool> *p
 	stream.write(header, sizeof(header) - 1);
 	stream.write(size);
 	stream.write(type);
-	stream.write(mapped.pData, size.x * size.y * size.z * type_to_size[(int)type]);
+
+	size_t type_size = type_to_size[(int)type];
+	uint8_t *cur = (uint8_t *)mapped.pData;
+	for (int z = 0; z < size.z; ++z) {
+		for (int y = 0; y < size.y; ++y) {
+			stream.write(cur, size.x * type_size);
+			cur += mapped.RowPitch;
+		}
+	}
 
 	gfx::context->Unmap(temp, 0);
 

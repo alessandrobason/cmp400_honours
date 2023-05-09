@@ -20,5 +20,5 @@ void main(uint3 id : SV_DispatchThreadID) {
     destination.GetDimensions(dst_size.x, dst_size.y, dst_size.z);
 
     const float3 scale = dst_size / src_size;
-    destination[id] = sampleSource(id, scale);
+    destination[id] = sampleSource(id, scale) * scale;
 }

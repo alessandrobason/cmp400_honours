@@ -54,7 +54,10 @@ Handle<Shader> Shader::load(const char *filename, ShaderType type, bool hot_relo
 	Shader *shader = shader_factory.getNew();
 	bool success = false;
 
-	if (fs::MemoryBuf buf = fs::read(str::format("shaders/bin/%s.cso", filename))) {
+	char name[1024];
+	str::formatBuf(name, sizeof(name), "shaders/bin/%s.cso", filename);
+
+	if (fs::MemoryBuf buf = fs::read(name)) {
 		switch (type) {
 			case ShaderType::Vertex:	success = shader->loadVertex(buf.data.get(), buf.size);   break;
 			case ShaderType::Fragment:	success = shader->loadFragment(buf.data.get(), buf.size); break;
@@ -345,7 +348,9 @@ static dxptr<ID3DBlob> compileShader(const char *filename, ShaderType type, Slic
 		case ShaderType::Compute:  type_str = "cs"; break;
 	}
 
-	fs::MemoryBuf filedata = fs::read(str::format("shaders/%s", filename));
+	char name[1024];
+	str::formatBuf(name, sizeof(name), "shaders/%s", filename);
+	fs::MemoryBuf filedata = fs::read(name);
 
 	if (!filedata) {
 		err("couldn't open shader file %s to compile", filename);
@@ -369,7 +374,7 @@ static dxptr<ID3DBlob> compileShader(const char *filename, ShaderType type, Slic
 		(D3D_SHADER_MACRO *)macros.data, 
 		D3D_COMPILE_STANDARD_FILE_INCLUDE,
 		"main",
-		str::format("%s_5_0", type_str), 
+		str::format("%s_5_0", type_str),
 		flags,
 		0,
 		&blob,

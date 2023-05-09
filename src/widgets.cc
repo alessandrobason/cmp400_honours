@@ -435,11 +435,13 @@ void MenuBar::widget() {
 	}
 
 	if (open_save_popup) {
+		open_save_popup = false;
 		is_saving = true;
 		ImGui::OpenPopup("Save To File");
 	}
 
 	if (open_new_popup) {
+		open_new_popup = false;
 		is_creating = true;
 		ImGui::OpenPopup("New File");
 	}
@@ -460,11 +462,12 @@ void MenuBar::widget() {
 
 	if (ImGui::BeginPopupModal("Save To File", &is_saving, ImGuiWindowFlags_AlwaysAutoResize)) {
 		static int cur_level = 5;
+		static bool once = true;
 		qualityDecision(sculpture->texture, save_quality, cur_level);
 
 		// only called once, so we can setup the variables
-		if (open_save_popup) {
-			open_save_popup = false;
+		if (once) {
+			once = false;
 			save_quality = sculpture->texture->size;
 		}
 
@@ -481,10 +484,11 @@ void MenuBar::widget() {
 		static Shapes cur_shape = Shapes::Sphere;
 		static ShapeData shader_data;
 		static int cur_level = 5;
+		static bool once = true;
 
 		// only called once, so we can setup the variables
-		if (open_new_popup) {
-			open_new_popup = false;
+		if (once) {
+			once = false;
 			quality = sculpture->texture->size;
 		}
 

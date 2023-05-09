@@ -99,7 +99,7 @@ void logMessageV(LogLevel level, const char *fmt, va_list vlist) {
     }
 
     if (options.quit_on_fatal && level == LogLevel::Fatal) {
-        str::tstr temp = str::formatV(fmt, vlist);
+        str::tstr temp = logger.buf.c_str() + start;
         MessageBox((HWND)win::hwnd, temp, TEXT("FATAL ERROR"), MB_OK);
         exit(1);
     }

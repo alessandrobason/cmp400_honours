@@ -93,6 +93,8 @@ inline void writeApproximateDistance(float3 pos, uint3 id) {
     const float3 edge_pos = clamp(pos, 0, brush_size * brush_scale);
     // get the brush value at this edge
     float distance = sampleBrush(edge_pos) * MAX_STEP;
+    // ensure that distance is not a negative number
+    distance = max(distance, 0);
     // then add the distance from this edge to the actual point
     distance += length(pos - edge_pos);
     // make the distance slightly smaller, this is to avoid the distance from being

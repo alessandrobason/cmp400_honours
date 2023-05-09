@@ -29,10 +29,17 @@ Sculpture::~Sculpture() {
 	if (save_state == SaveState::Unsaved) {
 		mem::ptr<char[]> save_name = save_path ? str::dup(save_path.get()) : fs::findFirstAvailable(".", "unsaved_sculpture_%d.bin");
 		name = fs::getNameAndExt(save_name.get());
+
+		char message_buf[1024];
+		str::formatBuf(
+			message_buf, 
+			sizeof(message_buf), 
+			"You have unsaved changes, would you like to save before closing? Your file will be saved as %s", name.data
+		);
+
 		int result = MessageBox(
 			nullptr,
-			(str::tstr)str::format("You have unsaved changes, would you like to save before closing? Your file will be saved as %s", name.data),
-			//(str::tstr)str::format("%s has unsaved changes, would you like to save?", name ? name.data : "Unsaved"),
+			(str::tstr)message_buf,
 			TEXT("Unsaved Changed"),
 			MB_YESNO | MB_ICONWARNING
 		);

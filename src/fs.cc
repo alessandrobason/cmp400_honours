@@ -49,6 +49,7 @@ namespace fs {
 		if (!fp) {
 			return {};
 		}
+		//if (str::cmp(filename, "shaders/scale_cs.hlsl")) exit(1);
 		return read((FILE *)fp.fptr);
 	}
 
@@ -59,7 +60,7 @@ namespace fs {
 			return false;
 		}
 
-		if (fp.write(data, len)) {
+		if (!fp.write(data, len)) {
 			err("couldn't write everything to file");
 			return false;
 		}
@@ -198,7 +199,8 @@ namespace fs {
 			name.removePrefix(strlen(dir.get()));
 		}
 		
-		const char *test_name = str::format("%s%s", dir.get(), name.data);
+		char test_name[1024];
+		str::formatBuf(test_name, sizeof(test_name), "%s%s", dir.get(), name.data);
 		if (!fs::exists(test_name)) {
 			err("trying to watch a file that doesn't exist: %s", test_name);
 		}
@@ -319,10 +321,12 @@ namespace fs {
 	}
 
 	Watcher::WatchedFile *Watcher::getNextChanged() {
+		char filename[1024];
 		for (const auto &file : changed) {
 			if (file.clock.finished) {
 				WatchedFile &f = watched[file.index];
-				const char *filename = str::format(
+				str::formatBuf(
+					filename, sizeof(filename),
 					"%s/%s", dir.get(), f.name.get()
 				);
 				// can't read file, skip for now

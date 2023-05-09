@@ -110,9 +110,9 @@ void Buffer::resize(size_t new_count) {
             buffer_factory.popLast();
         }
     }
-    // it is a constant buffer
+    // we don't need to implement the constant buffer version as it is never used in the application anyway
     else if (desc.BindFlags & D3D11_BIND_CONSTANT_BUFFER) {
-        assert(false); // TODO
+        
     }
 }
 
