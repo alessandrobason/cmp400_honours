@@ -7,11 +7,11 @@
 
 #include "system.h"
 #include "tracelog.h"
-#include "utils.h"
 #include "mesh.h"
 #include "buffer.h"
 #include "gfx_factory.h"
 #include "widgets.h"
+#include "fs.h"
 
 static GFXFactory<Shader> shader_factory;
 
@@ -20,7 +20,7 @@ static dxptr<ID3DBlob> compileShader(const char *filename, ShaderType type, Slic
 struct ShaderHandler {
 	void add(const char *filename, Handle<Shader> handle);
 	void poll();
-	file::Watcher watcher = "shaders/";
+	fs::Watcher watcher = "shaders/";
 	arr<Handle<Shader>> update_list;
 } sh_handler;
 
@@ -54,7 +54,7 @@ Handle<Shader> Shader::load(const char *filename, ShaderType type, bool hot_relo
 	Shader *shader = shader_factory.getNew();
 	bool success = false;
 
-	if (file::MemoryBuf buf = file::read(str::format("shaders/bin/%s.cso", filename))) {
+	if (fs::MemoryBuf buf = fs::read(str::format("shaders/bin/%s.cso", filename))) {
 		switch (type) {
 			case ShaderType::Vertex:	success = shader->loadVertex(buf.data.get(), buf.size);   break;
 			case ShaderType::Fragment:	success = shader->loadFragment(buf.data.get(), buf.size); break;
@@ -292,7 +292,7 @@ void Shader::dispatch(
 }
 
 /* ==========================================
-   ============= DYNAMIC SHADER =============
+   ============= SHADER HANDLER =============
    ========================================== */
 
 void ShaderHandler::add(const char *filename, Handle<Shader> handle) {
@@ -345,11 +345,10 @@ static dxptr<ID3DBlob> compileShader(const char *filename, ShaderType type, Slic
 		case ShaderType::Compute:  type_str = "cs"; break;
 	}
 
-	file::MemoryBuf filedata = file::read(str::format("shaders/%s", filename));
+	fs::MemoryBuf filedata = fs::read(str::format("shaders/%s", filename));
 
-	if (filedata.size == 0) {
-		// we might be trying to read a file that is locked by some other application
-		// for now, just ignore this, the file watcher already calls this another time anyway
+	if (!filedata) {
+		err("couldn't open shader file %s to compile", filename);
 		return nullptr;
 	}
 

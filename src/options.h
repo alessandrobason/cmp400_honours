@@ -1,6 +1,6 @@
 #pragma once
 
-#include "utils.h"
+#include "fs.h"
 #include "vec.h"
 
 struct Options {
@@ -31,6 +31,8 @@ struct Options {
 	static Options &get();
 
 private:
-	file::Watcher watcher = "./";
+	// force it to be a singleton
+	Options() = default;
+	fs::Watcher watcher = "./";
 	bool is_open = false;
 };

@@ -2,7 +2,7 @@
 
 #include "gfx_common.h"
 #include "vec.h"
-#include "utils.h"
+#include "slice.h"
 
 struct Mesh {
 	struct Vertex {
@@ -28,7 +28,6 @@ struct Mesh {
 
 	void render();
 
-	int vertex_count = 0;
 	int index_count = 0;
 	dxptr<ID3D11Buffer> vert_buf = nullptr;
 	dxptr<ID3D11Buffer> ind_buf = nullptr;

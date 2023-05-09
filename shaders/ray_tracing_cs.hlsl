@@ -120,13 +120,6 @@ float3 getTriplanarBlend(float3 pos, float3 normal) {
 	return blend_r + blend_g + blend_b;
 }
 
-float3 getSphereCoordsBlend(float3 normal) {
-	float2 uv;
-	uv.x = atan2(normal.x, normal.z) / (2 * PI) + 0.5;
-	uv.y = -(normal.y * 0.5 + 0.5);
-	return diffuse_tex.SampleLevel(tex_sampler, uv, 0).rgb;
-}
-
 float3 getAlbedo(float3 pos, float3 normal) {
 	float3 colour = albedo;
 	if (use_texture) colour *= getTriplanarBlend(pos, normal);
@@ -176,23 +169,19 @@ float2 randomPointInCircle(inout uint state) {
 
 // == ray tracing ====================================
 
-struct Material {
-	float3 albedo;
-	float3 light;
-};
-
 struct HitInfo {
 	float3 normal;
 	float3 position;
-	Material material;
+	float3 albedo;
+	float3 light;
 };
 
 HitInfo rayMarch(float3 ro, float3 rd, int bounce, inout uint state) {
 	HitInfo info;
 	info.normal   = 0;
 	info.position = 0;
-	info.material.albedo = 0;
-	info.material.light  = 0;
+	info.albedo = 0;
+	info.light  = 0;
 
 	float distance_traveled = 0;
 
@@ -206,8 +195,8 @@ HitInfo rayMarch(float3 ro, float3 rd, int bounce, inout uint state) {
             LightData light = lights[light_id];
             info.normal          = lightNormal(current_pos, light.pos, light.radius);
             info.position        = current_pos;
-            info.material.albedo = 0;
-            info.material.light  = light.colour;
+            info.albedo = 0;
+            info.light  = light.colour;
             break;
 		}
 
@@ -227,8 +216,8 @@ HitInfo rayMarch(float3 ro, float3 rd, int bounce, inout uint state) {
 				if (closest < MIN_HIT_DISTANCE) {
                     info.normal          = calcNormal(tex_pos);
                     info.position        = current_pos;
-                    info.material.albedo = getAlbedo(tex_pos, info.normal);
-	                info.material.light  = emissive_colour;
+                    info.albedo = getAlbedo(tex_pos, info.normal);
+	                info.light  = emissive_colour;
                     break;
 				}
 			}
@@ -258,8 +247,8 @@ float3 rayTrace(float3 ro, float3 rd, inout uint state) {
             bool is_specular_bounce = specular_probability >= random(state);
             rd = lerp(diffuse_dir, specular_dir, smoothness * is_specular_bounce);
 
-            incoming_light += info.material.light * ray_colour;
-		    ray_colour *= lerp(info.material.albedo, specular_colour, is_specular_bounce);
+            incoming_light += info.light * ray_colour;
+		    ray_colour *= lerp(info.albedo, specular_colour, is_specular_bounce);
 		}
 		// no hit
 		else {

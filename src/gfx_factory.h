@@ -1,6 +1,10 @@
 #pragma once
 
-extern struct VirtualAllocator g_gfx_arena;
+#include <assert.h>
+
+#include "mem.h"
+
+extern struct mem::VirtualAllocator g_gfx_arena;
 
 struct GFXFactoryBase {
 	virtual void cleanup() = 0;
@@ -14,7 +18,7 @@ struct GFXFactory : GFXFactoryBase {
 	}
 
 	~GFXFactory() {
-		// check that we remembered to call cleanup (should be automatic check just in case)
+		// check that we remembered to call cleanup (should be automatic, check just in case)
 		assert(!head);
 	}
 

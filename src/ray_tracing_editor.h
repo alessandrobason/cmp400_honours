@@ -53,8 +53,6 @@ private:
 	Handle<Texture2D> image;
 	Handle<Buffer> data_handle;
 	RayTraceData data;
-	//vec2u thread_loc = 0;
-	//uint rendered_frames = 0;
 	uint64_t start_render = 0;
 	bool is_rendering = false;
 	bool is_view_open = true;

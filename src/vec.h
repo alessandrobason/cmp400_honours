@@ -199,7 +199,7 @@ namespace math {
 		return vec2T<T>(
 			math::min(math::max(v.x, minv.x), maxv.x),
 			math::min(math::max(v.y, minv.y), maxv.y)
-			);
+		);
 	}
 
 	template<typename T>
@@ -245,7 +245,7 @@ template<typename T> constexpr T dot(const vec4T<T> &v1, const vec4T<T> &v2) { r
 	template<typename T> constexpr vec2T<T> name(const vec2T<T> &v) { return { name(v.x), name(v.y) }; } \
 	template<typename T> constexpr vec3T<T> name(const vec3T<T> &v) { return { name(v.x), name(v.y), name(v.z) }; } \
 	template<typename T> constexpr vec4T<T> name(const vec4T<T> &v) { return { name(v.x), name(v.y), name(v.z), name(v.w) }; }
-	
+
 VEC_FUN(abs)
 VEC_FUN(round)
 VEC_FUN(ceil)

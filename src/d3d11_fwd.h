@@ -55,12 +55,6 @@ private:
 
 #define SAFE_CLOSE(h) if ((h) && (h) != INVALID_HANDLE_VALUE) { CloseHandle(h); (h) = nullptr; }
 
-#ifdef UNICODE
-typedef wchar_t TCHAR;
-#else
-typedef char TCHAR;
-#endif
-
 typedef void *win32_handle_t;
 
 typedef struct {

@@ -4,21 +4,30 @@
 #include <imgui.h>
 #include <nfd.hpp>
 
-#include "maths.h"
 #include "system.h"
 #include "widgets.h"
+#include "slice.h"
+#include "fs.h"
+#include "thr.h"
 
 MaterialEditor::MaterialEditor() {
-	diffuse_handle    = addTexture("assets/ground texture.png");
-	background_handle = addTexture("assets/rainforest_trail_4k.hdr");
 	mat_handle        = Buffer::makeConstant<MaterialPS>(Buffer::Usage::Dynamic);
 	lights_handle     = Buffer::makeStructured<LightData>(cur_lights_count, Bind::GpuRead | Bind::CpuWrite);
 
-	if (diffuse_handle == -1)    fatal("couldn't load default material texture");
-	if (background_handle == -1) fatal("couldn't load default background hdr texture");
-
 	if (!lights_handle) gfx::errorExit();
 	if (!mat_handle)    gfx::errorExit();
+
+	// add a few default textures
+	addTextureAsync("assets/ground texture.png", &diffuse_handle);
+	addTextureAsync("assets/rainforest_trail_4k.hdr", &background_handle);
+	addTextureAsync("assets/tree_texture.jpg");
+	addTextureAsync("assets/uv_texture.png");
+	addTextureAsync("assets/pattern.jpg");
+	addTextureAsync("assets/fireplace_2k.hdr");
+	addTextureAsync("assets/irradiance_map.hdr");
+	addTextureAsync("assets/satara_night_2k.hdr");
+	addTextureAsync("assets/the_sky_is_on_fire_2k.hdr");
+	addTextureAsync("assets/venice_sunset_2k.hdr");
 
 	addLight(vec3(-400, 0, 0), 150.f);
 
@@ -59,29 +68,6 @@ void MaterialEditor::drawWidget() {
 		ImGui::Text(str);
 		if (tip) tooltip(tip);
 		ImGui::SameLine();
-	};
-
-	const auto &texChooser = [](const char *label, size_t &handle, Slice<TexNamePair> textures, const char *tip = nullptr) -> bool {
-		bool has_changed = false;
-		ImGui::Text(label);
-		if (tip) tooltip(tip);
-
-		if (ImGui::BeginCombo(label, textures[handle].name.get())) {
-			for (size_t i = 0; i < textures.len; ++i) {
-				bool is_selected = handle == i;
-				if (ImGui::Selectable(textures[i].name.get(), is_selected)) {
-					handle = i;
-					has_changed = true;
-				}
-
-				if (is_selected) {
-					ImGui::SetItemDefaultFocus();
-				}
-			}
-
-			ImGui::EndCombo();
-		}
-		return has_changed;
 	};
 
 	const auto showTexture = [](const char *label, Texture2D *tex, const vec2 &max_size) {
@@ -169,8 +155,8 @@ void MaterialEditor::drawWidget() {
 		ImGui::SameLine();
 		material_dirty |= ImGui::Checkbox("##UseTex", &use_texture);
 
-		ray_tracing_dirty |= texChooser("Diffuse", diffuse_handle, textures, "The texture applied on the sculpture");
-		ray_tracing_dirty |= texChooser("Background", background_handle, textures);
+		ray_tracing_dirty |= texChooser("Diffuse", diffuse_handle, "The texture applied on the sculpture");
+		ray_tracing_dirty |= texChooser("Background", background_handle);
 
 		if (ImGui::Button("Load Image From File")) {
 			should_open_nfd = true;
@@ -187,22 +173,18 @@ void MaterialEditor::drawWidget() {
 }
 
 bool MaterialEditor::update() {
-	watcher.update();
-	auto changed = watcher.getChangedFiles();
-	while (changed) {
-		ray_tracing_dirty = true;
-		str::view name = file::getFilename(changed->name.get());
+	bool has_changed = material_dirty || light_dirty || ray_tracing_dirty;
 
-		for (TexNamePair &tex : textures) {
-			if (name == tex.name.get()) {
-				if (tex.handle->loadFromFile(str::format("%s/%s", watcher.getWatcherDir(), changed->name.get()))) {
-					info("reloaded texture %s", changed->name.get());
-				}
-				break;
+	for (size_t i = 0; i < async_textures.len; ++i) {
+		AsyncTex &tex = async_textures[i];
+		if (tex.promise->isFinished()) {
+			if (tex.handle) {
+				*tex.handle = textures.len;
+				has_changed = true;
 			}
+			textures.push(tex.promise->value, mem::move(tex.name));
+			async_textures.remove(i--);
 		}
-
-		changed = watcher.getChangedFiles(changed);
 	}
 
 	if (should_open_nfd) {
@@ -237,8 +219,6 @@ bool MaterialEditor::update() {
 			err("error with the file dialog: %s", NFD::GetError());
 		}
 	}
-
-	bool has_changed = material_dirty || light_dirty || ray_tracing_dirty;
 
 	if (material_dirty) {
 		material_dirty = false;
@@ -304,7 +284,7 @@ Texture2D *MaterialEditor::get(size_t index) {
 }
 
 size_t MaterialEditor::addTexture(const char *path) {
-	str::view name = file::getFilename(path);
+	str::view name = fs::getFilename(path);
 	size_t index = checkTextureAlreadyLoaded(name);
 	if (index != -1) {
 		warn("texture %s is already loaded", name.data);
@@ -319,8 +299,24 @@ size_t MaterialEditor::addTexture(const char *path) {
 
 	index = textures.len;
 	textures.push(newtex, name.dup());
-	watcher.watchFile(file::getNameAndExt(path));
 	return index;
+}
+
+void MaterialEditor::addTextureAsync(const char *path, size_t *handle) {
+	str::view name = fs::getFilename(path);
+	size_t index = checkTextureAlreadyLoaded(name);
+	if (index != -1) {
+		warn("texture %s is already loaded", name.data);
+		return;
+	}
+
+	AsyncTex tex;
+	tex.promise = mem::ptr<AsyncTex::Promise>::make();
+	tex.name = name.dup();
+	tex.handle = handle;
+	Texture2D::loadAsync(tex.promise.get(), path);
+
+	async_textures.push(mem::move(tex));
 }
 
 size_t MaterialEditor::checkTextureAlreadyLoaded(str::view name) {
@@ -350,4 +346,29 @@ void MaterialEditor::updateLightsBuffer() {
 		}
 		lights_handle->unmap();
 	}
+}
+
+bool MaterialEditor::texChooser(const char *label, size_t &handle, const char *tip) {
+	bool has_changed = false;
+	ImGui::Text(label);
+	if (tip) tooltip(tip);
+
+	const char *name = handle < textures.len ? textures[handle].name.get() : "(none)";
+
+	if (ImGui::BeginCombo(label, name)) {
+		for (size_t i = 0; i < textures.len; ++i) {
+			bool is_selected = handle == i;
+			if (ImGui::Selectable(textures[i].name.get(), is_selected)) {
+				handle = i;
+				has_changed = true;
+			}
+
+			if (is_selected) {
+				ImGui::SetItemDefaultFocus();
+			}
+		}
+
+		ImGui::EndCombo();
+	}
+	return has_changed;
 }

@@ -1,10 +1,12 @@
 #pragma once
 
 #include "common.h"
+#include "mem.h"
+#include "str.h"
+#include "arr.h"
 #include "vec.h"
 #include "texture.h"
 #include "handle.h"
-#include "utils.h"
 
 struct Buffer;
 struct Shader;

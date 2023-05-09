@@ -1,9 +1,11 @@
 #pragma once
 
 #include "vec.h"
-#include "utils.h"
 #include "buffer.h"
 #include "texture.h"
+#include "mem.h"
+#include "str.h"
+#include "arr.h"
 
 struct MaterialPS {
 	vec3 albedo;
@@ -49,11 +51,21 @@ private:
 		mem::ptr<char[]> name;
 	};
 
+	struct AsyncTex {
+		using Promise = thr::Promise<Handle<Texture2D>>;
+		mem::ptr<Promise> promise;
+		mem::ptr<char[]> name;
+		size_t *handle = nullptr;
+	};
+
 	Texture2D *get(size_t index);
 	size_t addTexture(const char *name);
+	void addTextureAsync(const char *name, size_t *handle = nullptr);
 	size_t checkTextureAlreadyLoaded(str::view name);
 	void addLight(const vec3 &pos, float radius, float strength = 3, const vec3 &colour = 1, bool render = true);
 	void updateLightsBuffer();
+
+	bool texChooser(const char *label, size_t &handle, const char *tip = nullptr);
 
 	vec3 albedo = 1;
 	bool use_texture = true;
@@ -81,7 +93,7 @@ private:
 	bool light_dirty = true;
 	bool ray_tracing_dirty = false;
 	arr<TexNamePair> textures;
-	file::Watcher watcher = "assets/";
+	arr<AsyncTex> async_textures;
 
 	bool should_open_nfd = false;
 };

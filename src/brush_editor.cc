@@ -9,6 +9,8 @@
 #include "buffer.h"
 #include "shader.h"
 #include "camera.h"
+#include "fs.h"
+#include "mem.h"
 
 constexpr vec3u brush_tex_size = 64;
 constexpr Texture3D::Type brush_type = Texture3D::Type::r16_snorm;
@@ -280,7 +282,7 @@ const Texture3D *BrushEditor::get(size_t index) const {
 }
 
 size_t BrushEditor::addTexture(const char *path) {
-	str::view name = file::getFilename(path);
+	str::view name = fs::getFilename(path);
 
 	size_t index = checkTextureAlreadyLoaded(name);
 	if (index != -1) {

@@ -1,8 +1,5 @@
 #pragma once
 
-#undef min
-#undef max
-
 namespace math {
 	constexpr float pi  = 3.14159265359f;
 	constexpr float pi2 = 6.28318530718f;
@@ -30,10 +27,5 @@ namespace math {
 	template<typename T>
 	constexpr T clamp(const T &value, const T &minv, const T &maxv) {
 		return math::min(math::max(value, minv), maxv);
-	}
-
-	template<typename T>
-	constexpr T lerp(const T &v0, const T &v1, float t) {
-		return v0 * (1.f - t) + v1 * t;
 	}
 } // namespace math 

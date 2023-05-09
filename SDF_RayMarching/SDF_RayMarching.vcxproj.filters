@@ -16,14 +16,8 @@
     <Filter Include="Header Files\gfx">
       <UniqueIdentifier>{ba8588b4-7531-4809-8df4-c1ffa4a28686}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\math">
-      <UniqueIdentifier>{d1ff2a3a-32d6-4d9e-88eb-03c9953597a1}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\gfx">
       <UniqueIdentifier>{03f9aeda-d378-42a6-9a09-40728e87cc68}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\math">
-      <UniqueIdentifier>{3bd06c8f-bd52-4b7b-b497-2d141eafadfa}</UniqueIdentifier>
     </Filter>
     <Filter Include="Header Files\core">
       <UniqueIdentifier>{0c33647b-86d4-4b24-815f-df8268aad796}</UniqueIdentifier>
@@ -61,6 +55,12 @@
     <Filter Include="Libraries\ImGui\backends">
       <UniqueIdentifier>{36a5f0f7-dadd-4154-8f3c-d7f47d9dee7c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\utils">
+      <UniqueIdentifier>{57489ebe-1b94-45e9-af1d-003afdafab2b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\utils">
+      <UniqueIdentifier>{907b2707-3681-463a-bb6b-8cc8f2bbdbc6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cc">
@@ -68,9 +68,6 @@
     </ClCompile>
     <ClCompile Include="..\libs\stb\stb.c">
       <Filter>Libraries\stb</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\matrix.cc">
-      <Filter>Source Files\math</Filter>
     </ClCompile>
     <ClCompile Include="..\src\buffer.cc">
       <Filter>Source Files\gfx</Filter>
@@ -100,9 +97,6 @@
       <Filter>Source Files\core</Filter>
     </ClCompile>
     <ClCompile Include="..\src\tracelog.cc">
-      <Filter>Source Files\core</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\utils.cc">
       <Filter>Source Files\core</Filter>
     </ClCompile>
     <ClCompile Include="..\libs\renderdoc\renderdoc.cc">
@@ -156,6 +150,18 @@
     <ClCompile Include="..\src\sculpture.cc">
       <Filter>Source Files\gfx</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\fs.cc">
+      <Filter>Source Files\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\mem.cc">
+      <Filter>Source Files\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\str.cc">
+      <Filter>Source Files\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\thr.cc">
+      <Filter>Source Files\utils</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\libs\stb\stb_image_write.h">
@@ -185,15 +191,6 @@
     <ClInclude Include="..\src\d3d11_fwd.h">
       <Filter>Header Files\gfx</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\maths.h">
-      <Filter>Header Files\math</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\matrix.h">
-      <Filter>Header Files\math</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\vec.h">
-      <Filter>Header Files\math</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\system.h">
       <Filter>Header Files\core</Filter>
     </ClInclude>
@@ -204,9 +201,6 @@
       <Filter>Header Files\core</Filter>
     </ClInclude>
     <ClInclude Include="..\src\tracelog.h">
-      <Filter>Header Files\core</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\utils.h">
       <Filter>Header Files\core</Filter>
     </ClInclude>
     <ClInclude Include="..\src\common.h">
@@ -283,6 +277,30 @@
     </ClInclude>
     <ClInclude Include="..\src\sculpture.h">
       <Filter>Header Files\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\mem.h">
+      <Filter>Header Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\arr.h">
+      <Filter>Header Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\slice.h">
+      <Filter>Header Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\str.h">
+      <Filter>Header Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\fs.h">
+      <Filter>Header Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\thr.h">
+      <Filter>Header Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\maths.h">
+      <Filter>Header Files\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\vec.h">
+      <Filter>Header Files\core</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

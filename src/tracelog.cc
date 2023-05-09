@@ -1,9 +1,6 @@
 #include "tracelog.h"
 
 #include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <assert.h>
 
 #include <imgui.h>
 
@@ -11,11 +8,8 @@
 #include <Windows.h>
 
 #include "system.h"
-#include "utils.h"
-#include "input.h"
 #include "options.h"
-#include "timer.h"
-#include "vec.h"
+#include "thr.h"
 
 static const char *level_strings[(int)LogLevel::Count] = {
     "[NONE] ",
@@ -139,8 +133,13 @@ Logger::Logger() {
 Logger::~Logger() {
     if (Options::get().print_to_file) {
         if (!fp) {
-            mem::ptr<char[]> filename = file::findFirstAvailable("logs", "log_%d.txt");
-            fp = fopen(filename.get(), "wb+");
+            mem::ptr<char[]> filename = fs::findFirstAvailable("logs", "log_%d.txt");
+            errno_t error = fopen_s(&fp, filename.get(), "wb+");
+            if (error) {
+                printf("[LOGGER ERROR] could not open file %s: %s", filename.get(), strerror(error));
+                fp = nullptr;
+                return;
+            }
         }
 
         int last_offset = 0;

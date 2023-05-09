@@ -2,11 +2,14 @@
 
 #include "common.h"
 #include "gfx_common.h"
-#include "vec.h"
 
 namespace str { struct tstr; }
 template<typename T> struct Handle;
 struct RenderTexture;
+template<typename T> struct vec2T;
+template<typename T> struct vec4T;
+using vec2i = vec2T<int>;
+using vec4 = vec4T<float>;
 
 namespace gfx {
 	extern dxptr<ID3D11Device> device;
@@ -24,6 +27,8 @@ namespace gfx {
 
 	bool createDevice();
 	void cleanupDevice();
+
+	bool canMultithread();
 
 	const vec4 &getMainRTVBounds();
 	void setMainRTVBounds(const vec4 &bounds);
@@ -54,5 +59,5 @@ namespace win {
 
 	float timeSinceStart();
 
-	vec2i getSize();
+	const vec2i &getSize();
 } //namespace win

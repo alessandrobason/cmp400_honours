@@ -27,8 +27,8 @@ Sculpture::Sculpture(BrushEditor &be) : brush_editor(be) {
 
 Sculpture::~Sculpture() {
 	if (save_state == SaveState::Unsaved) {
-		mem::ptr<char[]> save_name = save_path ? str::dup(save_path.get()) : file::findFirstAvailable(".", "unsaved_sculpture_%d.bin");
-		name = file::getNameAndExt(save_name.get());
+		mem::ptr<char[]> save_name = save_path ? str::dup(save_path.get()) : fs::findFirstAvailable(".", "unsaved_sculpture_%d.bin");
+		name = fs::getNameAndExt(save_name.get());
 		int result = MessageBox(
 			nullptr,
 			(str::tstr)str::format("You have unsaved changes, would you like to save before closing? Your file will be saved as %s", name.data),
@@ -100,7 +100,7 @@ void Sculpture::save(const vec3u &quality) {
 
 void Sculpture::save(const vec3u &quality, mem::ptr<char[]> &&path) {
 	save_path = mem::move(path);
-	name = file::getNameAndExt(save_path.get());
+	name = fs::getNameAndExt(save_path.get());
 	save(quality);
 }
 

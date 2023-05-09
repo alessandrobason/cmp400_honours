@@ -19,6 +19,7 @@ struct Texture2D {
 	static Handle<Texture2D> create(const vec2i &size, bool can_gpu_read = false);
 	static Handle<Texture2D> load(const char *filename, bool can_gpu_read = false);
 	static Handle<Texture2D> loadHDR(const char *filename, bool can_gpu_read = false);
+	static void loadAsync(thr::Promise<Handle<Texture2D>> *promise, const char *filename, bool can_gpu_read = false);
 	// ------------------
 
 	bool init(const vec2i &size, bool can_gpu_read = false);

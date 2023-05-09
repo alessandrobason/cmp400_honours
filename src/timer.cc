@@ -2,9 +2,10 @@
 
 #include <string.h>
 #include <d3d11.h>
+#include <math.h>
 
 #include "system.h"
-#include "utils.h"
+#include "str.h"
 
 // == TIMER STUFF =======================================================================================
 
@@ -168,7 +169,7 @@ void CPUClock::print(LogLevel level) {
 
 void CPUClock::print(const char *name_overload, LogLevel level) {
 	uint64_t time_passed = timerSince(start);
-	logMessage(level, "[%s] time passed: %s", name_overload, timerFormat(time_passed));
+	logMessage(level, "[%s] time taken: %s", name_overload, timerFormat(time_passed));
 	start = timerNow();
 }
 

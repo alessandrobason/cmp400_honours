@@ -18,6 +18,10 @@
     <Expand>
       <Item Name="[len]" ExcludeView="simple">len</Item>
       <Item Name="[str]" ExcludeView="simple">data, s</Item>
+      <ArrayItems>
+        <Size>len</Size>
+        <ValuePointer>data</ValuePointer>
+      </ArrayItems>
     </Expand>
   </Type>
 </AutoVisualizer>

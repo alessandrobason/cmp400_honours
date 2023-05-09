@@ -359,7 +359,7 @@ Keys win32ToKeys(uintptr_t virtual_key) {
 
 void setKeyState(Keys key, bool is_down) {
 	prev_keys_state[key] = keys_state[key];
-	keys_state[key] = is_down;
+	keys_state[key]      = is_down;
 	if (is_down) last_key_pressed = key;
 }
 

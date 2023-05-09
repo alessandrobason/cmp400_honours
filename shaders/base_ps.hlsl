@@ -102,13 +102,6 @@ float3 getTriplanarBlend(float3 pos, float3 normal) {
 	return blend_r + blend_g + blend_b;
 }
 
-float3 getSphereCoordsBlend(float3 normal) {
-	float2 uv;
-	uv.x = atan2(normal.x, normal.z) / (2 * PI) + 0.5;
-	uv.y = -(normal.y * 0.5 + 0.5);
-	return material_tex.SampleLevel(tex_sampler, uv, 0).rgb;
-}
-
 float3 getAlbedo(float3 pos, float3 normal) {
 	float3 colour = albedo;
 	if (use_texture) colour *= getTriplanarBlend(pos, normal);

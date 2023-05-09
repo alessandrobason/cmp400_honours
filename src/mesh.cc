@@ -3,7 +3,6 @@
 #include <d3d11.h>
 
 #include "system.h"
-#include "utils.h"
 #include "tracelog.h"
 
 Mesh::Mesh(Mesh &&m) {
@@ -24,7 +23,6 @@ Mesh &Mesh::operator=(Mesh &&m) {
 }
 
 bool Mesh::create(Slice<Vertex> vertices, Slice<Index> indices) {
-    vertex_count = (int)vertices.len;
     index_count = (int)indices.len;
     
     D3D11_BUFFER_DESC vd;

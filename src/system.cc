@@ -15,9 +15,8 @@
 #include <nfd.hpp>
 
 #include "tracelog.h"
-#include "utils.h"
+#include "vec.h"
 #include "options.h"
-#include "maths.h"
 #include "input.h"
 #include "timer.h"
 #include "texture.h"
@@ -27,11 +26,13 @@
 #include "gfx_factory.h"
 
 extern void pollShaders();
+extern void pollTexture2D();
 
 static LRESULT wndProc(HWND, UINT, WPARAM, LPARAM);
 void subscribeGFXFactory(GFXFactoryBase *factory);
+void safeRelease(IUnknown *ptr);
 
-VirtualAllocator g_gfx_arena;
+mem::VirtualAllocator g_gfx_arena;
 
 namespace gfx {
 	dxptr<ID3D11Device> device = nullptr;
@@ -48,6 +49,7 @@ namespace gfx {
 	Handle<RenderTexture> main_rtv;
 	static vec4 main_rtv_bounds = 0;
 	static bool is_main_rtv_active = true;
+	static bool can_multithread = false;
 
 	static bool is_frame_captured = false;
 
@@ -130,8 +132,6 @@ namespace gfx {
 		}
 
 		is_frame_captured = false;
-
-		//TracyD3D11Collect(tracy_ctx);
 	}
 
 	bool createDevice() {
@@ -202,6 +202,10 @@ namespace gfx {
 
 		imgui_rtv = RenderTexture::fromBackbuffer();
 
+		D3D11_FEATURE_DATA_THREADING threading_feature;
+		device->CheckFeatureSupport(D3D11_FEATURE_THREADING, &threading_feature, sizeof(D3D11_FEATURE_DATA_THREADING));
+		can_multithread = threading_feature.DriverConcurrentCreates;
+
 		return true;
 	}
 	
@@ -219,6 +223,10 @@ namespace gfx {
 		debugdev->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL | D3D11_RLDO_IGNORE_INTERNAL);
 		debugdev.destroy();
 #endif
+	}
+
+	bool canMultithread() {
+		return can_multithread;
 	}
 
 	const vec4 &getMainRTVBounds() {
@@ -307,6 +315,7 @@ namespace win {
 
 	void poll() {
 		pollShaders();
+		pollTexture2D();
 		// reset mouse relative position
 		setMouseRelative(0);
 		setMouseWheel(0);
@@ -401,7 +410,7 @@ namespace win {
 		return (float)timerToSec(timerSince(0));
 	}
 
-	vec2i getSize() {
+	const vec2i &getSize() {
 		return size;
 	}
 } // namespace sys
@@ -482,4 +491,10 @@ LRESULT wndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 
 void subscribeGFXFactory(GFXFactoryBase *factory) {
 	gfx::factories.push(factory);
+}
+
+void safeRelease(IUnknown *ptr) {
+	if (ptr) {
+		ptr->Release();
+	}
 }

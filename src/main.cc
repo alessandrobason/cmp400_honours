@@ -2,13 +2,11 @@
 
 #include "system.h"
 #include "input.h"
-#include "maths.h"
 #include "options.h"
 #include "tracelog.h"
 #include "widgets.h"
 #include "timer.h"
 #include "camera.h"
-#include "matrix.h"
 #include "brush_editor.h"
 #include "material_editor.h"
 
@@ -22,8 +20,6 @@
 
 #include <imgui.h>
 #include <d3d11.h>
-
-#include "utils.h"
 
 struct PSShaderData {
 	vec3 cam_up;
@@ -50,6 +46,8 @@ int main() {
 
 	// push stack so it cleans up after itself before closing
 	{
+		CPUClock init_timer("initialization");
+
 		Camera cam;
 		BrushEditor brush_editor;
 		MaterialEditor material_editor;
@@ -71,6 +69,8 @@ int main() {
 
 		widgets::setupMenuBar(brush_editor, material_editor, rt_editor, sculpture);
 		setImGuiTheme();
+
+		init_timer.print();
 
 		while (win::isOpen()) {
 			widgets::saveLoadFile();

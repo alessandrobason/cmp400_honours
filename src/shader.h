@@ -2,7 +2,7 @@
  
 #include "gfx_common.h"
 #include "handle.h"
-#include "utils.h"
+#include "slice.h"
 
 struct Buffer;
 template<typename T> struct vec3T;

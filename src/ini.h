@@ -1,6 +1,7 @@
 #pragma once
 
-#include "utils.h"
+#include "str.h"
+#include "fs.h"
 
 namespace ini {
 	struct Value {
@@ -43,7 +44,7 @@ namespace ini {
 	
 	struct Doc {
 		//std::string text;
-		file::MemoryBuf text;
+		fs::MemoryBuf text;
 		arr<Table> tables;
 
 		Doc() = default;

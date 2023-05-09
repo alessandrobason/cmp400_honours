@@ -15,5 +15,11 @@ using uintptr_t = size_t;
 
 using uint = unsigned int;
 
+#ifdef UNICODE
+typedef wchar_t TCHAR;
+#else
+typedef char TCHAR;
+#endif
+
 #define UNUSED(x) ((void)(x))
 #define ARRLEN(arr) (sizeof(arr)/sizeof(*(arr)))

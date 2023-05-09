@@ -10,8 +10,6 @@
 #include "tracelog.h"
 #include "shader.h"
 #include "texture.h"
-#include "maths.h"
-#include "utils.h"
 #include "brush_editor.h"
 #include "material_editor.h"
 #include "ray_tracing_editor.h"
@@ -149,9 +147,9 @@ namespace widgets {
 				is_focused = true;
 				ImGui::SetWindowFocus();
 			}
-			gfx::setMainRTVActive(is_focused);
 		}
 
+		gfx::setMainRTVActive(is_focused);
 		game_view.was_focused = is_focused;
 
 		ImGui::BeginDisabled(!is_focused);

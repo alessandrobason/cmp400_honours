@@ -1,11 +1,12 @@
 #include "buffer.h"
 
+#include <assert.h>
 #include <d3d11.h>
 
 #include "system.h"
-#include "utils.h"
 #include "tracelog.h"
 #include "gfx_factory.h"
+#include "mem.h"
 
 static GFXFactory<Buffer> buffer_factory;
 

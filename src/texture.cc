@@ -1,25 +1,72 @@
 #include "texture.h"
 
+#include <thread>
 #include <d3d11.h>
 #include <stb_image.h>
 #include <stb_image_write.h>
 #include <zstd.hpp>
 
 #include "system.h"
-#include "utils.h"
 #include "tracelog.h"
 #include "gfx_factory.h"
 #include "widgets.h"
+#include "str.h"
+#include "fs.h"
+#include "thr.h"
+//#include "arr.h"
 
 /* ==========================================
    =============== TEXTURE 2D ===============
    ========================================== */
 
 static bool isHDR(const char *filename) {
-	return str::cmp("hdr", file::getExtension(filename));
+	return str::cmp("hdr", fs::getExtension(filename));
 }
 
 static GFXFactory<Texture2D> tex2d_factory;
+
+struct Tex2DHandler {
+	void add(const char *filename, Handle<Texture2D> handle) {
+		// it can't watch the file if it is not in the right directory
+		if (fs::getDir(filename) != "assets") return;
+		mtx.lock();
+		watcher.watchFile(filename, handle.get());
+		mtx.unlock();
+	}
+
+	void poll() {
+		mtx.lock();
+		watcher.update();
+
+		auto file = watcher.getChangedFiles();
+		while (file) {
+			Texture2D *tex = (Texture2D *)file->custom_data;
+			const char *filename = str::format("assets/%s", file->name.get());
+
+			fs::file fp = fs::file(filename);
+			if (!fp) {
+				file = watcher.getChangedFiles(file);
+				continue;
+			}
+			fp.close();
+			
+			bool result = tex->loadFromFile(filename, tex->uav != nullptr);
+			if (!result) {
+				err("couldn't reload texture %s", file->name.get());
+			}
+
+			file = watcher.getChangedFiles(file);
+		}
+		mtx.unlock();
+	}
+
+	thr::Mutex mtx;
+	fs::Watcher watcher = "assets/";
+} tex2d_handler;
+
+void pollTexture2D() {
+	tex2d_handler.poll();
+}
 
 Texture2D::Texture2D(Texture2D &&rt) {
 	*this = mem::move(rt);
@@ -61,6 +108,8 @@ Handle<Texture2D> Texture2D::load(const char *filename, bool can_gpu_read) {
 		return nullptr;
 	}
 
+	tex2d_handler.add(filename, tex);
+
 	return tex;
 }
 
@@ -73,6 +122,21 @@ Handle<Texture2D> Texture2D::loadHDR(const char *filename, bool can_gpu_read) {
 	}
 
 	return tex;
+}
+
+void Texture2D::loadAsync(thr::Promise<Handle<Texture2D>> *promise, const char *filename, bool can_gpu_read) {
+	if (!gfx::canMultithread()) {
+		*promise = load(filename, can_gpu_read);
+		return;
+	}
+
+	std::thread(
+		[](thr::Promise<Handle<Texture2D>> *promise, mem::ptr<char[]> &&filename, bool can_gpu_read) {
+			Handle<Texture2D> handle = load(filename.get(), can_gpu_read);
+			promise->set(handle);
+		},
+		promise, str::dup(filename), can_gpu_read
+	).detach();
 }
 
 bool Texture2D::init(const vec2i &newsize, bool can_gpu_read) {
@@ -131,9 +195,19 @@ bool Texture2D::loadFromFile(const char *filename, bool can_gpu_read) {
 
 	cleanup();
 
+	str::view dir = fs::getBaseDir(filename);
+	if (dir != "assets") {
+		warn(
+			"the texture %s is not in the folder \"assets\", this is fine but "
+			"hot realoding will not work with this texture",
+			filename
+		);
+	}
+
 	int channels = 0;
 	unsigned char *data = stbi_load(filename, &size.x, &size.y, &channels, STBI_rgb_alpha);
 	if (!data) {
+		err("stbi fail: %s", stbi_failure_reason());
 		return false;
 	}
 
@@ -287,7 +361,7 @@ bool Texture2D::takeScreenshot(const char *base_name) {
 
 	char base_fmt[64];
 	str::formatBuf(base_fmt, sizeof(base_fmt), "%s_%%03d.png", base_name);
-	mem::ptr<char[]> name = file::findFirstAvailable("screenshots", base_fmt);
+	mem::ptr<char[]> name = fs::findFirstAvailable("screenshots", base_fmt);
 	bool success = stbi_write_png(name.get(), size.x, size.y, 4, mapped.pData, mapped.RowPitch);
 
 	if (success) {
@@ -479,7 +553,7 @@ bool Texture3D::init(int width, int height, int depth, Type type, const void *in
 }
 
 bool Texture3D::loadFromFile(const char *filename) {
-	file::MemoryBuf whole_file = file::read(filename);
+	fs::MemoryBuf whole_file = fs::read(filename);
 	if (!whole_file.data) {
 		err("couldn't read file (%s)", filename);
 		return false;
@@ -495,7 +569,7 @@ bool Texture3D::loadFromFile(const char *filename) {
 		return false;
 	}
 
-	StreamIn stream((uint8_t *)decompressed.data, decompressed.len);
+	fs::StreamIn stream((uint8_t *)decompressed.data, decompressed.len);
 
 	Type type;
 	char header[5];
@@ -517,10 +591,8 @@ bool Texture3D::loadFromFile(const char *filename) {
 	return true;
 }
 
-#include <thread>
-
 bool Texture3D::save(const char *filename, bool overwrite, thr::Promise<bool> *promise) {
-	if (!overwrite && file::exists(filename)) {
+	if (!overwrite && fs::exists(filename)) {
 		err("trying to save a Texture3D but file (%s) already exists", filename);
 		return false;
 	}
@@ -554,7 +626,7 @@ bool Texture3D::save(const char *filename, bool overwrite, thr::Promise<bool> *p
 
 	// write the data to the file
 
-	StreamOut stream;
+	fs::StreamOut stream;
 
 	char header[] = "tex3d";
 	stream.write(header, sizeof(header) - 1);
@@ -567,7 +639,7 @@ bool Texture3D::save(const char *filename, bool overwrite, thr::Promise<bool> *p
 	info("Saving texture in another thread");
 
 	std::thread(
-		[](StreamOut &&stream, mem::ptr<char[]> filename, thr::Promise<bool> *promise) {
+		[](fs::StreamOut &&stream, mem::ptr<char[]> filename, thr::Promise<bool> *promise) {
 			zstd::Buf compressed = zstd::compress(stream.getData(), stream.getLen());
 			if (!compressed) {
 				err("could not compress texture data: %s", compressed.getErrorString());
@@ -598,14 +670,14 @@ bool Texture3D::save(const char *filename, bool overwrite, thr::Promise<bool> *p
 			double ratio = (double)compressed.len / stream.getLen();
 			info(
 				"(%s) size: %.2f%s, compressed size: %.2f%s, compression ratio: %.3f",
-				file::getNameAndExt(filename.get()),
+				fs::getNameAndExt(filename.get()),
 				asByteSize(stream.getLen()), getUnit(stream.getLen()),
 				asByteSize(compressed.len), getUnit(compressed.len),
 				ratio
 			);
 			info("the compressed file is %.0f%% smaller", round((1.0 - ratio) * 100.0));
 
-			if (!file::write(filename.get(), compressed.data, compressed.len)) {
+			if (!fs::write(filename.get(), compressed.data, compressed.len)) {
 				info("failed to save file (%s)", filename.get());
 				if (promise) promise->set(false);
 				widgets::addMessage(LogLevel::Error, "Failed to save sculpture to file!");

@@ -41,7 +41,7 @@ void Options::load(const char *filename) {
 }
 
 void Options::save(const char *filename) {
-	file::fp fp(filename, "wb");
+	fs::file fp(filename, "wb");
 
 #define B(b) (b) ? "true" : "false"
 

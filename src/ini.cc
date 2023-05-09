@@ -1,22 +1,5 @@
 #include "ini.h"
 
-#include <ctype.h>
-
-struct StrStream {
-	const char *start;
-	const char *cur;
-	size_t len;
-
-	StrStream(const file::MemoryBuf &buf) : start((const char *)buf.data.get()), cur(start), len(buf.size) {}
-	bool isFinished() { return (size_t)(cur - start) >= len; }
-	void skipWhitespace();
-	void skipUntil(char until);
-	void skip();
-	str::view getView(char delim);
-};
-
-static str::view trim(str::view view);
-
 namespace ini {
 	unsigned int Value::asUint() const {
 		return str::toUInt(value.data);
@@ -38,10 +21,6 @@ namespace ini {
 		return str::dup(value.data, value.len);
 	}
 
-	//std::string Value::asStr() const {
-	//	return std::string{ trim(value) };
-	//}
-
 	size_t Value::toStr(char *buf, size_t buflen) const {
 		if (!buf || buflen == 0) {
 			return 0;
@@ -50,8 +29,8 @@ namespace ini {
 			buf[0] = '\0';
 			return 0;
 		}
-		str::view view = trim(value);
-		size_t to_copy = mem::min(view.len, buflen - 1);
+		str::view view = value.trim();
+		size_t to_copy = math::min(view.len, buflen - 1);
 		memcpy(buf, value.data, to_copy);
 		buf[to_copy] = '\0';
 		return to_copy;
@@ -64,14 +43,14 @@ namespace ini {
 		size_t start = 0;
 		for (size_t i = 0; i < value.len; ++i) {
 			if (value[i] == delim) {
-				str::view arr_val = trim(value.sub(start, i));
+				str::view arr_val = value.sub(start, i).trim();
 				if (!arr_val.empty()) {
 					out.push(arr_val);
 				}
 				start = i + 1;
 			}
 		}
-		str::view last = trim(value.sub(start));
+		str::view last = value.sub(start).trim();
 		if (!last.empty()) {
 			out.push(last);
 		}
@@ -107,12 +86,6 @@ namespace ini {
 			val = asStr();
 		}
 	}
-
-	//void Value::trySet(std::string &val) const {
-	//	if (isValid()) {
-	//		val = asStr();
-	//	}
-	//}
 
 	void Value::trySet(arr<str::view> &val) const {
 		if (isValid()) {
@@ -164,10 +137,10 @@ namespace ini {
 		return null_table;
 	}
 
-	static void addValue(Table &table, StrStream &in) {
-		str::view key = trim(in.getView('='));
+	static void addValue(Table &table, fs::StreamIn &in) {
+		str::view key = in.getView('=').trim();
 		in.skip(); // skip divider
-		str::view val = trim(in.getView('\n'));
+		str::view val = in.getView('\n').trim();
 
 		if (key.empty()) return;
 
@@ -180,7 +153,7 @@ namespace ini {
 		table.values.push(key, val);
 	}
 
-	static void addTable(Doc &out, StrStream &in) {
+	static void addTable(Doc &out, fs::StreamIn &in) {
 		in.skip(); // skip [
 		str::view name = in.getView(']');
 		in.skip(); // skip ]
@@ -207,12 +180,12 @@ namespace ini {
 	}
 
 	void Doc::parse(const char *filename) {
-		text = file::read(filename);
+		text = fs::read(filename);
 		if (!text.data) return;
 
 		tables.clear();
 		tables.push("root");
-		StrStream in = text;
+		fs::StreamIn in = text;
 
 		while (!in.isFinished()) {
 			switch (*in.cur) {
@@ -232,39 +205,3 @@ namespace ini {
 	}
 
 } // namespace ini
-
-static str::view trim(str::view view) {
-	if (view.empty()) return view;
-	str::view out = view;
-	// trim left
-	for (size_t i = 0; i < view.len && isspace(view[i]); ++i) {
-		out.removePrefix(1);
-	}
-	if (out.empty()) return out;
-	// trim right
-	for (long long i = out.len - 1; i >= 0 && isspace(out[i]); --i) {
-		out.removeSuffix(1);
-	}
-	return out;
-}
-
-void StrStream::skipWhitespace() {
-	const char *end = start + len;
-	for (; cur < end && isspace(*cur); ++cur);
-}
-
-void StrStream::skipUntil(char until) {
-	const char *end = start + len;
-	for (; cur < end && *cur != until; ++cur);
-}
-
-void StrStream::skip() {
-	if (!isFinished()) ++cur;
-}
-
-str::view StrStream::getView(char delim) {
-	const char *from = cur;
-	skipUntil(delim);
-	size_t view_len = cur - from;
-	return { from, view_len };
-}
