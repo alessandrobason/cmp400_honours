@@ -4,10 +4,10 @@ cbuffer RayTraceData : register(b0) {
     uint2 thread_loc;
     uint num_rendered_frames;
     uint num_of_lights;
-	uint maximum_steps;
 	uint maximum_bounces;
 	uint maximum_rays;
 	float maximum_trace_dist;
+	float jitter_amount;
 };
 
 cbuffer ShaderData : register(b1) {
@@ -177,6 +177,8 @@ struct HitInfo {
 };
 
 HitInfo rayMarch(float3 ro, float3 rd, int bounce, inout uint state) {
+	static const int MAXIMUM_STEPS = 500;
+
 	HitInfo info;
 	info.normal   = 0;
 	info.position = 0;
@@ -185,7 +187,7 @@ HitInfo rayMarch(float3 ro, float3 rd, int bounce, inout uint state) {
 
 	float distance_traveled = 0;
 
-	for (int step_count = 0; step_count < maximum_steps; ++step_count) {
+	for (int step_count = 0; step_count < MAXIMUM_STEPS; ++step_count) {
 		float3 current_pos = ro + rd * distance_traveled;
 		float closest = texBoundarySDF(current_pos);
         uint light_id = num_of_lights;
@@ -287,8 +289,10 @@ void main(uint2 thread_id : SV_DispatchThreadID) {
     float3 ray_origin = cam_pos + cam_fwd * cam_zoom;
     float3 focus_point = cam_fwd + cam_right * uv.x + cam_up * uv.y;
 
+	float jitter = jitter_amount / 1000.0;
+
 	for (int ray = 0; ray < maximum_rays; ++ray) {
-        float2 aa_jitter = randomPointInCircle(rng_state) * 0.001;
+        float2 aa_jitter = randomPointInCircle(rng_state) * jitter;
         float3 aa_focus_point = focus_point + cam_right * aa_jitter.x + cam_up * aa_jitter.y;
         float3 ray_dir = normalize(aa_focus_point);
 		

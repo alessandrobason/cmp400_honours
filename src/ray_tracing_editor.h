@@ -18,10 +18,11 @@ struct RayTracingEditor {
 		vec2u thread_loc         = 0;
 		uint num_rendered_frames = 0;
 		uint num_of_lights       = 0;
-		uint maximum_steps       = 500;
+		//uint maximum_steps       = 500;
 		uint maximum_bounces     = 10;
 		uint maximum_rays        = 10;
 		float maximum_trace_dist = 3000.f;
+		float jitter_amount      = 1.f;
 	};
 
 	GFX_CLASS_CHECK(RayTraceData);

@@ -167,7 +167,7 @@ namespace fs {
 		BOOL success = ReadDirectoryChangesW(
 			dir_handle,
 			change_buf, sizeof(change_buf),
-			FALSE, // watch subtree
+			TRUE, // watch subtree
 			FILE_NOTIFY_CHANGE_LAST_WRITE,
 			nullptr, // bytes returned
 			(OVERLAPPED *)&overlapped,
@@ -246,9 +246,13 @@ namespace fs {
 					err("name too long: %S -- %u", event->FileName, event->FileNameLength);
 					break;
 				}
+				str::view name = namebuf;
+				for (size_t i = 0; i < name.len; ++i) {
+					if (namebuf[i] == '\\') namebuf[i] = '/';
+				}
 
 				for (size_t i = 0; i < watched.size(); ++i) {
-					if (strcmp(watched[i].name.get(), namebuf) == 0) {
+					if (name == watched[i].name.get()) {
 						addChanged(i);
 						break;
 					}

@@ -25,6 +25,7 @@ struct Buffer {
 		Count,
 	};
 
+	Buffer() = delete;
 	Buffer(const Buffer &buf) = delete;
 	Buffer(Buffer &&buf);
 	~Buffer();
@@ -73,7 +74,4 @@ struct Buffer {
 	dxptr<ID3D11Buffer> buffer = nullptr;
 	dxptr<ID3D11UnorderedAccessView> uav = nullptr;
 	dxptr<ID3D11ShaderResourceView> srv = nullptr;
-
-private:
-	Buffer() = default;
 };

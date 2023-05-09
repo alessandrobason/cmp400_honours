@@ -28,7 +28,7 @@ static GFXFactory<Texture2D> tex2d_factory;
 struct Tex2DHandler {
 	void add(const char *filename, Handle<Texture2D> handle) {
 		// it can't watch the file if it is not in the right directory
-		if (fs::getDir(filename) != "assets") return;
+		if (fs::getBaseDir(filename) != "assets") return;
 		mtx.lock();
 		watcher.watchFile(filename, handle.get());
 		mtx.unlock();

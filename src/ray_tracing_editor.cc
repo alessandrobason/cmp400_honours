@@ -181,13 +181,14 @@ void RayTracingEditor::editorWidget() {
 
 	ImGui::PushItemWidth(-1);
 
-	ImGui::Text("Number of steps");
+	ImGui::Text("Blurriness");
 	tooltip(
-		"How many times the ray will be allowed to step forward,"
-		" a lower number might not be able to pick up every object "
-		"in exchange of faster rendering"
+		"How out of focus the image is going to be, a value of 1 "
+		"will make it so the shapes don't have hard edges, an higher "
+		"value means the picture will be out of focus, lower will be "
+		"more in focus."
 	);
-	should_redraw |= inputUint("##max_steps", data.maximum_steps);
+	should_redraw |= filledSlider("##jitter", &data.jitter_amount, 0.f, 30.f);
 
 	ImGui::Text("Number of bounces");
 	tooltip("How many times light is allowed to bounce");

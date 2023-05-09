@@ -7,6 +7,7 @@
 extern struct mem::VirtualAllocator g_gfx_arena;
 
 struct GFXFactoryBase {
+	virtual ~GFXFactoryBase() {}
 	virtual void cleanup() = 0;
 };
 

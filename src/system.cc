@@ -205,6 +205,9 @@ namespace gfx {
 		D3D11_FEATURE_DATA_THREADING threading_feature;
 		device->CheckFeatureSupport(D3D11_FEATURE_THREADING, &threading_feature, sizeof(D3D11_FEATURE_DATA_THREADING));
 		can_multithread = threading_feature.DriverConcurrentCreates;
+		if (!can_multithread) {
+			warn("Cannot create resources in another thread, this means the application will freeze every time something needs to load");
+		}
 
 		return true;
 	}

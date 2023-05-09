@@ -44,48 +44,39 @@ inline float sampleWorld(float3 position) {
     return vol_tex[position];
 }
 
-inline void op_union(float vold, float vnew, uint3 id, out bool changed) {
-    changed = vnew < vold;
-    if (changed) {
+inline void op_union(float vold, float vnew, uint3 id) {
+    if (vnew < vold) {
         vol_tex[id] = vnew;
     }
 }
 
-inline void op_subtraction(float vold, float vnew, uint3 id, out bool changed) {
-    changed = (-vnew) > vold;
-    if (changed) {
+inline void op_subtraction(float vold, float vnew, uint3 id) {
+    if ((-vnew) > vold) {
         vol_tex[id] = -vnew;
     }
 }
 
-inline void op_smooth_union(float vold, float vnew, float k, uint3 id, out bool changed) {
+inline void op_smooth_union(float vold, float vnew, float k, uint3 id) {
 	const float h = clamp(0.5 + 0.5 * (vnew - vold) / k, 0.0, 1.0);
 	const float result = lerp(vnew, vold, h) - k * h * (1.0 - h);
     vol_tex[id] = result;
-    changed = true;
 }
 
-inline void op_smooth_subtraction(float vold, float vnew, float k, uint3 id, out bool changed) {
+inline void op_smooth_subtraction(float vold, float vnew, float k, uint3 id) {
 	const float h = clamp(0.5 - 0.5 * (vold + vnew) / k, 0.0, 1.0);
 	const float result = lerp(vold, -vnew, h) + k * h * (1.0 - h);
-    changed = true;
     vol_tex[id] = result;
 }
 
-inline void setVTSkipRead(uint3 id, float old_value, float new_value, float3 pos) {
-    bool changed;
+inline void setVolumeTexture(uint3 id, float new_value) {
+    const float old_value = sampleWorld(id);
     
     switch (operation) {
-        case OP_UNION:               op_union(old_value, new_value, id, changed);                             break;                   
-        case OP_SUBTRACTION:         op_subtraction(old_value, new_value, id, changed);                       break;       
-        case OP_SMOOTH_UNION:        op_smooth_union(old_value, new_value, smooth_amount, id, changed);       break;       
-        case OP_SMOOTH_SUBTRACTION:  op_smooth_subtraction(old_value, new_value, smooth_amount, id, changed); break; 
+        case OP_UNION:               op_union(old_value, new_value, id);                             break;                   
+        case OP_SUBTRACTION:         op_subtraction(old_value, new_value, id);                       break;       
+        case OP_SMOOTH_UNION:        op_smooth_union(old_value, new_value, smooth_amount, id);       break;       
+        case OP_SMOOTH_SUBTRACTION:  op_smooth_subtraction(old_value, new_value, smooth_amount, id); break; 
     }
-}
-
-inline void setVolumeTexture(uint3 id, float new_value, float3 pos) {
-    const float old_value = sampleWorld(id);
-    setVTSkipRead(id, old_value, new_value, pos);
 }
 
 inline float3 idToWorld(uint3 id) {
@@ -108,14 +99,14 @@ inline void writeApproximateDistance(float3 pos, uint3 id) {
     // way too large and skipping the actual shape. it will slightly lower performance
     // but not by much (hopefully lol)
     distance *= 0.9;
-    
-    bool changed;
-    op_union(sampleWorld(id), distance / MAX_STEP, id, changed);
+    // make sure that we don't go over the maximum value
+    distance = clamp(distance / MAX_STEP, -1, 1);
+
+    setVolumeTexture(id, distance);
 }
 
 inline float texBoundarySDF(float3 pos) {
-	float3 q = abs(pos - brush_data[0].brush_pos) - brush_size * brush_scale * 0.5;
-	return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
+    return sdf_box(pos, brush_data[0].brush_pos, brush_size * brush_scale);
 }
 
 [numthreads(8, 8, 8)]
@@ -128,11 +119,11 @@ void main(uint3 id : SV_DispatchThreadID) {
     pos = worldToBrush(pos);
 
     if (dist_from_tex > 0) {
-        if (dist_from_tex < MAX_STEP && operation & OP_UNION) {
+        if (dist_from_tex < MAX_STEP) {
             writeApproximateDistance(pos, id);
         }
         return;
     }
 
-    setVolumeTexture(id, sampleBrush(pos), pos);
+    setVolumeTexture(id, sampleBrush(pos));
 }

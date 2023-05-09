@@ -40,9 +40,6 @@
     <Filter Include="Libraries\stb">
       <UniqueIdentifier>{a5352279-4cc9-4eba-b022-f063aeb18e90}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Libraries\tracy">
-      <UniqueIdentifier>{73ad29b7-8cee-4101-81c2-f9871c2e1b79}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Libraries\ImGui">
       <UniqueIdentifier>{38c8ee29-d12c-47ed-ab44-1f773ea29f30}</UniqueIdentifier>
     </Filter>

@@ -38,9 +38,9 @@ static void centreButton(float width, float padding);
 BrushEditor::BrushEditor() {
 	brush_icon        = Texture2D::load("assets/GUI/brush_icon.png");
 	eraser_icon       = Texture2D::load("assets/GUI/eraser_icon.png");
-	depth_tooltips[0] = Texture2D::load("assets/GUI/depth_inside_tip.png");
+	depth_tooltips[0] = Texture2D::load("assets/GUI/depth_outside_tip.png");
 	depth_tooltips[1] = Texture2D::load("assets/GUI/depth_normal_tip.png");
-	depth_tooltips[2] = Texture2D::load("assets/GUI/depth_outside_tip.png");
+	depth_tooltips[2] = Texture2D::load("assets/GUI/depth_inside_tip.png");
 	oper_handle       = Buffer::makeConstant<OperationData>(Buffer::Usage::Dynamic);
 	fill_buffer       = Buffer::makeConstant<ShapeData>(Buffer::Usage::Dynamic);
 	find_data_handle  = Buffer::makeConstant<BrushFindData>(Buffer::Usage::Dynamic);

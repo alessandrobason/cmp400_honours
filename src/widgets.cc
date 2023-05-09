@@ -187,10 +187,12 @@ namespace widgets {
 		ImGui::Text(
 			"Exit program: %s\n"
 			"Take Screenshot: %s\n"
-			"Capture Frame (debugging only): %s\n",
+			"Capture Frame (debugging only): %s\n"
+			"You can press %s on any slider to manually change its value\n",
 			getKeyName(getActionKey(Action::CloseProgram)),
 			getKeyName(getActionKey(Action::TakeScreenshot)),
-			getKeyName(getActionKey(Action::CaptureFrame))
+			getKeyName(getActionKey(Action::CaptureFrame)),
+			getKeyName(KEY_CTRL)
 		);
 
 		separatorText("Camera");

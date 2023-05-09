@@ -37,6 +37,8 @@ namespace str {
 		using Super::Super;
 
 		view(const char *cstr, size_t len = 0);
+		template<size_t size>
+		view(const char (&data)[size]) : view(data) {}
 		view(Super slice);
 
 		view sub(size_t start = 0, size_t end = SIZE_MAX) const;

@@ -56,8 +56,8 @@ int main() {
 		Options &options = Options::get();
 		bool is_dirty = false;
 
-		Handle<Shader> main_vs            = Shader::compile("base_vs.hlsl",          ShaderType::Vertex);
-		Handle<Shader> main_ps            = Shader::compile("base_ps.hlsl",          ShaderType::Fragment);
+		Handle<Shader> main_vs            = Shader::compile("main_vs.hlsl",          ShaderType::Vertex);
+		Handle<Shader> main_ps            = Shader::compile("main_ps.hlsl",          ShaderType::Fragment);
 		Handle<Buffer> shader_data_handle = Buffer::makeConstant<PSShaderData>(Buffer::Usage::Dynamic);
 		Mesh triangle                     = makeFullScreenTriangle();
 
