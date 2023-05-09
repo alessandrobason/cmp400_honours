@@ -70,15 +70,12 @@ void Sculpture::runSculpt() {
 	if (save_state == SaveState::Saved) save_state = SaveState::Unsaved;
 	if (Options::get().auto_capture)    gfx::captureFrame();
 	
-	static GPUClock sculpt_timer = "sculpt";
-	sculpt_timer.start();
 	sculpt->dispatch(
 		texture->size / 8, 
 		{ brush_editor.getOperHandle() },
 		{ brush_editor.getBrushSRV(), brush_editor.getDataSRV() },
 		{ texture->uav }
 	);
-	sculpt_timer.end();
 }
 
 void Sculpture::save(const vec3u &quality) {
