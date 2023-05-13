@@ -93,8 +93,7 @@ framework:
   - can save to file
     - when saved, it keeps track of the path/quality and autosaves
     - saving is done asyncronously
-    - if sculpture isn't saved when closing, it prompts the
-      user to save 
+    - if sculpture isn't saved when closing, it prompts the user to save 
 - shader
   - hot reloaded by default
   - load (from file)
@@ -154,7 +153,7 @@ framework:
     - keyRemapper: window to remap actions
     - controlsPage: window to display current controls
     - menuBar: menu bar at the top
-    - ssaveLoadFile: not a widget technically, but needed as otherwise imgui freaks out whenever nfd is opened
+    - saveLoadFile: not a widget technically, but needed as otherwise imgui freaks out whenever nfd is opened
   - imgui extended:
     - filledSlider: a slider that is filled until the value, instead of having an handle
     - input U8/Uint/Uint2/Uint3
@@ -226,3 +225,86 @@ framework:
   headers: 482
   sources: 770
   total utils: 1252
+
+
+# UX
+
+- [X] vertical editors vs horizontal views and horizontal logger
+  - [X] how verticality shaped design
+- [X] material editor
+  - [X] subdivided into sections
+  - [X] tips for anything that could be confusing
+  - [X] small colour preview, can be enlarged by clicking on it
+  - [X] names are not necessarely correct, but easier to understand and not-technical
+  - [X] preview of the textures which can be zoomed in when hovered
+- [X] brush editor
+  - [X] keyboard shortcuts
+    - [X] Q-E to swap between brush and eraser (E is widely known as eraser and Q is close on the KB (considerations for non-qwerty KB?))
+    - [X] Shift, Ctrl, and Alt bring up context menu right over the mouse
+  - [X] default values
+    - [X] default depth value is 0.9 as it feels the closest to real sculpting
+    - [X] depth value swaps when changing between eraser and brush
+  - [X] tips
+    - [X] depth tip
+- [X] ray tracing editor
+  - [X] names are descriptive
+  - [X] tips on every value
+  - [X] save image button for ease of use
+  - [X] rendering widget
+    - [X] rendering time
+    - [X] n of frames rendered
+      - [X] only "objective" value
+    - [X] how long each frame takes
+
+- [x] main view
+  - [x] image is always centred
+  - [x] box to show editable area
+  - [x] turns gray when disabled
+- [x] render view
+  - [-] automatically updates
+- [-] logger
+  - [-] can be filtered by type of message
+  - [-] not useful for artists most of the time, but if something goes wrong it gives useful information for the programmers to understand what went wrong
+
+- [-] other windows
+  - [-] key remapping
+  - [-] options
+    - [-] helpful explanation for each option, takes for granted that the user has no tech experience
+  - [-] controls
+    - [-] list of useful controls
+    - [-] not hard-coded, controls are updated when remapped
+- [X] menu bar
+  - [x] shortcuts (file->new/save)
+  - [x] it also remember what you last put in
+  - [x] quality level presets
+  - [x] uses native file dialogue
+  - [x] warns if you did not save after exiting
+  - [x] autosave after first save!
+
+- [x] widgets messages
+
+- [X] layout
+  - [X] windows can be moved around
+  - [X] imgui automatically saves the last layout
+
+# Lit Review
+1. introduction to stuff
+2. issues and challenges
+  - many iterations close to the edges
+  - 
+3. main methods 
+4. 
+
+# testing
+
+- questionnaire
+  - intuitiveness
+  - ease of use
+  - background
+  - scale from 1-5
+  - extra space for tips/critiques
+  
+- performance
+  - fps average for the same complex sculpture at different sizes
+  - ms taken for brush sculpting operation at different brush sizes
+  - ms taken for eraser sculpting operation at different brush sizes

@@ -25,6 +25,28 @@
 #include "widgets.h"
 #include "gfx_factory.h"
 
+struct Tester {
+	~Tester() {
+		fs::file fp("fps_testing_small.txt", "wb");
+		fp.puts("small\n");
+		for (float f : all_fps) {
+			fp.print("%.3f, ", f);
+		}
+		fp.puts("\n");
+	}
+
+	void add(float fps) { 
+		static bool should_add = false;
+		if (clock.after(0.5f)) should_add = true;
+		if (!should_add) return;
+		
+		all_fps.push(fps);
+	}
+
+	arr<float> all_fps;
+	OnceClock clock;
+} tester;
+
 extern void pollShaders();
 extern void pollTexture2D();
 
@@ -334,6 +356,7 @@ namespace win {
 
 		dt = (float)timerToSec(timerLaptime(laptime));
 		if (dt) {
+			tester.add((float)(1.0 / dt));
 			fps = (fps + 1.f / dt) / 2.f;
 		}
 
