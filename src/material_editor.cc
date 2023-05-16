@@ -28,7 +28,7 @@ MaterialEditor::MaterialEditor() {
 	addTextureAsync("assets/satara_night_2k.hdr");
 	addTextureAsync("assets/the_sky_is_on_fire_2k.hdr");
 	addTextureAsync("assets/venice_sunset_2k.hdr");
-
+	
 	addLight(vec3(-400, 0, 0), 150.f);
 
 	assert(cur_lights_count >= lights.len);

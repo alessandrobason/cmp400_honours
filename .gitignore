@@ -2,5 +2,6 @@
 **/x64/
 shaders/bin/
 logs/
+temp/
 *.db
 compileData.*

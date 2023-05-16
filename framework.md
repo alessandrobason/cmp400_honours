@@ -305,6 +305,9 @@ framework:
   - extra space for tips/critiques
   
 - performance
-  - fps average for the same complex sculpture at different sizes
-  - ms taken for brush sculpting operation at different brush sizes
-  - ms taken for eraser sculpting operation at different brush sizes
+  - [x] fps average for the same complex sculpture at different sizes
+  - [x] ms taken for brush sculpting operation at different brush sizes
+  - [x] ms taken for eraser sculpting operation at different brush sizes
+
+  - [X] benchmark sculpture saved at different sizes
+  - [X] basic sphere at different sizes (sphere with radius = size/2)

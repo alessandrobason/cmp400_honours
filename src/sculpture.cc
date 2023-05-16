@@ -40,7 +40,7 @@ Sculpture::~Sculpture() {
 		int result = MessageBox(
 			nullptr,
 			(str::tstr)message_buf,
-			TEXT("Unsaved Changed"),
+			TEXT("Unsaved Changes"),
 			MB_YESNO | MB_ICONWARNING
 		);
 		if (result == IDYES) {

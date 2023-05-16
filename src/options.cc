@@ -53,8 +53,8 @@ void Options::save(const char *filename) {
 	fp.print("autosave = %.2f\n", auto_save_mins);
 
 	fp.puts("\n[camera]\n");
-	fp.print("zoom sensitivity = %.3f\n", zoom_sensitivity);
-	fp.print("look sensitivity = %.3f\n", look_sensitivity);
+	fp.print("zoom = %.3f\n", zoom_sensitivity);
+	fp.print("look = %.3f\n", look_sensitivity);
 
 	fp.puts("\n[log]\n");
 	fp.print("print to file = %s\n", B(print_to_file));
@@ -96,8 +96,8 @@ void Options::drawWidget() {
 	tooltip("How many minutes before the sculpture auto saves, keep in mind that you need to save it at least once first!");
 
 	separatorText("Camera");
-	ImGui::SliderFloat("Zoom sensitivity", &zoom_sensitivity, 1, 50);
-	ImGui::SliderFloat("Look sensitivity", &look_sensitivity, 1, 300);
+	ImGui::DragFloat("Zoom sensitivity", &zoom_sensitivity, 1, 1, FLT_MAX);
+	ImGui::DragFloat("Look sensitivity", &look_sensitivity, 1, 1, FLT_MAX);
 
 	separatorText("Logger");
 	ImGui::Checkbox("Print to file", &print_to_file);

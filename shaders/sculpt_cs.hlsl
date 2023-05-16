@@ -57,15 +57,25 @@ inline void op_subtraction(float vold, float vnew, uint3 id) {
 }
 
 inline void op_smooth_union(float vold, float vnew, float k, uint3 id) {
+    // this formula doesn't work if vold and vnew are <1, so premultiply them by
+    // MAX_STEP and then divide it again at the end
+    vnew *= MAX_STEP; vold *= MAX_STEP;
+
 	const float h = clamp(0.5 + 0.5 * (vnew - vold) / k, 0.0, 1.0);
 	const float result = lerp(vnew, vold, h) - k * h * (1.0 - h);
-    vol_tex[id] = result;
+    
+    vol_tex[id] = result / MAX_STEP;
 }
 
 inline void op_smooth_subtraction(float vold, float vnew, float k, uint3 id) {
+    // this formula doesn't work if vold and vnew are <1, so premultiply them by
+    // MAX_STEP and then divide it again at the end
+    vnew *= MAX_STEP; vold *= MAX_STEP;
+
 	const float h = clamp(0.5 - 0.5 * (vold + vnew) / k, 0.0, 1.0);
 	const float result = lerp(vold, -vnew, h) + k * h * (1.0 - h);
-    vol_tex[id] = result;
+    
+    vol_tex[id] = result / MAX_STEP;
 }
 
 inline void setVolumeTexture(uint3 id, float new_value) {
@@ -102,7 +112,7 @@ inline void writeApproximateDistance(float3 pos, uint3 id) {
     // but not by much (hopefully lol)
     distance *= 0.9;
     // make sure that we don't go over the maximum value
-    distance = clamp(distance / MAX_STEP, -1, 1);
+    distance = saturate(distance / MAX_STEP);
 
     setVolumeTexture(id, distance);
 }
